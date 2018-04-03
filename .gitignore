@@ -1,0 +1,16 @@
+*.pyc
+*.egg-info
+__pycache__/
+relic/
+RELIC-INFO
+
+# Other generated files
+*/version.py
+docs/_build
+
+# WingIDE
+*.wpr
+*.wpu
+
+# Mac OSX
+.DS_Store
