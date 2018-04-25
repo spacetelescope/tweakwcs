@@ -1,16 +1,54 @@
-*.pyc
-*.egg-info
-__pycache__/
-relic/
-RELIC-INFO
+# Compiled files
+*.py[cod]
+*.a
+*.o
+*.so
+__pycache__
 
 # Other generated files
 */version.py
-docs/_build
+*/cython_version.py
+htmlcov
+.coverage
+MANIFEST
+.ipynb_checkpoints
+
+# Sphinx
+docs/api
+docs/_build/
 
 # WingIDE
 *.wpr
 *.wpu
+
+# Eclipse editor project files
+.project
+.pydevproject
+.settings
+
+# Pycharm editor project files
+.idea
+
+# Packages/installer info
+*.egg
+*.egg-info
+dist/
+build/
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+distribute-*.tar.gz
+relic/
+RELIC-INFO
+
+# Other
+*~
+.settings
+devdata/
 
 # Mac OSX
 .DS_Store
