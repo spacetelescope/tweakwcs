@@ -96,7 +96,6 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
 
     wimcat = WCSImageCatalog(imcat, imwcs, shape=None,
                              name=imcat.meta.get('name', None))
-    print(wimcat.catalog)
     wgcat = WCSGroupCatalog(wimcat, name=imcat.meta.get('name', None))
     wrefcat = RefCatalog(refcat, name=imcat.meta.get('name', None))
 
