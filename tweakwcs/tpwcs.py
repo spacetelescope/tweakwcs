@@ -183,6 +183,7 @@ class TPWCS(ABC):
         pscale = float(np.sqrt(area))
         return pscale
 
+    @property
     def tanp_center_pixel_scale(self):
         """ Estimate pixel scale in the tangent plane near a location
         in the detector's coordinate system corresponding to the origin of the
@@ -203,11 +204,11 @@ class TPWCS(ABC):
 
 
 class JWSTgWCS(TPWCS):
-    """ A class for holding JWST gWCS information and for managing
+    """ A class for holding ``JWST`` ``gWCS`` information and for managing
     tangent-plane corrections.
 
     """
-    def __init__(self, wcs, v2_ref, v3_ref, roll_ref, ra_ref, dec_ref):
+    def __init__(self, wcs, wcsinfo):
         """
         Parameters
         ----------
@@ -215,30 +216,32 @@ class JWSTgWCS(TPWCS):
         wcs : GWCS
             A `GWCS` object.
 
-        v2ref : float
-            V2 position of the reference point in degrees.
+        wcsinfo : dict
+            A dictionary containing reference angles of ``JWST`` instrument
+            provided in the ``wcsinfo`` property of ``JWST`` meta data.
 
-        v3ref : float
-            V3 position of the reference point in degrees.
+            This dictionary **must contain** the following keys and values:
 
-        roll : float
-            Roll angle in degrees.
 
-        ra_ref : float
-            RA of the reference point in degrees.
+            'v2_ref' : float
+                V2 position of the reference point in arc seconds.
 
-        dec_ref : float
-            DEC of the reference point in degrees.
+            'v3_ref' : float
+                V3 position of the reference point in arc seconds.
+
+            'roll_ref' : float
+                Roll angle in degrees.
 
         """
         if not self._check_wcs_structure(wcs):
             raise ValueError("Unsupported WCS structure.")
 
-        self._ra_ref = ra_ref
-        self._dec_ref = dec_ref
-        self._v2_ref = v2_ref
-        self._v3_ref = v3_ref
-        self._roll_ref = roll_ref
+        v2_ref = wcsinfo['v2_ref']
+        v3_ref = wcsinfo['v3_ref']
+        roll_ref = wcsinfo['roll_ref']
+
+        self._wcsinfo = {'v2_ref': v2_ref, 'v3_ref': v3_ref,
+                         'roll_ref': roll_ref}
 
         # perform additional check that if tangent plane correction is already
         # present in the WCS pipeline, it is of TPCorr class and that
@@ -246,7 +249,9 @@ class JWSTgWCS(TPWCS):
         frms = [f[0] for f in wcs.pipeline]
         if 'v2v3corr' in frms:
             self._v23name = 'v2v3corr'
-            self._tpcorr = deepcopy(wcs.pipeline[frms.index('v2v3corr')-1][1])
+            self._tpcorr = deepcopy(
+                wcs.pipeline[frms.index('v2v3corr') - 1][1]
+            )
             self._default_tpcorr = None
             if not isinstance(self._tpcorr, TPCorr):
                 raise ValueError("Unsupported tangent-plance correction type.")
@@ -259,8 +264,8 @@ class JWSTgWCS(TPWCS):
             eps_v2 = 10.0 * np.finfo(v2_ref).eps
             eps_v3 = 10.0 * np.finfo(v3_ref).eps
             eps_roll = 10.0 * np.finfo(roll_ref).eps
-            if not (np.isclose(v2_ref, v2ref, rtol=eps_v2) and
-                    np.isclose(v3_ref, v3ref, rtol=eps_v3) and
+            if not (np.isclose(v2_ref, v2ref * 3600.0, rtol=eps_v2) and
+                    np.isclose(v3_ref, v3ref * 3600.0, rtol=eps_v3) and
                     np.isclose(roll_ref, roll, rtol=eps_roll)):
                 raise ValueError(
                     "WCS/TPCorr parameters 'v2ref', 'v3ref', and/or 'roll' "
@@ -271,8 +276,7 @@ class JWSTgWCS(TPWCS):
             self._v23name = 'v2v3'
             self._tpcorr = None
             self._default_tpcorr = TPCorr(
-                v2ref=v2_ref, v3ref=v3_ref,
-                roll=roll_ref,
+                v2ref=v2_ref / 3600.0, v3ref=v3_ref / 3600.0, roll=roll_ref,
                 name='tangent-plane linear correction'
             )
 
@@ -296,14 +300,7 @@ class JWSTgWCS(TPWCS):
     @property
     def ref_angles(self):
         """ Return a ``wcsinfo``-like dictionary of main WCS parameters. """
-        wcsinfo = {
-            'ra_ref': self._ra_ref,
-            'dec_ref': self._dec_ref,
-            'v2_ref': self._v2_ref,
-            'v3_ref': self._v3_ref,
-            'roll_ref': self._roll_ref
-        }
-        return wcsinfo
+        return {k: v for k, v in self._wcsinfo.items()}
 
     def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0]):
         """
@@ -327,8 +324,11 @@ class JWSTgWCS(TPWCS):
         # new correction and add it to the WCs pipeline:
         if self._tpcorr is None:
             self._tpcorr = TPCorr(
-                v2ref=self._v2_ref, v3ref=self._v3_ref,
-                roll=self._roll_ref, matrix=matrix, shift=shift,
+                v2ref=self._wcsinfo['v2_ref'] / 3600.0,
+                v3ref=self._wcsinfo['v3_ref'] / 3600.0,
+                roll=self._wcsinfo['roll_ref'],
+                matrix=matrix,
+                shift=shift,
                 name='tangent-plane linear correction'
             )
             idx_v2v3 = frms.index(self._v23name)
