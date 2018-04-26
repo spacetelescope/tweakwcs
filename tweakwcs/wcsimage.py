@@ -387,9 +387,6 @@ class WCSImageCatalog(object):
 
         x = self.catalog['x']
         y = self.catalog['y']
-        print("^^^ x: {}".format(x))
-        print("^^^ y: {}".format(y))
-        print("^^^ len(x): {}".format(len(x)))
 
         if len(x) == 0:
             # no points
@@ -431,7 +428,6 @@ class WCSImageCatalog(object):
         dec[-1] = dec[0]
 
         self._bb_radec = (ra, dec)
-        print("^^^ ra, dec = {}".format(self._bb_radec))
         self._polygon = SphericalPolygon.from_radec(ra, dec)
         self._poly_area = np.fabs(self._polygon.area())
 
