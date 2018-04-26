@@ -228,13 +228,13 @@ class TPMatch(MatchCatalogs):
                 raise KeyError("When tangent plane WCS is provided,  'imcat' "
                                "must contain both 'x' and 'y' columns.")
 
-            # compute x & y in the tangent plane of the reference WCS:
-            refxy = np.asarray(
-                tp_wcs.world_to_tanp(refcat['RA'], refcat['DEC'])
+            # compute x & y in the tangent plane provided by tp_wcs:
+            imxy = np.asarray(
+                tp_wcs.det_to_tanp(imcat['x'], imcat['y'])
             ).T
 
-            imxy = np.asarray(
-                tp_wcs.det_to_tanp(refcat['x'], refcat['y'])
+            refxy = np.asarray(
+                tp_wcs.world_to_tanp(refcat['RA'], refcat['DEC'])
             ).T
 
         imcat_name = imcat.meta.get('name', 'Unnamed')
@@ -251,35 +251,31 @@ class TPMatch(MatchCatalogs):
 
         tolerance = self._tolerance
 
+        ps = 1.0 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale()
+
         if self._use2dhist:
             # Determine xyoff (X,Y offset) and tolerance
             # to be used with xyxymatch:
             zpxoff, zpyoff, flux, zpqual = build_xy_zeropoint(
-                imxy,
-                refxy,
+                imxy / ps,
+                refxy / ps,
                 searchrad=self._searchrad
             )
 
             if zpqual is None:
                 xyoff = (0.0, 0.0)
-
             else:
-                xyoff = (zpxoff, zpyoff)
-                # set tolerance as well
-                # This value allows initial guess to be off by 1 in both and
-                # still pick up the identified matches
-                ps = 1 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale()
-                tolerance = 1.5 * ps
+                xyoff = (zpxoff * ps, zpyoff * ps)
 
         else:
-            xyoff = (self._xoffset, self._yoffset)
+            xyoff = (self._xoffset * ps, self._yoffset * ps)
 
         matches = xyxymatch(
             imxy,
             refxy,
             origin=xyoff,
-            tolerance=tolerance,
-            separation=self._separation
+            tolerance=ps * tolerance,
+            separation=ps * self._separation
         )
 
         return matches['ref_idx'], matches['input_idx']
