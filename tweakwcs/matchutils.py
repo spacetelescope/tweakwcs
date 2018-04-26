@@ -251,7 +251,7 @@ class TPMatch(MatchCatalogs):
 
         tolerance = self._tolerance
 
-        ps = 1.0 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale()
+        ps = 1.0 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale
 
         if self._use2dhist:
             # Determine xyoff (X,Y offset) and tolerance
