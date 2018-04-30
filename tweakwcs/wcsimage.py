@@ -851,7 +851,7 @@ class WCSGroupCatalog(object):
             # alignment to the tangent plane of another image in the group:
             if imcat.imwcs == tanplane_wcs:
                 m = matrix.copy()
-                s = s.copy()
+                s = shift.copy()
             else:
                 r1, t1 = _tp2tp(imcat.imwcs, tanplane_wcs)
                 r2, t2 = _tp2tp(tanplane_wcs, imcat.imwcs)
@@ -932,7 +932,7 @@ class WCSGroupCatalog(object):
         self.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
         refcat.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
 
-        nmatches, _, _ = self.match2ref(refcat=refcat, match=match)
+        nmatches, _, _ = self.match2ref(refcat=refcat.catalog, match=match)
         if nmatches < minobj:
             name = 'Unnamed' if self.name is None else self.name
             log.warning("Not enough matches (< {:d}) found for image "

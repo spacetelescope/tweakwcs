@@ -14,18 +14,24 @@ from __future__ import (absolute_import, division, unicode_literals,
 # STDLIB
 import logging
 from datetime import datetime
+import collections
+from copy import deepcopy
 
 # THIRD PARTY
 import numpy as np
+import astropy
+from astropy.nddata import NDDataBase
 
 # LOCAL
 from . wcsimage import *
+from . tpwcs import *
+from . matchutils import *
 
 from . import __version__, __version_date__
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['tweak_wcs']
+__all__ = ['tweak_wcs', 'tweak_image_wcs']
 
 
 log = logging.getLogger(__name__)
@@ -115,3 +121,445 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
     log.info(" ")
 
     return wgcat[0].imwcs
+
+
+def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
+                    expand_refcat=False, minobj=None, match=TPMatch(),
+                    fitgeom='general', nclip=3, sigma=3.0):
+    """
+    Align (groups of) images by adjusting the parameters of their WCS based on
+    fits between matched sources in these images and a reference catalog which
+    may be automatically created from one of the input images.
+
+    .. warning::
+        This function modifies the ``image.meta.wcs`` attribute of each item
+        in the input ``images`` list!
+
+    Parameters
+    ----------
+    images : list of astropy.nddata.NDDataBase
+        A list of `astropy.nddata.NDDataBase` objects whose WCS (provided
+        through its ``meta['wcs']`` attribute) should be adjusted.
+
+        .. warning::
+            This function modifies the WCS of the input images provided
+            through the ``images`` parameter. On return, each input image WCS
+            will be replaced with a "tweaked" WCS version.
+
+    refcat : astropy.table.Table, astropy.nddata.NDDataBase, optional
+        A reference source catalog. When ``refcat`` is an
+        `astropy.table.Table`, the catalog must contain ``'RA'`` and
+        ``'DEC'`` columns which indicate reference source world
+        coordinates (in degrees).
+
+        When ``refcat`` is an  `astropy.nddata.NDDataBase`, its ``meta``
+        attribute must contain at least ``'catalog'`` item that is an
+        `astropy.table.Table`. There are two different scenarios regarding
+        the information (columns) that this catalog should contain:
+
+        - If ``refcat``'s ``meta`` attribute **does not** contain a ``'wcs'``
+          item, then the catalog must contain ``'RA'`` and ``'DEC'`` columns
+          which indicate reference source world coordinates (in degrees).
+
+        - If ``refcat``'s ``meta`` attribute contains a ``'wcs'`` item with
+          a valid ``WCS`` then the catalog must contain ``'x'`` and ``'y'``
+          columns which indicate reference source image coordinates (in pixels)
+          which can be used to compute source ``'RA'`` and ``'DEC'`` values
+          **if not provided** though the ``'RA'`` and ``'DEC'`` columns
+          in the ``catalog``.
+
+    enforce_user_order : bool, optional
+        Specifies whether images should be aligned in the order specified in
+        the `file` input parameter or `align` should optimize the order
+        of alignment by intersection area of the images. Default value (`True`)
+        will align images in the user specified order, except when some images
+        cannot be aligned in which case `align` will optimize the image
+        alignment order. Alignment order optimization is available *only*
+        when ``expand_refcat`` = `True`.
+
+    expand_refcat : bool, optional
+        Specifies whether to add new sources from just matched images to
+        the reference catalog to allow next image to be matched against an
+        expanded reference catalog. By delault, the reference catalog is not
+        being expanded.
+
+    minobj : int, None, optional
+        Minimum number of identified objects from each input image to use
+        in matching objects from other images. If the default `None` value is
+        used then `align` will automatically deternmine the minimum number
+        of sources from the value of the ``fitgeom`` parameter.
+
+    match : MatchCatalogs, function, None, optional
+        A callable that takes two arguments: a reference catalog and an
+        image catalog. Both catalogs will have columns ``'TPx'`` and
+        ``'TPy'`` that represent the source coordinates in some common
+        (to both catalogs) coordinate system.
+
+    fitgeom : {'shift', 'rscale', 'general'}, optional
+        The fitting geometry to be used in fitting the matched object lists.
+        This parameter is used in fitting the offsets, rotations and/or scale
+        changes from the matched object lists. The 'general' fit geometry
+        allows for independent scale and rotation for each axis.
+
+    nclip : int, optional
+        Number (a non-negative integer) of clipping iterations in fit.
+
+    sigma : float, optional
+        Clipping limit in sigma units.
+
+    """
+
+    function_name = tweak_image_wcs.__name__
+
+    # Time it
+    runtime_begin = datetime.now()
+
+    log.info(" ")
+    log.info("***** {:s}.{:s}() started on {}"
+             .format(__name__, function_name, runtime_begin))
+    log.info("      Version {} ({})".format(__version__, __version_date__))
+    log.info(" ")
+
+    # check fitgeom:
+    fitgeom = fitgeom.lower()
+    if fitgeom not in ['shift', 'rscale', 'general']:
+        raise ValueError("Unsupported 'fitgeom'. Valid values are: "
+                         "'shift', 'rscale', or 'general'")
+
+    if minobj is None:
+        if fitgeom == 'general':
+            minobj = 3
+        elif fitgeom == 'rscale':
+            minobj = 2
+        else:
+            minobj = 1
+
+    # process reference catalog or image if provided:
+    if refcat is not None:
+        if isinstance(refcat, NDDataBase):
+            if not 'catalog' in refcat.meta:
+                raise ValueError("Reference 'NDDataBase' must contain a "
+                                 "catalog.")
+
+            rcat = refcat.meta['catalog'].copy()
+
+            if 'RA' not in catalog.colnames or 'DEC' not in catalog.colnames:
+                # convert image x & y to world coordinates:
+                if not 'wcs' in refcat:
+                    raise ValueError("A valid WCS is required to convert "
+                                     "image coordinates in the reference "
+                                     "catalog to world coordinates.")
+
+                #TODO: next statement will work only with gWCS!!!
+                #      Need a compatibility layer for FITS WCS, other WCSes.
+                ra, dec = refcat['wcs'](rcat['x'], rcat['y'])
+                rcat['RA'] = ra
+                rcat['DEC'] = dec
+                if 'name' not in rcat.meta:
+                    if 'name' in refcat.meta:
+                        rcat.meta['name'] = refcat.meta['name']
+
+            refcat = rcat
+
+        elif isinstance(refcat,  astropy.table.Table):
+            if 'RA' not in catalog.colnames or 'DEC' not in catalog.colnames:
+                raise KeyError("Reference catalogs *must* contain *both* 'RA' "
+                               "and 'DEC' columns.")
+
+        refcat = RefCatalog(refcat, name=refcat.meta.get('name', None))
+
+    # Check that type of `images` is correct:
+    if isinstance(images, NDDataBase):
+        images = [images]
+    else:
+        try:
+            imtype_ok = all([isinstance(i, NDDataBase) for i in images])
+        except:
+            imtype_ok = False
+        finally:
+            if not imtype_ok:
+                raise TypeError("Input 'images' must be either a single "
+                                "'NDDataBase' object or a list of "
+                                "'NDDataBase' objects.")
+
+    # find group ID and assign images to groups:
+    grouped_images = collections.defaultdict(list)
+    for img in images:
+        grouped_images[img.meta.get('group_id', None)].append(img)
+
+    # create WCSImageCatalog and WCSGroupCatalog:
+    imcat = []
+    for group_id, imlist in grouped_images.items():
+        if group_id is None:
+            for img in imlist:
+                if 'catalog' in img.meta:
+                    catalog = img.meta['catalog'].copy()
+                else:
+                    raise ValueError("Each image must have a valid catalog.")
+
+                wcsinfo = img.meta.get('wcsinfo', None)
+                if wcsinfo is not None:
+                    wcsinfo = wcsinfo._instance
+                imcat.append(
+                    WCSGroupCatalog(
+                        WCSImageCatalog(
+                            catalog=catalog,
+                            #TODO: this works only for JWST gWCS!!!
+                            imwcs=JWSTgWCS(deepcopy(img.meta.wcs), wcsinfo),
+                            shape=img.data.shape,
+                            name=img.meta.get('name', None),
+                            meta={'orig_image_nddata': img}
+                        ),
+                        name='GROUP ID: None'
+                    )
+                )
+
+        else:
+            wcsimlist = []
+            for img in imlist:
+                if 'catalog' in img.meta:
+                    catalog = img.meta['catalog'].copy()
+                else:
+                    raise ValueError("Each image must have a valid catalog.")
+
+                wcsinfo = img.meta.get('wcsinfo', None)
+                if wcsinfo is not None:
+                    wcsinfo = wcsinfo._instance
+                wcsimlist.append(
+                    WCSImageCatalog(
+                        catalog=catalog,
+                        #TODO: this works only for JWST gWCS!!!
+                        imwcs=JWSTgWCS(deepcopy(img.meta.wcs), wcsinfo),
+                        shape=img.data.shape,
+                        name=img.meta.get('name', None),
+                        meta={'orig_image_nddata': img}
+                    )
+                )
+
+            imcat.append(WCSGroupCatalog(wcsimlist,
+                                         name='GROUP ID: {}'.format(group_id)))
+
+    # check that we have enough input images:
+    if (refcat is None and len(imcat) < 2) or len(imcat) == 0:
+        raise ValueError("Too few input images (or groups of images).")
+
+    # get the first image to be aligned and
+    # create reference catalog if needed:
+    if refcat is None:
+        # create reference catalog:
+        ref_imcat, current_imcat = max_overlap_pair(
+            images=imcat,
+            enforce_user_order=enforce_user_order or not expand_refcat
+        )
+        log.info("Selected image '{}' as reference image"
+                 .format(ref_imcat.name))
+        refcat = RefCatalog(ref_imcat.catalog, name=ref_imcat[0].name)
+        # aligned_imcat = [img.meta['orig_image_nddata'] for img in ref_imcat]
+
+    else:
+        # find the first image to be aligned:
+        current_imcat = max_overlap_image(
+            refimage=refcat,
+            images=imcat,
+            enforce_user_order=enforce_user_order or not expand_refcat
+        )
+        # aligned_imcat = []
+
+    while current_imcat is not None:
+        log.info("Aligning image catalog '{}' to the reference catalog."
+                 .format(current_imcat.name))
+
+        current_imcat.align_to_ref(
+            refcat=refcat,
+            match=match,
+            minobj=minobj,
+            fitgeom=fitgeom,
+            nclip=nclip,
+            sigma=sigma
+        )
+        for image in current_imcat:
+            img = image.meta['orig_image_nddata']
+            img.meta.wcs = image.imwcs.wcs
+            # aligned_imcat.append(image)
+
+        # add unmatched sources to the reference catalog:
+        if expand_refcat:
+            refcat.expand_catalog(current_imcat.get_unmatched_cat())
+            log.info("Added unmatched sources from '{}' to the reference "
+                     "catalog.".format(current_imcat.name))
+
+        # find the next image to be aligned:
+        current_imcat = max_overlap_image(
+            refimage=refcat,
+            images=imcat,
+            enforce_user_order=enforce_user_order or not expand_refcat
+        )
+
+    # log running time:
+    runtime_end = datetime.now()
+    log.info(" ")
+    log.info("***** {:s}.{:s}() ended on {}"
+             .format(__name__, function_name, runtime_end))
+    log.info("***** {:s}.{:s}() TOTAL RUN TIME: {}"
+             .format(__name__, function_name, runtime_end - runtime_begin))
+    log.info(" ")
+
+    # return aligned_imcat # aligned_imcat may be out of order wrt to input
+
+
+def overlap_matrix(images):
+    """
+    Compute overlap matrix: non-diagonal elements (i,j) of this matrix are
+    absolute value of the area of overlap on the sky between i-th input image
+    and j-th input image.
+
+    .. note::
+        The diagonal of the returned overlap matrix is set to ``0.0``, i.e.,
+        this function does not compute the area of the footprint of a single
+        image on the sky.
+
+    Parameters
+    ----------
+
+    images : list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
+        A list of catalogs that implement :py:meth:`intersection_area` method.
+
+    Returns
+    -------
+    m : numpy.ndarray
+        A `numpy.ndarray` of shape ``NxN`` where ``N`` is equal to the
+        number of input images. Each non-diagonal element (i,j) of this matrix
+        is the absolute value of the area of overlap on the sky between i-th
+        input image and j-th input image. Diagonal elements are set to ``0.0``.
+
+    """
+    nimg = len(images)
+    m = np.zeros((nimg, nimg), dtype=np.float)
+    for i in range(nimg):
+        for j in range(i + 1, nimg):
+            area = images[i].intersection_area(images[j])
+            m[j, i] = area
+            m[i, j] = area
+    return m
+
+
+def max_overlap_pair(images, enforce_user_order):
+    """
+    Return a pair of images with the largest overlap.
+
+    .. warning::
+        Returned pair of images is "poped" from input ``images`` list and
+        therefore on return ``images`` will contain a smaller number of
+        elements.
+
+    Parameters
+    ----------
+
+    images : list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
+        A list of catalogs that implement :py:meth:`intersection_area` method.
+
+    enforce_user_order : bool
+        When ``enforce_user_order`` is `True`, a pair of images will be
+        returned **in the same order** as they were arranged in the ``images``
+        input list. That is, image overlaps will be ignored.
+
+    Returns
+    -------
+    (im1, im2)
+        Returns a tuple of two images - elements of input ``images`` list.
+        When ``enforce_user_order`` is `True`, images are returned in the
+        order in which they appear in the input ``images`` list. When the
+        number of input images is smaller than two, ``im1`` and ``im2`` may
+        be `None`.
+
+
+    """
+    nimg = len(images)
+
+    if nimg == 0:
+        return None, None
+
+    elif nimg == 1:
+        return images[0], None
+
+    elif nimg == 2 or enforce_user_order:
+        # for the special case when only two images are provided
+        # return (refimage, image) in the same order as provided in 'images'.
+        # Also, when ref. catalog is static - revert to old tweakreg behavior
+        im1 = images.pop(0)  # reference image
+        im2 = images.pop(0)
+        return (im1, im2)
+
+    m = overlap_matrix(images)
+    imgs = [f.name for f in images]
+    n = m.shape[0]
+    index = m.argmax()
+    i = index / n
+    j = index % n
+    si = np.sum(m[i])
+    sj = np.sum(m[:, j])
+
+    if si < sj:
+        c = j
+        j = i
+        i = c
+
+    if i < j:
+        j -= 1
+
+    im1 = images.pop(i)  # reference image
+    im2 = images.pop(j)
+
+    # Sort the remaining of the input list of images by overlap area
+    # with the reference image (in decreasing order):
+    row = m[i]
+    row = np.delete(row, i)
+    row = np.delete(row, j)
+    sorting_indices = np.argsort(row)[::-1]
+    images_arr = np.asarray(images)[sorting_indices]
+    while len(images) > 0:
+        del images[0]
+    for k in range(images_arr.shape[0]):
+        images.append(images_arr[k])
+
+    return (im1, im2)
+
+
+def max_overlap_image(refimage, images, enforce_user_order):
+    """
+    Return the image from the input ``images`` list that has the largest
+    overlap with the ``refimage`` image.
+
+    .. warning::
+        Returned image of images is "poped" from input ``images`` list and
+        therefore on return ``images`` will contain a smaller number of
+        elements.
+
+    Parameters
+    ----------
+
+    images : list of WCSImageCatalog, or WCSGroupCatalog
+        A list of catalogs that implement :py:meth:`intersection_area` method.
+
+    enforce_user_order : bool
+        When ``enforce_user_order`` is `True`, returned image is the first
+        image from the ``images`` input list regardless ofimage overlaps.
+
+    Returns
+    -------
+    image: WCSImageCatalog, WCSGroupCatalog, or None
+        Returns an element of input ``images`` list. When input list is
+        empty - `None` is returned.
+
+    """
+    nimg = len(images)
+    if len(images) < 1:
+        return None
+
+    if enforce_user_order:
+        # revert to old tweakreg behavior
+        return images.pop(0)
+
+    area = [refimage.intersection_area(im) for im in images]
+    idx = np.argmax(area)
+    return images.pop(idx)
