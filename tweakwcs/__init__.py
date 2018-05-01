@@ -2,9 +2,6 @@
 This package provides support for image alignment.
 
 """
-from __future__ import (absolute_import, division, unicode_literals,
-                        print_function)
-
 __docformat__ = 'restructuredtext'
 
 __taskname__ = 'tweakwcs'
