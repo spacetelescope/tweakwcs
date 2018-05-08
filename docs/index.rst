@@ -15,6 +15,7 @@ Content
    tweakwcs/tpwcs
    tweakwcs/matchutils
    tweakwcs/linearfit
+   tweakwcs/groupwcs
    LICENSE.rst
 
 
