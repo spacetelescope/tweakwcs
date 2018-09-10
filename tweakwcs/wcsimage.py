@@ -929,7 +929,7 @@ class WCSGroupCatalog(object):
         self.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
         refcat.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
 
-        nmatches, _, _ = self.match2ref(refcat=refcat.catalog, match=match)
+        nmatches, _, _ = self.match2ref(refcat=refcat, match=match)
         if nmatches < minobj:
             name = 'Unnamed' if self.name is None else self.name
             log.warning("Not enough matches (< {:d}) found for image "
