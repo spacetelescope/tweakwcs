@@ -724,7 +724,7 @@ class WCSGroupCatalog(object):
                 raise RuntimeError("'calc_tanp_xy()' should have been run "
                                    "prior to match2ref()")
 
-            mref_idx, minput_idx = match(refcat, self._catalog)
+            mref_idx, minput_idx = match(refcat.catalog, self._catalog)
             nmatches = len(mref_idx)
 
         self._catalog.meta['nmatches'] = nmatches
