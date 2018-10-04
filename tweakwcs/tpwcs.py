@@ -220,8 +220,9 @@ class JWSTgWCS(TPWCS):
                 Roll angle in degrees.
 
         """
-        if not self._check_wcs_structure(wcs):
-            raise ValueError("Unsupported WCS structure.")
+        valid, message =  self._check_wcs_structure(wcs)
+        if not valid:
+            raise ValueError("Unsupported WCS structure: {}".format(message))
 
         v2_ref = wcsinfo['v2_ref']
         v3_ref = wcsinfo['v3_ref']
@@ -233,7 +234,7 @@ class JWSTgWCS(TPWCS):
         # perform additional check that if tangent plane correction is already
         # present in the WCS pipeline, it is of TPCorr class and that
         # its parameters are consistent with reference angles:
-        frms = [f[0] for f in wcs.pipeline]
+        frms = wcs.available_frames
         if 'v2v3corr' in frms:
             self._v23name = 'v2v3corr'
             self._tpcorr = deepcopy(
@@ -273,8 +274,8 @@ class JWSTgWCS(TPWCS):
     def _update_transformations(self):
         # define transformations from detector/world coordinates to
         # the tangent plane:
-        detname = self._wcs.pipeline[0][0]
-        worldname = self._wcs.pipeline[-1][0]
+        detname = self._wcs.pipeline[0][0].name
+        worldname = self._wcs.pipeline[-1][0].name
 
         self._world_to_v23 = self._wcs.get_transform(worldname, self._v23name)
         self._v23_to_world = self._wcs.get_transform(self._v23name, worldname)
@@ -305,7 +306,7 @@ class JWSTgWCS(TPWCS):
             *before* ``matrix`` transformations are applied.
 
         """
-        frms = [f[0] for f in self._wcs.pipeline]
+        frms = self._wcs.available_frames
 
         # if original WCS did not have tangent-plane corrections, create
         # new correction and add it to the WCs pipeline:
@@ -322,7 +323,9 @@ class JWSTgWCS(TPWCS):
             pipeline = deepcopy(self._wcs.pipeline)
             pf, pt = pipeline[idx_v2v3]
             pipeline[idx_v2v3] = (pf, deepcopy(self._tpcorr))
-            pipeline.insert(idx_v2v3 + 1, ('v2v3corr', pt))
+            frm_v2v3corr = deepcopy(pf)
+            frm_v2v3corr.name = 'v2v3corr'
+            pipeline.insert(idx_v2v3 + 1, (frm_v2v3corr, pt))
             self._wcs = gwcs.WCS(pipeline, name=self._owcs.name)
             self._v23name = 'v2v3corr'
 
@@ -349,34 +352,41 @@ class JWSTgWCS(TPWCS):
 
     def _check_wcs_structure(self, wcs):
         if wcs is None or wcs.pipeline is None:
-            return False
+            return False, "Either WCS or its pipeline is None."
 
-        frms = [f[0] for f in wcs.pipeline]
+        frms = wcs.available_frames
         nframes = len(frms)
+
         if nframes < 3:
-            return False
+            return False, "There are fewer than 3 frames in the WCS pipeline."
 
         if frms.count(frms[0]) > 1 or frms.count(frms[-1]) > 1:
-            return False
+            return (False, "First and last frames in the WCS pipeline must "
+                    "be unique.")
 
         if frms.count('v2v3') != 1:
-            return False
+            return (False, "Only one 'v2v3' frame is allowed in the WCS "
+                    "pipeline.")
 
         idx_v2v3 = frms.index('v2v3')
         if idx_v2v3 == 0 or idx_v2v3 == (nframes - 1):
-            return False
+            return (False, "'v2v3' frame cannot be first or last in the WCS "
+                    "pipeline.")
 
         nv2v3corr = frms.count('v2v3corr')
         if nv2v3corr == 0:
-            return True
+            return True, ''
         elif nv2v3corr > 1:
-            return False
+            return (False, "Only one 'v2v3corr' correction frame is allowed "
+                    "in the WCS pipeline.")
 
         idx_v2v3corr = frms.index('v2v3corr')
         if idx_v2v3corr != (idx_v2v3 + 1) or idx_v2v3corr == (nframes - 1):
-            return False
+            return (False, "'v2v3corr' frame is not in the correct position "
+                    "in the WCS pipeline.")
 
-        return True
+        return True, ''
+
 
     def det_to_world(self, x, y):
         """
