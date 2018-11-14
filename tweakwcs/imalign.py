@@ -488,7 +488,6 @@ def max_overlap_pair(images, enforce_user_order):
         return (im1, im2)
 
     m = overlap_matrix(images)
-    imgs = [f.name for f in images]
     n = m.shape[0]
     index = m.argmax()
     i = index / n
@@ -549,7 +548,6 @@ def max_overlap_image(refimage, images, enforce_user_order):
         empty - `None` is returned.
 
     """
-    nimg = len(images)
     if len(images) < 1:
         return None
 

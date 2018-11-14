@@ -150,16 +150,20 @@ class WCSImageCatalog(object):
     def shape(self, shape):
         if shape is None:
             self._shape = None
-        else:
-            try:
-                is_int = all(map(_is_int, shape))
-                if not is_int:
-                    raise TypeError
-            except TypeError:
-                raise TypeError("'shape' must be a 1D list/tuple/array with "
-                                "exactly two integer elements or None.")
+            return
 
-            self._shape = (int(shape[0]), int(shape[1]))
+        try:
+            is_int = all(map(_is_int, shape))
+            if not is_int:
+                raise TypeError
+        except TypeError:
+            raise TypeError("'shape' must be a 1D list/tuple/array with "
+                            "exactly two integer elements or None.")
+
+        if not all(npix > 0 for npix in shape):
+            raise ValueError("Null image: Image dimension must be positive.")
+
+        self._shape = (int(shape[0]), int(shape[1]))
 
     @property
     def catalog(self):
@@ -389,33 +393,11 @@ class WCSImageCatalog(object):
             # no points
             raise RuntimeError("Unexpected error: Contact sofware developer")
 
-        elif len(x) == 1:
-            # one point. build a small box around it:
-            x, y = convex_hull(x, y, wcs=self.det_to_tanp)
-
-            xv = [x[0] - 0.5, x[0] - 0.5, x[0] + 0.5, x[0] + 0.5, x[0] - 0.5]
-            yv = [y[0] - 0.5, y[0] + 0.5, y[0] + 0.5, y[0] - 0.5, y[0] - 0.5]
-
-            ra, dec = self.tanp_to_world(xv, yv)
-
-        elif len(x) == 2:
-            # two points. build a small box around them:
-            xtp, ytp = self.det_to_tanp(x, y)
-            x, y = convex_hull(x, y, wcs=self.det_to_tanp)
-
-            vx = -(x[1] - x[0])
-            vy = y[1] - y[0]
-            norm = 2.0 * np.sqrt(vx * vx + vy * vy)
-            vx /= norm
-            vy /= norm
-
-            xv = [x[0] + vx, x[1] + vx, x[1] + vx, x[0] - vx, x[0] + vx]
-            yv = [y[0] + vy, y[1] + vy, y[1] + vy, x[0] - vx, x[0] + vx]
-
-            ra, dec = self.tanp_to_world(xv, yv)
-
-        else:
+        elif len(x) > 2:
             ra, dec = convex_hull(x, y, wcs=self.det_to_world)
+        # else, for len(x) in [1, 2], use entire image footprint.
+        # TODO: a more robust algorithm should be implemented to deal with
+        #       len(x) in [1, 2] cases.
 
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
         #       dec[0] != dec[-1] (even though we close the polygon in the
@@ -835,7 +817,6 @@ class WCSGroupCatalog(object):
 
         return fit
 
-
     def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift):
         """ Applies a general affine transformation to the WCS.
         """
@@ -966,7 +947,7 @@ class RefCatalog(object):
     catalog manipulation and expansion.
 
     """
-    def __init__(self, catalog, name=None):
+    def __init__(self, catalog, name=None, footprint_tol=1.0):
         """
         Parameters
         ----------
@@ -980,9 +961,14 @@ class RefCatalog(object):
         name : str, None, optional
             Name of the reference catalog.
 
+        footprint_tol : float, optional
+            Matching tolerance in arcsec. This is used to estimate catalog's
+            footprint when catalog contains only one or two sources.
+
         """
         self._name = name
         self._catalog = None
+        self._footprint_tol = footprint_tol
 
         # make sure catalog has RA & DEC
         if catalog is not None:
@@ -1017,7 +1003,8 @@ class RefCatalog(object):
         self._check_catalog(catalog)
 
         if len(catalog) == 0:
-            raise ValueError("Catalog must contain at least one source.")
+            raise ValueError("Reference catalog must contain at least one "
+                             "source.")
 
         self._catalog = catalog.copy()
 
@@ -1131,22 +1118,36 @@ class RefCatalog(object):
         elif len(xv) == 1:
             # one point. build a small box around it:
             x, y = convex_hull(x, y, wcs=None)
+            tol = 0.5 * self._footprint_tol
 
-            xv = [x[0] - 0.5, x[0] - 0.5, x[0] + 0.5, x[0] + 0.5, x[0] - 0.5]
-            yv = [y[0] - 0.5, y[0] + 0.5, y[0] + 0.5, y[0] - 0.5, y[0] - 0.5]
+            xv = [x[0] - tol, x[0] - tol, x[0] + tol, x[0] + tol, x[0] - tol]
+            yv = [y[0] - tol, y[0] + tol, y[0] + tol, y[0] - tol, y[0] - tol]
 
         elif len(xv) == 2:
             # two points. build a small box around them:
             x, y = convex_hull(x, y, wcs=None)
+            tol = 0.5 * self._footprint_tol
 
-            vx = -(y[1] - y[0])
+            vx = y[1] - y[0]
             vy = x[1] - x[0]
-            norm = 2.0 * np.sqrt(vx * vx + vy * vy)
+            norm = np.sqrt(vx * vx + vy * vy)
             vx /= norm
             vy /= norm
 
-            xv = [x[0] + vx, x[1] + vx, x[1] + vx, x[0] - vx, x[0] + vx]
-            yv = [y[0] + vy, y[1] + vy, y[1] + vy, x[0] - vx, x[0] + vx]
+            xv = [
+                x[0] - (vx - vy) * tol,
+                x[0] - (vx + vy) * tol,
+                x[1] + (vx - vy) * tol,
+                x[1] + (vx + vy) * tol,
+                x[0] - (vx - vy) * tol
+            ]
+            yv = [
+                y[0] - (vy + vx) * tol,
+                y[0] - (vy - vx) * tol,
+                y[1] + (vy + vx) * tol,
+                y[1] + (vy - vx) * tol,
+                y[0] - (vy + vx) * tol
+            ]
 
         # "unrotate" cartezian coordinates back to their original
         # ra_ref and dec_ref "positions":
