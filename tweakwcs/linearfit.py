@@ -21,14 +21,6 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-if hasattr(np, 'float128'):
-    ndfloat128 = np.float128
-elif hasattr(np, 'float96'):
-    ndfloat128 = np.float96
-else:
-    ndfloat128 = np.float64
-
-
 class SingularMatrixError(Exception):
     """ An error class used to report when a singular matrix is encountered."""
     pass
@@ -205,10 +197,10 @@ def fit_rscale(xyin, xyref):
             "scale."
         )
 
-    dx = xyref[:, 0].astype(ndfloat128)
-    dy = xyref[:, 1].astype(ndfloat128)
-    du = xyin[:, 0].astype(ndfloat128)
-    dv = xyin[:, 1].astype(ndfloat128)
+    dx = xyref[:, 0].astype(np.longdouble)
+    dy = xyref[:, 1].astype(np.longdouble)
+    du = xyin[:, 0].astype(np.longdouble)
+    dv = xyin[:, 1].astype(np.longdouble)
 
     n = xyref.shape[0]
     Sx = dx.sum()
@@ -336,8 +328,8 @@ def fit_general(xy, uv):
         )
 
     # Set up products used for computing the fit
-    gxy = xy.astype(ndfloat128)
-    guv = uv.astype(ndfloat128)
+    gxy = xy.astype(np.longdouble)
+    guv = uv.astype(np.longdouble)
 
     Sx = gxy[:, 0].sum()
     Sy = gxy[:, 1].sum()

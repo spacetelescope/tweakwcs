@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 # THIRD-PARTY
 import numpy as np
 import gwcs
+from astropy import wcs as fitswcs
 from jwst.transforms.tpcorr import TPCorr
 
 # LOCAL
@@ -25,7 +26,7 @@ from . import __version__, __version_date__
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['TPWCS', 'JWSTgWCS']
+__all__ = ['TPWCS', 'JWSTgWCS', 'FITSWCS']
 
 
 log = logging.getLogger(__name__)
@@ -445,3 +446,269 @@ class JWSTgWCS(TPWCS):
         v2, v3 = tpc.tanp_to_v2v3(x, y)
         ra, dec = self._v23_to_world(v2, v3)
         return ra, dec
+
+
+class FITSWCS(TPWCS):
+    """ A class for holding ``FITS`` ``WCS`` information and for managing
+    tangent-plane corrections.
+
+    .. note::
+        Currently only WCS objects that have ``CPDIS``, ``DET2IM``, and ``SIP``
+        distortions *before* the application of the ``CD`` or ``PC`` matrix are
+        supported.
+
+    """
+    def __init__(self, wcs):
+        """
+        Parameters
+        ----------
+
+        wcs : astropy.wcs.WCS
+            An `astropy.wcs.WCS` object.
+
+        """
+        valid, message =  self._check_wcs_structure(wcs)
+        if not valid:
+            raise ValueError("Unsupported WCS structure." + message)
+
+        super().__init__(wcs)
+
+        self._owcs = wcs.deepcopy()
+        self._wcs = wcs.deepcopy()
+        wcslin = wcs.deepcopy()
+
+        # strip all *known* distortions:
+        wcslin.cpdis1 = None
+        wcslin.cpdis2 = None
+        wcslin.det2im1 = None
+        wcslin.det2im2 = None
+        wcslin.sip = None
+        wcslin.wcs.set()
+
+        self._wcslin = wcslin
+
+    def _check_wcs_structure(self, wcs):
+        """
+        Attempt detecting unknown distortion corrections. We basically
+        want to make sure that we can turn off all distortions that are
+        happening between detector's plane and the intermediate coordinate
+        plane. This is necessary until we can find a better way of getting
+        from intermediate coordinates to world coordinates.
+
+        """
+        if wcs is None:
+            return False, "WCS cannot be None."
+
+        if not wcs.is_celestial:
+            return False, "WCS must be exclusively a celestial WCS."
+
+        wcs = wcs.deepcopy()
+        naxis1, naxis2 = wcs._naxis
+
+        # check mapping of corners and CRPIX:
+        pts = np.array([[1.0, 1.0], [1.0, naxis2], [naxis1, 1.0],
+                        [naxis1, naxis2], wcs.wcs.crpix])
+
+        sky_all = wcs.all_pix2world(pts, 1)
+        sky_wcs = wcs.wcs_pix2world(pts, 1)
+        foc_all = wcs.pix2foc(pts, 1)
+        crpix = np.array(wcs.wcs.crpix)
+
+        # strip all *known* distortions:
+        wcs.cpdis1 = None
+        wcs.cpdis2 = None
+        wcs.det2im1 = None
+        wcs.det2im2 = None
+        wcs.sip = None
+
+        # check that pix2foc includes no other distortions besides the ones
+        # that we have turned off above:
+        if not np.allclose(pts, wcs.pix2foc(pts, 1)):
+            False, "'pix2foc' contains unknow distortions"
+
+        wcs.wcs.set()
+
+        # check that pix2foc contains all known distortions:
+        test2 = np.allclose(
+            wcs.all_world2pix(sky_all, 1), foc_all, atol=1e-3, rtol=0
+        )
+        if not test2:
+            return False, "'WCS.pix2foc()' does not include all distortions."
+
+        return True, ''
+
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0]):
+        """
+        Computes a corrected (aligned) wcs based on the provided linear
+        transformation.
+
+        Parameters
+        ----------
+        matrix : list, numpy.ndarray
+            A ``2x2`` array or list of lists coefficients representing scale,
+            rotation, and/or skew transformations.
+
+        shift : list, numpy.ndarray
+            A list of two coordinate shifts to be applied to coordinates
+            *before* ``matrix`` transformations are applied.
+
+        """
+    #def update_refchip_with_shift(chip_wcs, wcslin):
+        # compute the matrix for the scale and rotation correction
+        shift = (np.asarray(shift) - np.dot(self._wcslin.wcs.crpix, matrix) +
+                 self._wcslin.wcs.crpix)
+
+        if matrix.shape == (2, 2):
+            matrix = _inv2x2(matrix).T
+        else:
+            matrix = np.linalg.inv(matrix).T
+
+        cwcs = self._wcs.deepcopy()
+        cd_eye = np.eye(self._wcs.wcs.cd.shape[0], dtype=np.longdouble)
+        zero_shift = np.zeros(2, dtype=np.longdouble)
+
+        # estimate precision necessary for iterative processes:
+        maxiter = 100
+        crpix2corners = np.dstack([i.flatten() for i in np.meshgrid(
+            [1,self._wcs._naxis1],
+            [1,self._wcs._naxis2])])[0] - self._wcs.wcs.crpix
+        maxUerr = 1.0e-5 / np.amax(np.linalg.norm(crpix2corners, axis=1))
+
+        # estimate step for numerical differentiation. We need a step
+        # large enough to avoid rounding errors and small enough to get a
+        # better precision for numerical differentiation.
+        # TODO: The logic below should be revised at a later time so that it
+        # better takes into account the two competing requirements.
+        hx = max(1.0,
+                 min(20.0, (self._wcs.wcs.crpix[0] - 1.0) / 100.0,
+                     (self._wcs._naxis1 - self._wcs.wcs.crpix[0]) / 100.0))
+        hy = max(1.0,
+                 min(20.0, (self._wcs.wcs.crpix[1] - 1.0) / 100.0,
+                     (self._wcs._naxis2 - self._wcs.wcs.crpix[1]) / 100.0))
+
+        # compute new CRVAL for the image WCS:
+        crpixinref = self._wcslin.wcs_world2pix(
+            self._wcs.wcs_pix2world([self._wcs.wcs.crpix],1),1)
+        crpixinref = np.dot(matrix, (crpixinref - shift).T).T
+        self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
+        self._wcs.wcs.set()
+
+        # initial approximation for CD matrix of the image WCS:
+        (U, u) = _linearize(cwcs, self._wcs, self._wcslin, self._wcs.wcs.crpix,
+                           matrix, shift, hx=hx, hy=hy)
+        err0 = np.amax(np.abs(U - cd_eye)).astype(np.float64)
+        self._wcs.wcs.cd = np.dot(self._wcs.wcs.cd.astype(np.longdouble),
+                                  U).astype(np.float64)
+        self._wcs.wcs.set()
+
+    def det_to_world(self, x, y):
+        """
+        Convert pixel coordinates to sky coordinates using full
+        (i.e., including distortions) transformations.
+
+        """
+        ra, dec = self._wcs.all_pix2world(x, y, 0)
+        return ra, dec
+
+    def world_to_det(self, ra, dec):
+        """
+        Convert sky coordinates to image's pixel coordinates using full
+        (i.e., including distortions) transformations.
+
+        """
+        x, y = self._wcs.all_world2pix(ra, dec, 0)
+        return x, y
+
+    def det_to_tanp(self, x, y):
+        """
+        Convert detector (pixel) coordinates to tangent plane coordinates.
+
+        """
+        crpix1, crpix2 = self._wcs.wcs.crpix - 1
+        x, y = self._wcs.pix2foc(x, y, 0)
+        x -= crpix1
+        y -= crpix2
+        return x, y
+
+    def tanp_to_det(self, x, y):
+        """
+        Convert tangent plane coordinates to detector (pixel) coordinates.
+
+        """
+        crpix1, crpix2 = self._wcs.wcs.crpix
+        x = x + crpix1
+        y = y + crpix2
+        ra, dec = self._wcslin.all_pix2world(x, y, 1)
+        x, y = self._wcslin.all_world2pix(ra, dec, 0)
+        return x, y
+
+    def world_to_tanp(self, ra, dec):
+        """
+        Convert tangent plane coordinates to detector (pixel) coordinates.
+
+        """
+        crpix1, crpix2 = self._wcs.wcs.crpix
+        x, y = self._wcslin.all_world2pix(ra, dec, 1)
+        x -= crpix1
+        y -= crpix2
+        return x, y
+
+    def tanp_to_world(self, x, y):
+        """
+        Convert tangent plane coordinates to world coordinates.
+
+        """
+        crpix1, crpix2 = self._wcs.wcs.crpix
+        x = x + crpix1
+        y = y + crpix2
+        ra, dec = self._wcslin.all_pix2world(x, y, 1)
+        return ra, dec
+
+
+def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
+    """ linearization using 5-point formula for first order derivative. """
+    x0 = imcrpix[0]
+    y0 = imcrpix[1]
+    p = np.asarray([[x0, y0],
+                    [x0 - hx, y0],
+                    [x0 - hx * 0.5, y0],
+                    [x0 + hx * 0.5, y0],
+                    [x0 + hx, y0],
+                    [x0, y0 - hy],
+                    [x0, y0 - hy * 0.5],
+                    [x0, y0 + hy * 0.5],
+                    [x0, y0 + hy]],
+                   dtype=np.float64)
+    # convert image coordinates to reference image coordinates:
+    p = wcsref.wcs_world2pix(wcsim.wcs_pix2world(p, 1), 1).astype(np.longdouble)
+    # apply linear fit transformation:
+    p = np.dot(f, (p - shift).T).T
+    # convert back to image coordinate system:
+    p = wcsima.wcs_world2pix(
+        wcsref.wcs_pix2world(p.astype(np.float64), 1), 1).astype(np.longdouble)
+
+    # derivative with regard to x:
+    u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6*hx)
+    # derivative with regard to y:
+    u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6*hy)
+
+    return (np.asarray([u1, u2]).T, p[0])
+
+
+def _inv2x2(x):
+    assert(x.shape == (2, 2))
+    inv = x.astype(np.longdouble)
+    det = inv[0, 0] * inv[1, 1] - inv[0,1] * inv[1, 0]
+    if np.abs(det) < np.finfo(np.float64).tiny:
+        raise ArithmeticError('Singular matrix.')
+    a = inv[0, 0]
+    d = inv[1, 1]
+    inv[1, 0] *= -1.0
+    inv[0, 1] *= -1.0
+    inv[0, 0] = d
+    inv[1, 1] = a
+    inv /= det
+    inv = inv.astype(np.float64)
+    if not np.all(np.isfinite(inv)):
+        raise ArithmeticError('Singular matrix.')
+    return inv
