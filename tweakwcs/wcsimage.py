@@ -895,7 +895,10 @@ class WCSGroupCatalog(object):
 
         """
         if len(self._images) == 0:
-            return
+            name = 'Unnamed' if self.name is None else self.name
+            log.warning("WCSGroupCatalog '{:s}' is empty. Nothing to align."
+                        .format(name))
+            return False
 
         if minobj is None:
             if fitgeom == 'general':
