@@ -247,9 +247,12 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                                      "image coordinates in the reference "
                                      "catalog to world coordinates.")
 
-                #TODO: next statement will work only with gWCS!!!
-                #      Need a compatibility layer for FITS WCS, other WCSes.
-                ra, dec = refcat['wcs'](rcat['x'], rcat['y'])
+                #TODO: Need to implement APE-14 support.
+                ref_wcs = refcat['wcs']
+                if isinstance(ref_wcs, astropy.wcs.WCS):
+                    ra, dec = refcat['wcs'](rcat['x'], rcat['y'], 0)
+                else:
+                    ra, dec = refcat['wcs'](rcat['x'], rcat['y'])
                 rcat['RA'] = ra
                 rcat['DEC'] = dec
                 if 'name' not in rcat.meta:
@@ -294,15 +297,30 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                 else:
                     raise ValueError("Each image must have a valid catalog.")
 
-                wcsinfo = img.meta.get('wcsinfo', None)
-                if wcsinfo is not None:
-                    wcsinfo = wcsinfo._instance
+                #TODO: this works only for JWST gWCS and FITS WCS!
+                #      What is needed is a way to let users to
+                #      specify a corrector class for images.
+                #
+                if hasattr(img.meta, 'wcs'):
+                    # We are dealing with JWST ImageModel
+                    img_wcs = img.meta.wcs
+                else:
+                    img_wcs = img.wcs
+
+                if isinstance(img_wcs, astropy.wcs.WCS):
+                    wcs_corr = FITSWCS(deepcopy(img_wcs))
+                else:
+                    #TODO: Currently only JWST gWCS is supported
+                    wcsinfo = img.meta.get('wcsinfo', None)
+                    if wcsinfo is not None:
+                        wcsinfo = wcsinfo._instance
+                    wcs_corr = JWSTgWCS(deepcopy(img_wcs), wcsinfo)
+
                 imcat.append(
                     WCSGroupCatalog(
                         WCSImageCatalog(
                             catalog=catalog,
-                            #TODO: this works only for JWST gWCS!!!
-                            imwcs=JWSTgWCS(deepcopy(img.meta.wcs), wcsinfo),
+                            imwcs=wcs_corr,
                             shape=img.data.shape,
                             name=img.meta.get('name', None),
                             meta={'orig_image_nddata': img}
@@ -319,14 +337,27 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                 else:
                     raise ValueError("Each image must have a valid catalog.")
 
-                wcsinfo = img.meta.get('wcsinfo', None)
-                if wcsinfo is not None:
-                    wcsinfo = wcsinfo._instance
+                #TODO: this works only for JWST gWCS and FITS WCS!
+                #      What is needed is a way to let users to
+                #      specify a corrector class for images.
+                if hasattr(img.meta, 'wcs'):
+                    # We are dealing with JWST ImageModel
+                    img_wcs = img.meta.wcs
+                else:
+                    img_wcs = img.wcs
+
+                if isinstance(img_wcs, astropy.wcs.WCS):
+                    wcs_corr = FITSWCS(deepcopy(img_wcs))
+                else:
+                    wcsinfo = img.meta.get('wcsinfo', None)
+                    if wcsinfo is not None:
+                        wcsinfo = wcsinfo._instance
+                    wcs_corr = JWSTgWCS(deepcopy(img_wcs), wcsinfo)
+
                 wcsimlist.append(
                     WCSImageCatalog(
                         catalog=catalog,
-                        #TODO: this works only for JWST gWCS!!!
-                        imwcs=JWSTgWCS(deepcopy(img.meta.wcs), wcsinfo),
+                        imwcs=wcs_corr,
                         shape=img.data.shape,
                         name=img.meta.get('name', None),
                         meta={'orig_image_nddata': img}
@@ -376,7 +407,14 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         )
         for image in current_imcat:
             img = image.meta['orig_image_nddata']
-            img.meta.wcs = image.imwcs.wcs
+            if hasattr(img.meta, 'wcs'):
+                # We are dealing with JWST ImageModel
+                img.meta.wcs = image.imwcs.wcs
+            else:
+                #TODO: find an alternative way of asigning the WCS
+                #      without using private members of NDData
+                #      See https://github.com/astropy/astropy/issues/8192
+                img._wcs = image.imwcs.wcs
             # aligned_imcat.append(image)
 
         # add unmatched sources to the reference catalog:
