@@ -78,8 +78,30 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         so that reference and image catalog sources better align in the tangent
         plane and therefore on the sky as well.
 
-    """
+    Notes
+    -----
 
+    Upon successful completion, this function will set the following ``meta``
+    fields of the ``meta`` attribute of the returned ``TPWCS`` object:
+
+        * **'fitgeom'**: the value of the ``fitgeom`` argument
+        * **'matrix'**: computed rotation matrix
+        * **'shift'**: offset along X- and Y-axis
+        * **'eff_minobj'**: effective value of the ``minobj`` parameter
+        * **'fit_ref_idx'**: indices of the sources from the reference catalog
+          used for fitting
+        * **'fit_input_idx'**: indices of the sources from the "input" (image)
+          catalog used for fitting
+        * **'rot'**: rotation angle as if rotation is a proper rotation
+        * **'proper'**: Indicates whether the rotation is a proper rotation
+          (boolean)
+        * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
+          Y-axis, mean rotation, computed skew)
+        * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
+          Y-axis)
+        * **'skew'**: computed skew
+
+    """
     function_name = tweak_wcs.__name__
 
     # Time it
@@ -131,6 +153,25 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
     .. warning::
         This function modifies the ``image.meta.wcs`` attribute of each item
         in the input ``images`` list!
+
+    Upon completion, this function will add a field ``'tweakwcs_info'``
+    to the ``meta`` attribute of the input images (except of the image
+    chosen as a reference image when ``refcat`` is `None`) containing
+    a dictionary describing matching and fit results. For a description
+    of the items in this dictionary, see
+    :meth:`tweakwcs.wcsimage.WCSGroupCatalog.align_to_ref`.
+
+    .. note::
+        Because the image used as a reference image (when ``refcat`` is `None`)
+        does not have the key ``'tweakwcs_info'`` set in ``meta``, it is
+        advisable verify that this keyword was set before attempting to
+        access its items, for example:
+
+        >>> tweak_info = images[0].meta.get('tweakwcs_info', None)
+        >>> if tweak_info is None:
+        ...     print("tweak info not available for this image")
+        ... else:
+        ...     print("shifts: [{}, {}]".format(*tweak_info['shift']))
 
     Parameters
     ----------
@@ -205,7 +246,6 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         Clipping limit in sigma units.
 
     """
-
     function_name = tweak_image_wcs.__name__
 
     # Time it
@@ -416,6 +456,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                 #      See https://github.com/astropy/astropy/issues/8192
                 img._wcs = image.imwcs.wcs
             # aligned_imcat.append(image)
+            img.meta['tweakwcs_info'] = deepcopy(image.imwcs.meta)
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:

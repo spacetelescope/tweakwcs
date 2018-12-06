@@ -14,6 +14,7 @@ Content
    tweakwcs/imalign
    tweakwcs/tpwcs
    tweakwcs/matchutils
+   tweakwcs/wcsimage
    tweakwcs/linearfit
    tweakwcs/groupwcs
    LICENSE.rst

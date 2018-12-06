@@ -817,7 +817,7 @@ class WCSGroupCatalog(object):
 
         return fit
 
-    def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift):
+    def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS.
         """
         # compute the matrix for the scale and rotation correction
@@ -837,8 +837,7 @@ class WCSGroupCatalog(object):
                 s = t1 + np.dot(np.linalg.inv(r1), shift) + \
                     np.dot(np.linalg.inv(np.dot(matrix, r1)), t2)
 
-            imcat.imwcs.set_correction(m, s)
-            #imcat.meta['image_model'].meta.wcs = imcat.wcs
+            imcat.imwcs.set_correction(m, s, meta=meta)
 
     def align_to_ref(self, refcat, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=3.0):
@@ -846,6 +845,39 @@ class WCSGroupCatalog(object):
         Matches sources from the image catalog to the sources in the
         reference catalog, finds the affine transformation between matched
         sources, and adjusts images' WCS according to this fit.
+
+        Upon successful return, this function will also set the following
+        fields of the ``meta`` attribute of the tangent-plane ``WCS``
+        (a `TPWCS`-derived object) of each member `WCSImageCatalog` object:
+
+        * **'fitgeom'**: the value of the ``fitgeom`` argument
+        * **'matrix'**: computed rotation matrix
+        * **'shift'**: offset along X- and Y-axis
+        * **'eff_minobj'**: effective value of the ``minobj`` parameter
+        * **'nmatches'** [when ``match`` is not `None`]: number of matched
+          sources
+        * **'matched_ref_idx'** [when ``match`` is not `None`]: indices of
+          the matched sources in the reference catalog
+        * **'matched_input_idx'** [when ``match`` is not `None`]: indices of
+          the matched sources in the "input" catalog (the catalog from image
+          to be aligned)
+        * **'fit_ref_idx'**: indices of the sources from the reference
+          catalog used for fitting (a subset of 'matched_ref_idx' indices,
+          when ``match`` is not `None`, left after clipping iterations
+          performed during fitting)
+        * **'fit_input_idx'**: indices of the sources from the "input" (image)
+          catalog used for fitting (a subset of 'matched_input_idx' indices,
+          when ``match`` is not `None`, left after clipping iterations
+          performed during fitting)
+        * **'rot'**: rotation angle as if rotation is a proper rotation
+        * **'proper'**: Indicates whether the rotation is a proper rotation
+          (boolean)
+        * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
+          Y-axis, mean rotation, computed skew)
+        * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
+          Y-axis)
+        * **'skew'**: computed skew
+
 
         Parameters
         ----------
@@ -913,7 +945,11 @@ class WCSGroupCatalog(object):
         self.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
         refcat.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
 
-        nmatches, _, _ = self.match2ref(refcat=refcat, match=match)
+        nmatches, mref_idx, minput_idx = self.match2ref(
+            refcat=refcat,
+            match=match
+        )
+
         if nmatches < minobj:
             name = 'Unnamed' if self.name is None else self.name
             log.warning("Not enough matches (< {:d}) found for image "
@@ -923,10 +959,32 @@ class WCSGroupCatalog(object):
         fit = self.fit2ref(refcat=refcat, tanplane_wcs=tanplane_wcs,
                            fitgeom=fitgeom, nclip=nclip, sigma=sigma)
 
+        meta = {
+            'fitgeom' : fitgeom,
+            'matrix': fit['fit_matrix'],
+            'shift': fit['offset'],
+            'eff_minobj': minobj,
+            'fit_ref_idx': fit['ref_indx'],  # indices after fit clipping
+            'fit_input_idx': fit['img_indx'],  # indices after fit clipping
+            'rot': fit['rot'],  # proper rotation
+            'proper': fit['proper'],  # is a proper rotation? True/False
+            'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
+            'scale': fit['scale'],  # <s>, sx, sy
+            'skew': fit['skew']
+        }
+
+        if match is not None:
+            meta.update({
+                'nmatches': nmatches,
+                'matched_ref_idx': mref_idx,
+                'matched_input_idx': minput_idx
+            })
+
         self.apply_affine_to_wcs(
             tanplane_wcs=tanplane_wcs,
             matrix=fit['fit_matrix'],
-            shift=fit['offset']
+            shift=fit['offset'],
+            meta=meta
         )
 
         return True
