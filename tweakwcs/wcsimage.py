@@ -850,33 +850,35 @@ class WCSGroupCatalog(object):
         fields of the ``meta`` attribute of the tangent-plane ``WCS``
         (a `TPWCS`-derived object) of each member `WCSImageCatalog` object:
 
-        * **'fitgeom'**: the value of the ``fitgeom`` argument
-        * **'matrix'**: computed rotation matrix
-        * **'shift'**: offset along X- and Y-axis
-        * **'eff_minobj'**: effective value of the ``minobj`` parameter
-        * **'nmatches'** [when ``match`` is not `None`]: number of matched
-          sources
-        * **'matched_ref_idx'** [when ``match`` is not `None`]: indices of
-          the matched sources in the reference catalog
-        * **'matched_input_idx'** [when ``match`` is not `None`]: indices of
-          the matched sources in the "input" catalog (the catalog from image
-          to be aligned)
-        * **'fit_ref_idx'**: indices of the sources from the reference
-          catalog used for fitting (a subset of 'matched_ref_idx' indices,
-          when ``match`` is not `None`, left after clipping iterations
-          performed during fitting)
-        * **'fit_input_idx'**: indices of the sources from the "input" (image)
-          catalog used for fitting (a subset of 'matched_input_idx' indices,
-          when ``match`` is not `None`, left after clipping iterations
-          performed during fitting)
-        * **'rot'**: rotation angle as if rotation is a proper rotation
-        * **'proper'**: Indicates whether the rotation is a proper rotation
-          (boolean)
-        * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
-          Y-axis, mean rotation, computed skew)
-        * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
-          Y-axis)
-        * **'skew'**: computed skew
+            * **'fitgeom'**: the value of the ``fitgeom`` argument
+            * **'matrix'**: computed rotation matrix
+            * **'shift'**: offset along X- and Y-axis
+            * **'eff_minobj'**: effective value of the ``minobj`` parameter
+            * **'nmatches'** [when ``match`` is not `None`]: number of matched
+              sources
+            * **'matched_ref_idx'** [when ``match`` is not `None`]: indices of
+              the matched sources in the reference catalog
+            * **'matched_input_idx'** [when ``match`` is not `None`]: indices
+              of the matched sources in the "input" catalog (the catalog from
+              image to be aligned)
+            * **'fit_ref_idx'**: indices of the sources from the reference
+              catalog used for fitting (a subset of 'matched_ref_idx' indices,
+              when ``match`` is not `None`, left after clipping iterations
+              performed during fitting)
+            * **'fit_input_idx'**: indices of the sources from the "input"
+              (image) catalog used for fitting (a subset of
+              'matched_input_idx' indices, when ``match`` is not `None`,
+              left after clipping iterations performed during fitting)
+            * **'rot'**: rotation angle as if rotation is a proper rotation
+            * **'proper'**: Indicates whether the rotation is a proper rotation
+              (boolean)
+            * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
+              Y-axis, mean rotation, computed skew)
+            * **'scale'**: a tuple of (mean scale, scale along X-axis, scale
+              along Y-axis)
+            * **'skew'**: computed skew
+            * **'rms'**: fit RMS in *image* coordinates as a tuple of two
+              values: (RMS_X, RMS_Y)
 
 
         Parameters
@@ -970,7 +972,8 @@ class WCSGroupCatalog(object):
             'proper': fit['proper'],  # is a proper rotation? True/False
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
-            'skew': fit['skew']
+            'skew': fit['skew'],  # skew
+            'rms': fit['rms']  # fit RMS in image coords (RMS_X, RMS_Y)
         }
 
         if match is not None:
