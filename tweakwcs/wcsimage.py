@@ -877,6 +877,8 @@ class WCSGroupCatalog(object):
         * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
           Y-axis)
         * **'skew'**: computed skew
+        * **'rms'**: fit RMS in *image* coordinates as a tuple of two values:
+          (RMS_X, RMS_Y)
 
 
         Parameters
@@ -970,7 +972,8 @@ class WCSGroupCatalog(object):
             'proper': fit['proper'],  # is a proper rotation? True/False
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
-            'skew': fit['skew']
+            'skew': fit['skew'],  # skew
+            'rms': fit['rms']  # fit RMS in image coords (RMS_X, RMS_Y)
         }
 
         if match is not None:

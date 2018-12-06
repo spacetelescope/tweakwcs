@@ -100,6 +100,8 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
           Y-axis)
         * **'skew'**: computed skew
+        * **'rms'**: fit RMS in *image* coordinates as a tuple of two values:
+          (RMS_X, RMS_Y)
 
     """
     function_name = tweak_wcs.__name__
