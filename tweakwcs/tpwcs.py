@@ -49,6 +49,7 @@ class TPWCS(ABC):
         """
         self._owcs = wcs
         self._wcs = deepcopy(wcs)
+        self._meta = {}
 
     @property
     def wcs(self):
@@ -65,20 +66,30 @@ class TPWCS(ABC):
         return deepcopy(self)
 
     @abstractmethod
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0]):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
+                       **kwargs):
         """
         Sets a tangent-plane correction of the GWCS object according to
-        the provided liniar parameters.
+        the provided liniar parameters. In addition, this function updates
+        the ``meta`` attribute of the `TPWCS`-derived object with the values
+        of keyword arguments except for the argument ``meta`` which is
+        *merged* with the *attribute* ``meta``.
 
         Parameters
         ----------
-        matrix : list, numpy.ndarray
+        matrix : list, numpy.ndarray, optional
             A ``2x2`` array or list of lists coefficients representing scale,
             rotation, and/or skew transformations.
 
-        shift : list, numpy.ndarray
+        shift : list, numpy.ndarray, optional
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
+
+        meta : dict, None, optional
+            Dictionary that will be merged to the object's ``meta`` fields.
+
+        **kwargs : optional parameters
+            Optional parameters for the WCS corrector.
 
         """
         pass
@@ -190,6 +201,10 @@ class TPWCS(ABC):
         pscale = self.tanp_pixel_scale(x, y)
         return pscale
 
+    @property
+    def meta(self):
+        return self._meta
+
 
 class JWSTgWCS(TPWCS):
     """ A class for holding ``JWST`` ``gWCS`` information and for managing
@@ -291,10 +306,14 @@ class JWSTgWCS(TPWCS):
         """ Return a ``wcsinfo``-like dictionary of main WCS parameters. """
         return {k: v for k, v in self._wcsinfo.items()}
 
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0]):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
+                       **kwargs):
         """
         Sets a tangent-plane correction of the GWCS object according to
-        the provided liniar parameters.
+        the provided liniar parameters. In addition, this function updates
+        the ``meta`` attribute of the `JWSTgWCS` object with the values
+        of keyword arguments except for the argument ``meta`` which is
+        *merged* with the *attribute* ``meta``.
 
         Parameters
         ----------
@@ -305,6 +324,13 @@ class JWSTgWCS(TPWCS):
         shift : list, numpy.ndarray
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
+
+        meta : dict, None, optional
+            Dictionary that will be merged to the object's ``meta`` fields.
+
+        **kwargs : optional parameters
+            Optional parameters for the WCS corrector. `JWSTgWCS` ignores these
+            arguments (except for storing them in the ``meta`` attribute).
 
         """
         frms = self._wcs.available_frames
@@ -350,6 +376,12 @@ class JWSTgWCS(TPWCS):
         # reset definitions of the transformations from detector/world
         # coordinates to the tangent plane:
         self._update_transformations()
+
+        # save linear transformation info to the meta attribute:
+        self._meta['matrix'] = matrix
+        self._meta['shift'] = shift
+        if meta is not None:
+            self._meta.update(meta)
 
     def _check_wcs_structure(self, wcs):
         if wcs is None or wcs.pipeline is None:
@@ -537,10 +569,14 @@ class FITSWCS(TPWCS):
 
         return True, ''
 
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0]):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
+                       **kwargs):
         """
         Computes a corrected (aligned) wcs based on the provided linear
-        transformation.
+        transformation. In addition, this function updates the ``meta``
+        attribute of the `FITSWCS` object with the the values of keyword
+        arguments except for the argument ``meta`` which is *merged* with
+        the *attribute* ``meta``.
 
         Parameters
         ----------
@@ -552,8 +588,14 @@ class FITSWCS(TPWCS):
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
 
+        meta : dict, None, optional
+            Dictionary that will be merged to the object's ``meta`` fields.
+
+        **kwargs : optional parameters
+            Optional parameters for the WCS corrector. `FITSWCS` ignores these
+            arguments (except for storing them in the ``meta`` attribute).
+
         """
-    #def update_refchip_with_shift(chip_wcs, wcslin):
         # compute the matrix for the scale and rotation correction
         shift = (np.asarray(shift) - np.dot(self._wcslin.wcs.crpix, matrix) +
                  self._wcslin.wcs.crpix)
@@ -570,8 +612,8 @@ class FITSWCS(TPWCS):
         # estimate precision necessary for iterative processes:
         maxiter = 100
         crpix2corners = np.dstack([i.flatten() for i in np.meshgrid(
-            [1,self._wcs._naxis1],
-            [1,self._wcs._naxis2])])[0] - self._wcs.wcs.crpix
+            [1, self._wcs._naxis1],
+            [1, self._wcs._naxis2])])[0] - self._wcs.wcs.crpix
         maxUerr = 1.0e-5 / np.amax(np.linalg.norm(crpix2corners, axis=1))
 
         # estimate step for numerical differentiation. We need a step
@@ -595,11 +637,17 @@ class FITSWCS(TPWCS):
 
         # initial approximation for CD matrix of the image WCS:
         (U, u) = _linearize(cwcs, self._wcs, self._wcslin, self._wcs.wcs.crpix,
-                           matrix, shift, hx=hx, hy=hy)
+                            matrix, shift, hx=hx, hy=hy)
         err0 = np.amax(np.abs(U - cd_eye)).astype(np.float64)
         self._wcs.wcs.cd = np.dot(self._wcs.wcs.cd.astype(np.longdouble),
                                   U).astype(np.float64)
         self._wcs.wcs.set()
+
+        # save linear transformation info to the meta attribute:
+        self._meta['matrix'] = matrix
+        self._meta['shift'] = shift
+        if meta is not None:
+            self._meta.update(meta)
 
     def det_to_world(self, x, y):
         """
