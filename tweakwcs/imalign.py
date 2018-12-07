@@ -309,9 +309,9 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                                "and 'DEC' columns.")
 
         else:
-            raise TypeError("Unsupported 'refcat' type. Supported types: "
-                            "astropy.nddata.NDDataBase and "
-                            "astropy.table.Table")
+            raise TypeError("Unsupported 'refcat' type. Supported 'refcat' "
+                            "types are 'astropy.nddata.NDDataBase' and "
+                            "'astropy.table.Table'")
 
         refcat = RefCatalog(refcat, name=refcat.meta.get('name', None))
 
