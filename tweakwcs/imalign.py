@@ -307,6 +307,8 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
             if 'RA' not in refcat.colnames or 'DEC' not in refcat.colnames:
                 raise KeyError("Reference catalogs *must* contain *both* 'RA' "
                                "and 'DEC' columns.")
+        else:
+            raise TypeError("Unsupported reference catalog ('refcat') type")
 
         refcat = RefCatalog(refcat, name=refcat.meta.get('name', None))
 
