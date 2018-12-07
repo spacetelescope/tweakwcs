@@ -166,7 +166,7 @@ class PyTest(TestCommand):
 
 INSTALL_REQUIRES=[
     'numpy',
-    'astropy',
+    'astropy>=3.1',
     'gwcs',
     'stsci.stimage',
     'stsci.imagestats',

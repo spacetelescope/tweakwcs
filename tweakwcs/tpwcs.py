@@ -535,7 +535,7 @@ class FITSWCS(TPWCS):
             return False, "WCS must be exclusively a celestial WCS."
 
         wcs = wcs.deepcopy()
-        naxis1, naxis2 = wcs._naxis
+        naxis1, naxis2 = wcs.pixel_shape
 
         # check mapping of corners and CRPIX:
         pts = np.array([[1.0, 1.0], [1.0, naxis2], [naxis1, 1.0],
@@ -612,8 +612,8 @@ class FITSWCS(TPWCS):
         # estimate precision necessary for iterative processes:
         maxiter = 100
         crpix2corners = np.dstack([i.flatten() for i in np.meshgrid(
-            [1, self._wcs._naxis1],
-            [1, self._wcs._naxis2])])[0] - self._wcs.wcs.crpix
+            [1, self._wcs.pixel_shape[0]],
+            [1, self._wcs.pixel_shape[1]])])[0] - self._wcs.wcs.crpix
         maxUerr = 1.0e-5 / np.amax(np.linalg.norm(crpix2corners, axis=1))
 
         # estimate step for numerical differentiation. We need a step
@@ -623,10 +623,10 @@ class FITSWCS(TPWCS):
         # better takes into account the two competing requirements.
         hx = max(1.0,
                  min(20.0, (self._wcs.wcs.crpix[0] - 1.0) / 100.0,
-                     (self._wcs._naxis1 - self._wcs.wcs.crpix[0]) / 100.0))
+                     (self._wcs.pixel_shape[0] - self._wcs.wcs.crpix[0]) / 100.0))
         hy = max(1.0,
                  min(20.0, (self._wcs.wcs.crpix[1] - 1.0) / 100.0,
-                     (self._wcs._naxis2 - self._wcs.wcs.crpix[1]) / 100.0))
+                     (self._wcs.pixel_shape[1] - self._wcs.wcs.crpix[1]) / 100.0))
 
         # compute new CRVAL for the image WCS:
         crpixinref = self._wcslin.wcs_world2pix(
@@ -736,9 +736,9 @@ def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
         wcsref.wcs_pix2world(p.astype(np.float64), 1), 1).astype(np.longdouble)
 
     # derivative with regard to x:
-    u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6*hx)
+    u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6 * hx)
     # derivative with regard to y:
-    u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6*hy)
+    u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6 * hy)
 
     return (np.asarray([u1, u2]).T, p[0])
 
