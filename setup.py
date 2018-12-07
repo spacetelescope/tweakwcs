@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-import os
-import subprocess
 import sys
-from glob import glob
+import os
+import shutil
+import inspect
 import pkgutil
-import numpy
-from setuptools import setup, find_packages, Extension
-from setuptools.command.test import test as TestCommand
+import importlib
 from subprocess import check_call, CalledProcessError
+from configparser import ConfigParser
+from setuptools import setup, find_packages, Extension, _install_setup_requires
+from setuptools.command.install import install
+from setuptools.command.test import test as TestCommand
 
 try:
     from distutils.config import ConfigParser
@@ -21,11 +23,19 @@ conf.read(['setup.cfg'])
 metadata = dict(conf.items('metadata'))
 PACKAGENAME = metadata.get('package_name', 'tweakwcs')
 DESCRIPTION = metadata.get('description', 'A package for correcting alignment '
-                           'errors in gWCS objects')
+                           'errors in WCS objects')
+LONG_DESCRIPTION = metadata.get('long_description', 'README.rst')
+LONG_DESCRIPTION_CONTENT_TYPE = metadata.get('long_description_content_type',
+                                             'text/x-rst')
 AUTHOR = metadata.get('author', 'Mihai Cara')
 AUTHOR_EMAIL = metadata.get('author_email', 'help@stsci.edu')
-URL = metadata.get('url', 'https://www.stsci.edu/')
+URL = metadata.get('url', 'https://github.com/spacetelescope/tweakwcs')
 LICENSE = metadata.get('license', 'BSD-3-Clause')
+
+# load long description
+this_dir = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_dir, LONG_DESCRIPTION), encoding='utf-8') as f:
+    long_description = f.read()
 
 if not pkgutil.find_loader('relic'):
     relic_local = os.path.exists('relic')
@@ -36,14 +46,14 @@ if not pkgutil.find_loader('relic'):
         if relic_submodule:
             check_call(['git', 'submodule', 'update', '--init', '--recursive'])
         elif not relic_local:
-            check_call(['git', 'clone', 'https://github.com/jhunkeler/relic.git'])
+            check_call(['git', 'clone', 'https://github.com/spacetelescope/relic.git'])
 
         sys.path.insert(1, 'relic')
     except CalledProcessError as e:
         print(e)
         exit(1)
 
-import relic.release  # noqa
+import relic.release
 
 version = relic.release.get_info()
 if not version.date:
@@ -58,8 +68,23 @@ if not version.date:
         commit='',
         post='-1'
     )
-relic.release.write_template(version, PACKAGENAME)
+relic.release.write_template(version,  os.path.join(*PACKAGENAME.split('.')))
 
+# Install packages required for this setup to proceed:
+SETUP_REQUIRES = [
+    'numpy',
+]
+
+_install_setup_requires(dict(setup_requires=SETUP_REQUIRES))
+
+for dep_pkg in SETUP_REQUIRES:
+    try:
+        importlib.import_module(dep_pkg)
+    except ImportError:
+        print("{0} is required in order to install '{1}'.\n"
+              "Please install {0} first.".format(dep_pkg, PACKAGENAME),
+              file=sys.stderr)
+        exit(1)
 
 def get_transforms_data():
     # Installs the schema files in jwst/transforms
@@ -76,9 +101,10 @@ def get_transforms_data():
     transforms_schemas = [os.path.join('schemas', s) for s in transforms_schemas]
     return transforms_schemas
 
-
 PACKAGE_DATA = {
     '': [
+        'README.md',
+        'LICENSE.txt',
         '*.fits',
         '*.txt',
         '*.inc',
@@ -90,6 +116,9 @@ PACKAGE_DATA = {
     'tweakwcs': get_transforms_data()
 }
 
+# Setup C module include directories
+import numpy
+include_dirs = [numpy.get_include()]
 
 # Setup C module macros
 define_macros = [('NUMPY', '1')]
@@ -100,6 +129,27 @@ if sys.platform == 'win32':
         ('_CRT_SECURE_NO_WARNING', None),
         ('__STDC__', 1)
     ]
+
+
+class InstallCommand(install):
+    """Ensure tweakwcs's C extensions are available when imported relative
+    to the documentation, instead of relying on `site-packages`. What comes
+    from `site-packages` may not be the same tweakwcs that was *just*
+    compiled.
+    """
+    def run(self):
+        build_cmd = self.reinitialize_command('build_ext')
+        build_cmd.inplace = 1
+        self.run_command('build_ext')
+
+        # Explicit request for old-style install?  Just do it
+        if self.old_and_unmanageable or self.single_version_externally_managed:
+            install.run(self)
+        elif not self._called_from_setup(inspect.currentframe()):
+            # Run in backward-compatibility mode to support bdist_* commands.
+            install.run(self)
+        else:
+            self.do_egg_install()
 
 
 class PyTest(TestCommand):
@@ -114,6 +164,20 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
+INSTALL_REQUIRES=[
+    'numpy',
+    'astropy',
+    'gwcs',
+    'stsci.stimage',
+    'stsci.imagestats',
+    'spherical_geometry',
+    'jwst',
+    'sphinx',
+    'sphinx-automodapi',
+    'sphinx_rtd_theme',
+    'stsci_rtd_theme',
+    'numpydoc',
+]
 
 setup(
     name=PACKAGENAME,
@@ -121,7 +185,8 @@ setup(
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
-    license=LICENSE,
+    long_description=long_description,
+    long_description_content_type=LONG_DESCRIPTION_CONTENT_TYPE,
     url=URL,
     classifiers=[
         'Intended Audience :: Science/Research',
@@ -130,17 +195,27 @@ setup(
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Software Development :: Libraries :: Python Modules',
+        'Development Status :: 3 - Alpha',
     ],
+    python_requires='>=3.5',
+    setup_requires=SETUP_REQUIRES,
+    install_requires=INSTALL_REQUIRES,
+    tests_require=['pytest'],
     packages=find_packages(),
     package_data=PACKAGE_DATA,
     ext_modules=[
         Extension('tweakwcs.chelp',
-                  glob('src/*.c'),
+                  ['src/carrutils.c'],
                   include_dirs=[numpy.get_include()],
                   define_macros=define_macros),
     ],
-
-    install_requires=['numpy'],
-    tests_require=['pytest'],
-    cmdclass={'test': PyTest},
+    cmdclass={
+        'test': PyTest,
+        'install': InstallCommand,
+        },
+    project_urls={
+        'Bug Reports': 'https://github.com/spacetelescope/tweakwcs/issues/',
+        'Source': 'https://github.com/spacetelescope/tweakwcs/',
+        'Help': 'https://hsthelp.stsci.edu/',
+        },
 )
