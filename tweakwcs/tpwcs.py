@@ -43,8 +43,8 @@ class TPWCS(ABC):
         Parameters
         ----------
 
-        wcs : GWCS
-            A `GWCS` object.
+        wcs : ``WCS object``
+            A `WCS` object supported by a child class.
 
         """
         self._owcs = wcs
@@ -69,7 +69,7 @@ class TPWCS(ABC):
     def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
                        **kwargs):
         """
-        Sets a tangent-plane correction of the GWCS object according to
+        Sets a tangent-plane correction of the WCS object according to
         the provided liniar parameters. In addition, this function updates
         the ``meta`` attribute of the `TPWCS`-derived object with the values
         of keyword arguments except for the argument ``meta`` which is
