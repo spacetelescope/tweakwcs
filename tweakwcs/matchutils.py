@@ -294,7 +294,7 @@ def center_of_mass(img, labels=None, index=None):
 
     Examples
     --------
-    >>> from jwst.tweakreg import matchutils
+    >>> from tweakwcs import matchutils
     >>> a = np.array(([0,0,0,0],
                       [0,1,1,0],
                       [0,1,1,0],

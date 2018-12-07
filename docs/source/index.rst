@@ -1,7 +1,10 @@
 Welcome to tweakwcs documentation!
 ==================================
 
-.. include:: ../README.md
+``tweakwcs`` is a package that provides core algorithms for computing and
+applying corrections to ``WCS`` objects such as to minimize mismatch between
+image and reference catalogs. Currently only aligning images with ``FITS WCS``
+and ``JWST gWCS`` are supported.
 
 .. moduleauthor:: Mihai Cara <help@stsci.edu>
 
@@ -11,12 +14,12 @@ Content
 .. toctree::
    :maxdepth: 2
 
-   tweakwcs/imalign
-   tweakwcs/tpwcs
-   tweakwcs/matchutils
-   tweakwcs/wcsimage
-   tweakwcs/linearfit
-   tweakwcs/groupwcs
+   imalign
+   tpwcs
+   matchutils
+   wcsimage
+   linearfit
+   groupwcs
    LICENSE.rst
 
 
