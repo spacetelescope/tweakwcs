@@ -239,7 +239,7 @@ html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
 html_static_path = ['../_static']
 html_context = {
     'css_files': [
-        '_static/css/custom.css',
+        '../_static/css/custom.css',
     ],
 }
 
