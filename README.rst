@@ -1,6 +1,6 @@
 .. image:: https://readthedocs.org/projects/tweakwcs/badge/?version=latest
-:target: https://tweakwcs.readthedocs.io/en/latest/?badge=latest
-:alt: Documentation Status
+    :target: https://tweakwcs.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
 
 ``tweakwcs`` is a package that provides core algorithms for computing and
 applying corrections to ``WCS`` objects such as to minimize mismatch between
