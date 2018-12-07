@@ -282,7 +282,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
 
             rcat = refcat.meta['catalog'].copy()
 
-            if 'RA' not in catalog.colnames or 'DEC' not in catalog.colnames:
+            if 'RA' not in rcat.colnames or 'DEC' not in rcat.colnames:
                 # convert image x & y to world coordinates:
                 if not 'wcs' in refcat:
                     raise ValueError("A valid WCS is required to convert "
@@ -304,9 +304,14 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
             refcat = rcat
 
         elif isinstance(refcat,  astropy.table.Table):
-            if 'RA' not in catalog.colnames or 'DEC' not in catalog.colnames:
+            if 'RA' not in refcat.colnames or 'DEC' not in refcat.colnames:
                 raise KeyError("Reference catalogs *must* contain *both* 'RA' "
                                "and 'DEC' columns.")
+
+        else:
+            raise TypeError("Unsupported 'refcat' type. Supported types: "
+                            "astropy.nddata.NDDataBase and "
+                            "astropy.table.Table")
 
         refcat = RefCatalog(refcat, name=refcat.meta.get('name', None))
 
