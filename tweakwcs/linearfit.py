@@ -70,6 +70,8 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
     if nclip is None:
         nclip = 0
 
+    effective_nclip = 0
+
     # define index to initially include all points
     for n in range(nclip):
         resids = fit['resids']
@@ -84,6 +86,8 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
 
         if ngoodpix < minobj:
             break
+
+        effective_nclip += 1
 
         npts0 = npts - goodpix.shape[0]
         xy = xy[goodpix]
@@ -107,6 +111,7 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
     fit['ref_indx'] = uvindx
     fit['img_orig_xy'] = xyorig
     fit['ref_orig_xy'] = uvorig
+    fit['eff_nclip'] = effective_nclip
 
     return fit
 

@@ -19,6 +19,11 @@ import numpy as np
 import astropy
 from astropy.nddata import NDDataBase
 
+# We need JWST DataModel so that we can detect this type and treat it
+# differently from astropy.nddata.NDData because JWST's WCS is stored in
+# DataModel.meta.wcs:
+from jwst.datamodels import DataModel
+
 # LOCAL
 from . wcsimage import *
 from . tpwcs import *
@@ -102,6 +107,10 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         * **'skew'**: computed skew
         * **'rms'**: fit RMS in *image* coordinates as a tuple of two values:
           (RMS_X, RMS_Y)
+        * **'status'**: Alignment status. Currently two possible status are
+          possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
+          When alignment failed, the reason for failure is provided after
+          alignment status.
 
     """
     function_name = tweak_wcs.__name__
@@ -114,6 +123,13 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
              .format(__name__, function_name, runtime_begin))
     log.info("      Version {} ({})".format(__version__, __version_date__))
     log.info(" ")
+
+    try:
+        # Attempt to set initial status to FAILED.
+        imwcs.meta['status'] = "FAILED: Unknown error"
+    except:
+        # Most likely the code will fail later with a more specific exception
+        pass
 
     # check fitgeom:
     fitgeom = fitgeom.lower()
@@ -161,19 +177,26 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
     chosen as a reference image when ``refcat`` is `None`) containing
     a dictionary describing matching and fit results. For a description
     of the items in this dictionary, see
-    :meth:`tweakwcs.wcsimage.WCSGroupCatalog.align_to_ref`.
+    :meth:`tweakwcs.wcsimage.WCSGroupCatalog.align_to_ref`. In addition to the
+    status set by :meth:`~tweakwcs.wcsimage.WCSGroupCatalog.align_to_ref`,
+    this function may set status to ``'REFERENCE'`` for an input image used
+    as a reference image when a reference catalog is not provided.
+    In this case no other fields in the ``'tweakwcs_info'`` will be present
+    because a reference image is not being aligned. When alignment failed,
+    the reason for failure is provided after alignment status.
 
-    .. note::
-        Because the image used as a reference image (when ``refcat`` is `None`)
-        does not have the key ``'tweakwcs_info'`` set in ``meta``, it is
-        advisable verify that this keyword was set before attempting to
-        access its items, for example:
+    .. warning::
 
-        >>> tweak_info = images[0].meta.get('tweakwcs_info', None)
-        >>> if tweak_info is None:
-        ...     print("tweak info not available for this image")
-        ... else:
+        Unless status in ``'tweakwcs_info'`` is ``'SUCCESS'``, there is no
+        guarantee that other fields in ``'tweakwcs_info'`` are present or
+        valid. Therefore, it is advisable verify that status is ``'SUCCESS'``
+        before attempting to access other items, for example:
+
+        >>> tweak_info = images[0].meta.get('tweakwcs_info')
+        >>> if tweak_info['status'] == 'SUCCESS':
         ...     print("shifts: [{}, {}]".format(*tweak_info['shift']))
+        ... else:
+        ...     print("tweak info not available for this image")
 
     Parameters
     ----------
@@ -202,11 +225,13 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
           which indicate reference source world coordinates (in degrees).
 
         - If ``refcat``'s ``meta`` attribute contains a ``'wcs'`` item with
-          a valid ``WCS`` then the catalog must contain ``'x'`` and ``'y'``
-          columns which indicate reference source image coordinates (in pixels)
-          which can be used to compute source ``'RA'`` and ``'DEC'`` values
-          **if not provided** though the ``'RA'`` and ``'DEC'`` columns
-          in the ``catalog``.
+          a valid ``WCS`` then the catalog *can* contain *either*
+          ``'RA'`` and ``'DEC'`` columns and/or ``'x'`` and ``'y'``
+          columns which indicate reference source image coordinates
+          (in pixels). The ``'x'`` and ``'y'`` columns are used only when
+          ``'RA'`` and ``'DEC'`` are not provided. Image coordinates are
+          converted (if necessary) to world coordinates using ``refcat``'s
+          WCS object.
 
     enforce_user_order : bool, optional
         Specifies whether images should be aligned in the order specified in
@@ -215,7 +240,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         will align images in the user specified order, except when some images
         cannot be aligned in which case `align` will optimize the image
         alignment order. Alignment order optimization is available *only*
-        when ``expand_refcat`` = `True`.
+        when ``expand_refcat`` is `True`.
 
     expand_refcat : bool, optional
         Specifies whether to add new sources from just matched images to
@@ -259,6 +284,26 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
     log.info("      Version {} ({})".format(__version__, __version_date__))
     log.info(" ")
 
+    # Check that type of `images` is correct and set initial status to FAILED:
+    if isinstance(images, NDDataBase):
+        images.meta['tweakwcs_info'] = {'status': "FAILED: Unknown error"}
+        images = [images]
+    else:
+        try:
+            imtype_ok = all([isinstance(i, NDDataBase) for i in images])
+        except:
+            imtype_ok = False
+        finally:
+            if imtype_ok:
+                for im in images:
+                    im.meta['tweakwcs_info'] = {
+                        'status': "FAILED: Unknown error"
+                    }
+            else:
+                raise TypeError("Input 'images' must be either a single "
+                                "'NDDataBase' object or a list of "
+                                "'NDDataBase' objects.")
+
     # check fitgeom:
     fitgeom = fitgeom.lower()
     if fitgeom not in ['shift', 'rscale', 'general']:
@@ -284,17 +329,22 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
 
             if 'RA' not in rcat.colnames or 'DEC' not in rcat.colnames:
                 # convert image x & y to world coordinates:
-                if not 'wcs' in refcat:
+                if refcat.wcs is None:
                     raise ValueError("A valid WCS is required to convert "
                                      "image coordinates in the reference "
                                      "catalog to world coordinates.")
 
                 #TODO: Need to implement APE-14 support.
-                ref_wcs = refcat['wcs']
-                if isinstance(ref_wcs, astropy.wcs.WCS):
-                    ra, dec = refcat['wcs'](rcat['x'], rcat['y'], 0)
+                if isinstance(refcat, DataModel):
+                    # we are dealing with JWST models:
+                    ra, dec = refcat.meta.wcs(rcat['x'], rcat['y'])
                 else:
-                    ra, dec = refcat['wcs'](rcat['x'], rcat['y'])
+                    if isinstance(refcat.wcs, astropy.wcs.WCS):
+                        ra, dec = refcat.wcs(rcat['x'], rcat['y'], 0)
+                    else:
+                        # assume we are dealing with a gWCS:
+                        ra, dec = refcat.wcs(rcat['x'], rcat['y'])
+
                 rcat['RA'] = ra
                 rcat['DEC'] = dec
                 if 'name' not in rcat.meta:
@@ -314,20 +364,6 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                             "'astropy.table.Table'")
 
         refcat = RefCatalog(refcat, name=refcat.meta.get('name', None))
-
-    # Check that type of `images` is correct:
-    if isinstance(images, NDDataBase):
-        images = [images]
-    else:
-        try:
-            imtype_ok = all([isinstance(i, NDDataBase) for i in images])
-        except:
-            imtype_ok = False
-        finally:
-            if not imtype_ok:
-                raise TypeError("Input 'images' must be either a single "
-                                "'NDDataBase' object or a list of "
-                                "'NDDataBase' objects.")
 
     # find group ID and assign images to groups:
     grouped_images = collections.defaultdict(list)
@@ -428,7 +464,13 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         )
         log.info("Selected image '{}' as reference image"
                  .format(ref_imcat.name))
+
         refcat = RefCatalog(ref_imcat.catalog, name=ref_imcat[0].name)
+
+        for im in ref_imcat:
+            nddata_obj = im.meta['orig_image_nddata']
+            nddata_obj.meta['tweakwcs_info'] = {'status': 'REFERENCE'}
+
         # aligned_imcat = [img.meta['orig_image_nddata'] for img in ref_imcat]
 
     else:
@@ -454,7 +496,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         )
         for image in current_imcat:
             img = image.meta['orig_image_nddata']
-            if hasattr(img.meta, 'wcs'):
+            if isinstance(img, DataModel):
                 # We are dealing with JWST ImageModel
                 img.meta.wcs = image.imwcs.wcs
             else:
@@ -555,7 +597,6 @@ def max_overlap_pair(images, enforce_user_order):
         number of input images is smaller than two, ``im1`` and ``im2`` may
         be `None`.
 
-
     """
     nimg = len(images)
 
@@ -571,13 +612,10 @@ def max_overlap_pair(images, enforce_user_order):
         # Also, when ref. catalog is static - revert to old tweakreg behavior
         im1 = images.pop(0)  # reference image
         im2 = images.pop(0)
-        return (im1, im2)
+        return im1, im2
 
     m = overlap_matrix(images)
-    n = m.shape[0]
-    index = m.argmax()
-    i = index / n
-    j = index % n
+    i, j = np.unravel_index(m.argmax(), m.shape)
     si = np.sum(m[i])
     sj = np.sum(m[:, j])
 
@@ -604,7 +642,7 @@ def max_overlap_pair(images, enforce_user_order):
     for k in range(images_arr.shape[0]):
         images.append(images_arr[k])
 
-    return (im1, im2)
+    return im1, im2
 
 
 def max_overlap_image(refimage, images, enforce_user_order):
@@ -619,6 +657,8 @@ def max_overlap_image(refimage, images, enforce_user_order):
 
     Parameters
     ----------
+    refimage : RefCatalog
+        Reference catalog.
 
     images : list of WCSImageCatalog, or WCSGroupCatalog
         A list of catalogs that implement :py:meth:`intersection_area` method.
