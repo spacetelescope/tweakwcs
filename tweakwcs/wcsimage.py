@@ -879,6 +879,16 @@ class WCSGroupCatalog(object):
             * **'skew'**: computed skew
             * **'rms'**: fit RMS in *image* coordinates as a tuple of two
               values: (RMS_X, RMS_Y)
+            * **'status'**: Alignment status. Currently two possible status are
+              possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
+              When alignment failed, the reason for failure is provided after
+              alignment status.
+
+        .. note::
+            A ``'SUCCESS'`` status does not indicate a "good" alignment. It
+            simply indicates that alignment algortithm has completed without
+            errors. Use other fields to evaluate alignment: residual RMS
+            values, number of matched sources, etc.
 
 
         Parameters
@@ -934,6 +944,10 @@ class WCSGroupCatalog(object):
                         .format(name))
             return False
 
+        # set initial status to 'FAILED':
+        for imcat in self:
+            imcat.imwcs.meta['status'] = "FAILED: Unknown error"
+
         if minobj is None:
             if fitgeom == 'general':
                 minobj = 3
@@ -956,6 +970,8 @@ class WCSGroupCatalog(object):
             name = 'Unnamed' if self.name is None else self.name
             log.warning("Not enough matches (< {:d}) found for image "
                         "catalog '{:s}'.".format(nmatches, name))
+            for imcat in self:
+                imcat.imwcs.meta['status'] = 'FAILED: not enough matches'
             return False
 
         fit = self.fit2ref(refcat=refcat, tanplane_wcs=tanplane_wcs,
@@ -973,7 +989,8 @@ class WCSGroupCatalog(object):
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
             'skew': fit['skew'],  # skew
-            'rms': fit['rms']  # fit RMS in image coords (RMS_X, RMS_Y)
+            'rms': fit['rms'],  # fit RMS in image coords (RMS_X, RMS_Y)
+            'status': 'SUCCESS'
         }
 
         if match is not None:
