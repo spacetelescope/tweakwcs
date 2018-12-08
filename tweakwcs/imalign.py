@@ -509,9 +509,10 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:
-            refcat.expand_catalog(current_imcat.get_unmatched_cat())
-            log.info("Added unmatched sources from '{}' to the reference "
-                     "catalog.".format(current_imcat.name))
+            unmatched_src = current_imcat.get_unmatched_cat()
+            refcat.expand_catalog(unmatched_src)
+            log.info("Added {:d} unmatched sources from '{}' to the reference "
+                     "catalog.".format(len(unmatched_src), current_imcat.name))
 
         # find the next image to be aligned:
         current_imcat = max_overlap_image(
