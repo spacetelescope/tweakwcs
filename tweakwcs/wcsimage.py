@@ -709,8 +709,6 @@ class WCSGroupCatalog(object):
             mref_idx, minput_idx = match(refcat.catalog, self._catalog)
             nmatches = len(mref_idx)
 
-        self._catalog.meta['nmatches'] = nmatches
-
         # matched_ref_id:
         if 'matched_ref_id' not in colnames:
             c = table.MaskedColumn(name='matched_ref_id', dtype=int,
@@ -1006,6 +1004,8 @@ class WCSGroupCatalog(object):
             shift=fit['offset'],
             meta=meta
         )
+
+        self.recalc_catalog_radec()
 
         return True
 
