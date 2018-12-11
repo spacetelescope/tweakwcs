@@ -715,13 +715,13 @@ class WCSGroupCatalog(object):
                                    length=catlen, mask=True)
             self._catalog.add_column(c)
         else:
-            self._catalog['matched_ref_id'].mask = True
-        self._catalog['matched_ref_id'][minput_idx] = \
-            self._catalog['id'][minput_idx]
+            self._catalog['matched_ref_id'].mask[:] = True
+
         self._catalog['matched_ref_id'].mask[minput_idx] = False
+        self._catalog['matched_ref_id'][minput_idx] = refcat.catalog['id'][mref_idx]
 
         # this is needed to index reference catalog directly without using
-        # astropy table indexing which at this moment is experimental:
+        # astropy table indexing which, at this moment, is experimental:
         if '_raw_matched_ref_idx' not in colnames:
             c = table.MaskedColumn(name='_raw_matched_ref_idx',
                                    dtype=int, length=catlen, mask=True)
@@ -732,6 +732,20 @@ class WCSGroupCatalog(object):
         self._catalog['_raw_matched_ref_idx'].mask[minput_idx] = False
 
         log.info("Found {:d} matches for '{}'...".format(nmatches, self.name))
+
+        # TODO: revisit this once the bug described in
+        # https://github.com/spacetelescope/stsci.stimage/issues/8
+        # is fixed.
+        #
+        # Due to this bug minput_idx may contain duplicate values.
+        # Because of this, the above logic for masking, saving ids, and indices
+        # does not work reliably. As a workaround, we save matched array
+        # indices within the image catalog so that we can use them in
+        # `fit2ref()`. For this to work, reference and image catalog must not
+        # change between this function return and `fit2ref()` call.
+        #
+        self._mref_idx = mref_idx
+        self._minput_idx = minput_idx
 
         return nmatches, mref_idx, minput_idx
 
@@ -772,13 +786,25 @@ class WCSGroupCatalog(object):
         refxy = np.asanyarray([refcat.catalog['TPx'],
                                refcat.catalog['TPy']]).T
 
-        mask = np.logical_not(self._catalog['matched_ref_id'].mask)
-        im_xyref = im_xyref[mask]
-        ref_idx = self._catalog['_raw_matched_ref_idx'][mask]
+        # mask = np.logical_not(self._catalog['matched_ref_id'].mask)
+        # im_xyref = im_xyref[mask]
+        # ref_idx = self._catalog['_raw_matched_ref_idx'][mask]
+
+        # TODO: revisit this once the bug described in
+        # https://github.com/spacetelescope/stsci.stimage/issues/8
+        # is fixed.
+        #
+        # Due to this bug minput_idx may contain duplicate values.
+        # For now we bypass the above commented code by accessing indices
+        # stored in the image's catalog.
+        minput_idx = self._minput_idx
+        im_xyref = im_xyref[minput_idx]
+        ref_idx = self._mref_idx
+
         refxy = refxy[ref_idx]
 
         fit = iter_linear_fit(
-            refxy, im_xyref, fitgeom=fitgeom,
+            refxy, im_xyref, xyindx=ref_idx, uvindx=minput_idx, fitgeom=fitgeom,
             nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
@@ -1269,9 +1295,15 @@ class RefCatalog(object):
         cat = catalog.copy()
         if self._catalog is None:
             self._catalog = cat
+            if 'id' not in self._catalog.colnames:
+                self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
         else:
             self._catalog = table.vstack([self.catalog, cat],
                                          join_type='outer')
+            # overwrite source ID since when expanding the catalog,
+            # there could be duplicates in source ID:
+            self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
+
         self.calc_bounding_polygon()
 
     def calc_tanp_xy(self, tanplane_wcs):

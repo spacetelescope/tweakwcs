@@ -8,6 +8,9 @@ Release Notes
 tweakwcs (DEVELOPMENT)
 ======================
 
+- Fixeded a bug due to which ``'fit_ref_idx'`` and ``'fit_input_idx'``
+  fields in the ``fit`` dictionary were never updated. [#31]
+
 - ``jwst`` (pipeline) package is no longer a hard dependency. [#30]
 
 - Removed unnecessary install dependencies. [#30]
