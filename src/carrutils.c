@@ -12,16 +12,20 @@
 
 static PyObject *gl_Error;
 
-typedef int integer_t;
+typedef npy_intp integer_t;
 
 /* ==== Allocate a double *vector (vec of pointers) ======================
     Memory is Allocated!  See void free_Carray(double ** )                  */
-double **ptrvector(long n)  {
+double **ptrvector(long n)
+{
     double **v;
-    v=(double **)malloc((size_t) (n*sizeof(double)));
-    if (!v)   {
+
+    v = (double **) malloc((size_t) (n*sizeof(double)));
+    if (!v)
+    {
         printf("In **ptrvector. Allocation of memory for double array failed.");
-        exit(0);  }
+        exit(0);
+    }
     return v;
 }
 
@@ -31,20 +35,15 @@ double **ptrvector(long n)  {
     Memory is allocated!                                    */
 double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin)  {
     double **c, *a;
-    long i,n,m;
+    long i, n, m;
 
-    n=PyArray_DIMS(arrayin)[0];
-    m=PyArray_DIMS(arrayin)[1];
-    c=(double **)ptrvector(n);
-    a=(double *) PyArray_DATA(arrayin);  /* pointer to arrayin data as double */
-    for ( i=0; i<n; i++)  {
-        c[i]=a+i*m;  }
+    n = PyArray_DIMS(arrayin)[0];
+    m = PyArray_DIMS(arrayin)[1];
+    c = (double **) ptrvector(n);
+    a = (double *) PyArray_DATA(arrayin);  /* pointer to arrayin data as double */
+    for (i=0; i<n; i++)
+        c[i] = a + i * m;
     return c;
-}
-
-/* ==== Free a double *vector (vec of pointers) ========================== */
-void free_Carrayptrs(double **v)  {
-    free((char*) v);
 }
 
 static PyObject *
@@ -82,10 +81,10 @@ arrxyzero(PyObject *obj, PyObject *args)
 
   dimensions[0] = (integer_t)(searchrad*2) + 1;
   dimensions[1] = (integer_t)(searchrad*2) + 1;
-  ozpmat = (PyArrayObject *)PyArray_FromDims(2, dimensions, NPY_DOUBLE);
-  if (!ozpmat) {
-    goto _exit;
-  }
+  ozpmat = (PyArrayObject *) PyArray_SimpleNew(2, dimensions, NPY_DOUBLE);
+  if (!ozpmat)
+      goto _exit;
+
   /* Allocate memory for return matrix */
   zpmat=pymatrix_to_Carrayptrs(ozpmat);
 
@@ -110,7 +109,7 @@ arrxyzero(PyObject *obj, PyObject *args)
  _exit:
   Py_DECREF(imgxy);
   Py_DECREF(refxy);
-  free_Carrayptrs(zpmat);
+  free(zpmat);
 
   return PyArray_Return(ozpmat);
 }

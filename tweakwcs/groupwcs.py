@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 A module that provides functions for automatically adding ``tweakwcs_group_id``
 tag to images based on information recorded in image's ``meta`` attribute.
@@ -27,20 +28,14 @@ from copy import deepcopy
 
 # THIRD PARTY
 import numpy as np
-import astropy
 from astropy.nddata import NDDataBase
-from jwst.datamodels import open as open_jwst_data
-import jwst
 
 # LOCAL
-
-
 from . import __version__, __version_date__
+
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
-import sys
-log.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
 def assign_jwst_tweakwcs_groups(images):
@@ -50,18 +45,24 @@ def assign_jwst_tweakwcs_groups(images):
     ----------
     images : list of str or jwst.datamodels.DataModel
         A list of string file names to ``JWST`` data or
-        `jwst.datamodels.DataModel` objects. On treturn, these data models
+        `jwst.datamodels.DataModel` objects. On return, these data models
         or files will contain ``tweakwcs_group_id`` attribute in their
         ``meta`` dictionary identifying the tweakwcs group. Images within
         a group are aligned together.
 
     """
+    try:
+        from jwst.datamodels import open as open_data  # pylint: disable=W0611
+    except ImportError:
+        raise ImportError("'assign_jwst_tweakwcs_groups' requires that "
+                          "'jwst' package be installed.")
+
     close = [isinstance(im, (str, bytes)) for im in images]
 
     group_ids = {}
 
     for im, cl in zip(images, close):
-        model = open_jwst_data(im) if cl else im
+        model = open_data(im) if cl else im
         try:
             meta_ids = (
                 model.meta.observation.program_number,

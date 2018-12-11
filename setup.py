@@ -92,6 +92,10 @@ def get_transforms_data():
     # can't be installed using setuptools.
     transforms_schemas = []
     root = os.path.join(PACKAGENAME, 'schemas')
+
+    if not os.path.isdir(root):
+        return transforms_schemas
+
     for node, dirs, files in os.walk(root):
         for fname in files:
             if fname.endswith('.yaml'):
@@ -103,8 +107,9 @@ def get_transforms_data():
 
 PACKAGE_DATA = {
     '': [
-        'README.md',
+        'README.rst',
         'LICENSE.txt',
+        'CHANGELOG.rst',
         '*.fits',
         '*.txt',
         '*.inc',
@@ -112,7 +117,7 @@ PACKAGE_DATA = {
         '*.csv',
         '*.yaml',
         '*.json'
-    ],
+        ],
     'tweakwcs': get_transforms_data()
 }
 
@@ -164,6 +169,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
+
 INSTALL_REQUIRES=[
     'numpy',
     'astropy>=3.1',
@@ -171,12 +177,6 @@ INSTALL_REQUIRES=[
     'stsci.stimage',
     'stsci.imagestats',
     'spherical_geometry',
-    'jwst',
-    'sphinx',
-    'sphinx-automodapi',
-    'sphinx_rtd_theme',
-    'stsci_rtd_theme',
-    'numpydoc',
 ]
 
 setup(

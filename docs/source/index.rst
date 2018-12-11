@@ -20,6 +20,7 @@ Content
    wcsimage
    linearfit
    groupwcs
+   wcsutils
    LICENSE.rst
 
 

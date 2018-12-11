@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 A module that provides functions for "aligning" images: specifically, it
 provides functions for computing corrections to image ``WCS`` so that
@@ -18,11 +19,15 @@ from copy import deepcopy
 import numpy as np
 import astropy
 from astropy.nddata import NDDataBase
+import gwcs
 
 # We need JWST DataModel so that we can detect this type and treat it
 # differently from astropy.nddata.NDData because JWST's WCS is stored in
 # DataModel.meta.wcs:
-from jwst.datamodels import DataModel
+try:
+    from jwst.datamodels import DataModel
+except:
+    DataModel = None
 
 # LOCAL
 from . wcsimage import *
@@ -43,6 +48,12 @@ log.setLevel(logging.DEBUG)
 def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
     """ "Tweak" image's ``WCS`` by fitting image catalog to a reference
     catalog.
+
+    .. note::
+        Both reference and image catalogs must have been matched *prior to*
+        calling ``tweak_wcs()``. This means that the lengths of both
+        ``refcat`` and ``imcat`` catalogs must be equal *and* that coordinates
+        with the same indices in both catalogs correspond to the same source.
 
     Parameters
     ----------
@@ -296,6 +307,8 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         finally:
             if imtype_ok:
                 for im in images:
+                    # initially set a "bad" status and update later
+                    # if successful:
                     im.meta['tweakwcs_info'] = {
                         'status': "FAILED: Unknown error"
                     }
@@ -334,22 +347,29 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                                      "image coordinates in the reference "
                                      "catalog to world coordinates.")
 
-                #TODO: Need to implement APE-14 support.
-                if isinstance(refcat, DataModel):
-                    # we are dealing with JWST models:
+                #TODO: Need to implement astropy APE-14 support.
+                if (hasattr(refcat.meta, 'wcs') and
+                    isinstance(refcat.meta.wcs, gwcs.WCS)):
+
+                    # most likely we are dealing with JWST models.
+                    # In any case, the WCS is a gWCS => use forward transform:
                     ra, dec = refcat.meta.wcs(rcat['x'], rcat['y'])
+
+                elif isinstance(refcat.wcs, astropy.wcs.WCS):
+                    ra, dec = refcat.wcs(rcat['x'], rcat['y'], 0)
+
+                elif isinstance(refcat.wcs, gwcs.WCS):
+                    # we are dealing with a gWCS:
+                    ra, dec = refcat.wcs(rcat['x'], rcat['y'])
+
                 else:
-                    if isinstance(refcat.wcs, astropy.wcs.WCS):
-                        ra, dec = refcat.wcs(rcat['x'], rcat['y'], 0)
-                    else:
-                        # assume we are dealing with a gWCS:
-                        ra, dec = refcat.wcs(rcat['x'], rcat['y'])
+                    raise TypeError("Unsupported WCS type for the reference "
+                                    "catalog.")
 
                 rcat['RA'] = ra
                 rcat['DEC'] = dec
-                if 'name' not in rcat.meta:
-                    if 'name' in refcat.meta:
-                        rcat.meta['name'] = refcat.meta['name']
+                if 'name' not in rcat.meta and 'name' in refcat.meta:
+                    rcat.meta['name'] = refcat.meta['name']
 
             refcat = rcat
 
@@ -380,24 +400,47 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                 else:
                     raise ValueError("Each image must have a valid catalog.")
 
-                #TODO: this works only for JWST gWCS and FITS WCS!
+                #TODO: Currently code works only for JWST gWCS and FITS WCS!
                 #      What is needed is a way to let users to
                 #      specify a corrector class for images.
                 #
-                if hasattr(img.meta, 'wcs'):
-                    # We are dealing with JWST ImageModel
-                    img_wcs = img.meta.wcs
-                else:
-                    img_wcs = img.wcs
+                if (hasattr(img.meta, 'wcs') and
+                    isinstance(img.meta.wcs, gwcs.WCS)):
+                    # we need this special check because jwst package is
+                    # an *optional* dependency:
 
-                if isinstance(img_wcs, astropy.wcs.WCS):
-                    wcs_corr = FITSWCS(deepcopy(img_wcs))
-                else:
-                    #TODO: Currently only JWST gWCS is supported
+                    if DataModel is None:
+                        # most likely we've got a JWST DataModel but we
+                        # do not have the required `jwst` package installed
+                        # to deal with jwst DataModel
+                        raise ImportError(
+                            "Suspected jwst.datamodels.DataModel input image "
+                            "but the required 'jwst' package is not installed."
+                        )
+
+                    # We are dealing with JWST ImageModel
                     wcsinfo = img.meta.get('wcsinfo', None)
                     if wcsinfo is not None:
                         wcsinfo = wcsinfo._instance
-                    wcs_corr = JWSTgWCS(deepcopy(img_wcs), wcsinfo)
+                    wcs_corr = JWSTgWCS(deepcopy(img.meta.wcs), wcsinfo)
+
+                else:
+                    img_wcs = img.wcs
+
+                    if isinstance(img.wcs, astropy.wcs.WCS):
+                        wcs_corr = FITSWCS(deepcopy(img.wcs))
+
+                    elif isinstance(img.wcs, gwcs.WCS):
+                        #TODO: Currently only JWST gWCS is supported
+                        raise NotImplementedError(
+                            "Currently only alignment of JWST gWCS is "
+                            "supported. Support for alignment of arbitrary "
+                            "image gWCS has not yet been implemented."
+                        )
+
+                    else:
+                        raise TypeError("Unsupported WCS type for image "
+                                        "catalog.")
 
                 imcat.append(
                     WCSGroupCatalog(
@@ -496,7 +539,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         )
         for image in current_imcat:
             img = image.meta['orig_image_nddata']
-            if isinstance(img, DataModel):
+            if DataModel is not None and isinstance(img, DataModel):
                 # We are dealing with JWST ImageModel
                 img.meta.wcs = image.imwcs.wcs
             else:

@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 A module that provides algorithms matching catalogs and for initial estimation
 of shifts based on 2D histograms.
