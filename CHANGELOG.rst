@@ -15,7 +15,7 @@ tweakwcs (DEVELOPMENT)
 
 - Removed unnecessary install dependencies. [#30]
 
-- Documentation improvements. [#30]
+- Documentation improvements. [#30, #32]
 
 - Corrected 'RA', 'DEC' units used to compute bounding polygon for the
   reference catalog. [#30]
