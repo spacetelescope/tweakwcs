@@ -180,7 +180,8 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
     may be automatically created from one of the input images.
 
     .. warning::
-        This function modifies the ``image.meta.wcs`` attribute of each item
+        This function modifies the ``image.wcs`` or ``image.meta.wcs``
+        (in the case of JWST ``DataModel``s) attribute of each item
         in the input ``images`` list!
 
     Upon completion, this function will add a field ``'tweakwcs_info'``
