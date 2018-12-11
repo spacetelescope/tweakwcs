@@ -17,7 +17,7 @@ tweakwcs (DEVELOPMENT)
 - Corrected 'RA', 'DEC' units used to compute bounding polygon for the
   reference catalog. [#30]
 
-- Updated ``C`` code to avoid ``numpy`` deprecation warnings.
+- Updated ``C`` code to avoid ``numpy`` deprecation warnings. [#30]
 
 
 tweakwcs v0.1.0 (08-December-2018)
