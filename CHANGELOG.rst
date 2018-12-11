@@ -4,9 +4,20 @@
 Release Notes
 =============
 
-..
-  tweakwcs (DEVELOPMENT)
-  ==========================
+
+tweakwcs (DEVELOPMENT)
+======================
+
+- ``jwst`` (pipeline) package is no longer a hard dependency. [#30]
+
+- Removed unnecessary install dependencies. [#30]
+
+- Documentation improvements. [#30]
+
+- Corrected 'RA', 'DEC' units used to compute bounding polygon for the
+  reference catalog. [#30]
+
+- Updated ``C`` code to avoid ``numpy`` deprecation warnings.
 
 
 tweakwcs v0.1.0 (08-December-2018)

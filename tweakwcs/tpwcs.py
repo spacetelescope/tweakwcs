@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 This module provides support for manipulating tangent-plane corrections
 of ``WCS``.
@@ -17,11 +18,13 @@ from abc import ABC, abstractmethod
 import numpy as np
 import gwcs
 from astropy import wcs as fitswcs
-from jwst.transforms.tpcorr import TPCorr
+
+try:
+    from jwst.transforms.tpcorr import TPCorr  # pylint: disable=W0611
+except:
+    TPCorr = None
 
 # LOCAL
-#from .tpcorr import TPCorr, rot_mat3D
-
 from . import __version__, __version_date__
 
 __author__ = 'Mihai Cara'
@@ -236,6 +239,10 @@ class JWSTgWCS(TPWCS):
                 Roll angle in degrees.
 
         """
+        if TPCorr is None:
+            raise ImportError("The 'jwst' package must be installed in order "
+                              "to correct JWST WCS.")
+
         valid, message =  self._check_wcs_structure(wcs)
         if not valid:
             raise ValueError("Unsupported WCS structure: {}".format(message))

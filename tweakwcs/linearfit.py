@@ -1,3 +1,4 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 A module that provides algorithms for performing linear fit between
 sets of 2D points.
