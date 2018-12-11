@@ -8,6 +8,11 @@ Release Notes
 tweakwcs (DEVELOPMENT)
 ======================
 
+- Changelog correction. [#33]
+
+tweakwcs v0.1.1 (11-December-2018)
+==================================
+
 - Fixeded a bug due to which ``'fit_ref_idx'`` and ``'fit_input_idx'``
   fields in the ``fit`` dictionary were never updated. [#31]
 
