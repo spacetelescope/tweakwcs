@@ -614,14 +614,6 @@ class FITSWCS(TPWCS):
 
         cwcs = self._wcs.deepcopy()
         cd_eye = np.eye(self._wcs.wcs.cd.shape[0], dtype=np.longdouble)
-        zero_shift = np.zeros(2, dtype=np.longdouble)
-
-        # estimate precision necessary for iterative processes:
-        maxiter = 100
-        crpix2corners = np.dstack([i.flatten() for i in np.meshgrid(
-            [1, self._wcs.pixel_shape[0]],
-            [1, self._wcs.pixel_shape[1]])])[0] - self._wcs.wcs.crpix
-        maxUerr = 1.0e-5 / np.amax(np.linalg.norm(crpix2corners, axis=1))
 
         # estimate step for numerical differentiation. We need a step
         # large enough to avoid rounding errors and small enough to get a
@@ -642,10 +634,9 @@ class FITSWCS(TPWCS):
         self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
         self._wcs.wcs.set()
 
-        # initial approximation for CD matrix of the image WCS:
+        # approximation for CD matrix of the image WCS:
         (U, u) = _linearize(cwcs, self._wcs, self._wcslin, self._wcs.wcs.crpix,
                             matrix, shift, hx=hx, hy=hy)
-        err0 = np.amax(np.abs(U - cd_eye)).astype(np.float64)
         self._wcs.wcs.cd = np.dot(self._wcs.wcs.cd.astype(np.longdouble),
                                   U).astype(np.float64)
         self._wcs.wcs.set()
