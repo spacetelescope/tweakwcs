@@ -5,8 +5,12 @@ Release Notes
 =============
 
 
-.. tweakwcs (DEVELOPMENT)
-   ======================
+tweakwcs (DEVELOPMENT)
+======================
+
+- Fix a bug in the computation of the world coordinates of the fitted
+  (*aligned*) sources. [#36]
+
 
 tweakwcs v0.2.0 (20-December-2018)
 ==================================
@@ -17,6 +21,7 @@ tweakwcs v0.2.0 (20-December-2018)
 - Fix for non-initialized C arrays. [#34]
 
 - Changelog correction. [#33]
+
 
 tweakwcs v0.1.1 (11-December-2018)
 ==================================
