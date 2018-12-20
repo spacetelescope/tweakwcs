@@ -808,8 +808,7 @@ class WCSGroupCatalog(object):
             fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
-        xy_fit = fit['resids'] + fit['offset'] + np.dot(fit['uv_coords'],
-                                                        fit['fit_matrix'])
+        xy_fit = fit['offset'] + np.dot(fit['uv_coords'], fit['fit_matrix'])
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
