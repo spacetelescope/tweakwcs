@@ -5,8 +5,16 @@ Release Notes
 =============
 
 
-tweakwcs (DEVELOPMENT)
-======================
+.. tweakwcs (DEVELOPMENT)
+   ======================
+
+tweakwcs v0.2.0 (20-December-2018)
+==================================
+
+- Fix swapped reported reference and input indices of sources used for
+  fitting. [#34]
+
+- Fix for non-initialized C arrays. [#34]
 
 - Changelog correction. [#33]
 

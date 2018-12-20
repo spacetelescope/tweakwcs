@@ -804,11 +804,13 @@ class WCSGroupCatalog(object):
         refxy = refxy[ref_idx]
 
         fit = iter_linear_fit(
-            refxy, im_xyref, xyindx=ref_idx, uvindx=minput_idx, fitgeom=fitgeom,
-            nclip=nclip, sigma=sigma, center=(0, 0)
+            refxy, im_xyref, xyindx=ref_idx, uvindx=minput_idx,
+            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
-        xy_fit = fit['img_coords'] + fit['resids']
+        xy_fit = fit['resids'] + fit['offset'] + np.dot(fit['uv_coords'],
+                                                        fit['fit_matrix'])
+
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
 
@@ -903,6 +905,10 @@ class WCSGroupCatalog(object):
             * **'skew'**: computed skew
             * **'rms'**: fit RMS in *image* coordinates as a tuple of two
               values: (RMS_X, RMS_Y)
+            * **'fit_RA'**: first (corrected) world coordinate of input source
+              positions used in fitting.
+            * **'fit_DEC'**: second (corrected) world coordinate of input
+              source positions used in fitting.
             * **'status'**: Alignment status. Currently two possible status are
               possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
               When alignment failed, the reason for failure is provided after
@@ -1006,15 +1012,17 @@ class WCSGroupCatalog(object):
             'matrix': fit['fit_matrix'],
             'shift': fit['offset'],
             'eff_minobj': minobj,
-            'fit_ref_idx': fit['ref_indx'],  # indices after fit clipping
-            'fit_input_idx': fit['img_indx'],  # indices after fit clipping
+            'fit_ref_idx': fit['xy_indx'],  # indices after fit clipping
+            'fit_input_idx': fit['uv_indx'],  # indices after fit clipping
             'rot': fit['rot'],  # proper rotation
             'proper': fit['proper'],  # is a proper rotation? True/False
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
             'skew': fit['skew'],  # skew
             'rms': fit['rms'],  # fit RMS in image coords (RMS_X, RMS_Y)
-            'status': 'SUCCESS'
+            'fit_RA': fit['fit_RA'],
+            'fit_DEC': fit['fit_DEC'],
+            'status': 'SUCCESS',
         }
 
         if match is not None:

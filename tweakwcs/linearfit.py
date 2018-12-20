@@ -106,12 +106,12 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
 
         fit = linear_fit(xy, uv, fitgeom=fitgeom, verbose=False)
 
-    fit['img_coords'] = xy
-    fit['ref_coords'] = uv
-    fit['img_indx'] = xyindx
-    fit['ref_indx'] = uvindx
-    fit['img_orig_xy'] = xyorig
-    fit['ref_orig_xy'] = uvorig
+    fit['xy_coords'] = xy
+    fit['uv_coords'] = uv
+    fit['xy_indx'] = xyindx
+    fit['uv_indx'] = uvindx
+    fit['xy_orig_xy'] = xyorig
+    fit['uv_orig_xy'] = uvorig
     fit['eff_nclip'] = effective_nclip
 
     return fit
