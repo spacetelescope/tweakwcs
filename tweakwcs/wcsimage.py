@@ -451,13 +451,15 @@ class WCSGroupCatalog(object):
             Name of the group.
 
         """
-
         self._catalog = None
 
         if isinstance(images, WCSImageCatalog):
             self._images = [images]
 
         elif hasattr(images, '__iter__'):
+            if not images:
+                raise ValueError("List of images cannot be empty.")
+
             self._images = []
             for im in images:
                 if not isinstance(im, WCSImageCatalog):
@@ -566,7 +568,6 @@ class WCSGroupCatalog(object):
 
         Returns
         -------
-
         group_catalog : astropy.table.Table
             Combined group catalog.
 
@@ -575,6 +576,8 @@ class WCSGroupCatalog(object):
         catno = 0
         for image in self._images:
             catlen = len(image.catalog)
+            if not catlen:
+                continue
 
             if image.name is None:
                 catname = 'Catalog #{:d}'.format(catno)
@@ -602,6 +605,33 @@ class WCSGroupCatalog(object):
 
             catalogs.append(cat)
             catno += 1
+
+        if not catno:
+            # no catalogs with sources. Create an empty table with required
+            # columns and types:
+            image = self._images[0]
+            if image.name is None:
+                catname = 'Catalog #{:d}'.format(catno)
+            else:
+                catname = image.name
+
+            col_catname = table.MaskedColumn([catname], name='cat_name')
+            del col_catname[0]
+            col_imcatidx = table.MaskedColumn([], dtype=np.int,
+                                              name='_imcat_idx')
+            col_id = table.MaskedColumn(image.catalog['id'])
+            col_x = table.MaskedColumn([], name='x', dtype=np.float64)
+            col_y = table.MaskedColumn([], name='y', dtype=np.float64)
+            col_ra = table.MaskedColumn([], name='RA', dtype=np.float64)
+            col_dec = table.MaskedColumn([], name='DEC', dtype=np.float64)
+
+            cat = table.Table(
+                [col_imcatidx, col_catname, col_id, col_x,
+                 col_y, col_ra, col_dec],
+                masked=True
+            )
+
+            return cat
 
         return table.vstack(catalogs, join_type='exact')
 
