@@ -8,6 +8,10 @@ Release Notes
 tweakwcs (DEVELOPMENT)
 ======================
 
+- Rely on ``pixel_bounds``
+  [see APE 14](https://github.com/astropy/astropy-APEs/blob/master/APE14.rst)
+  when available for computation of image's bounding box. [#39]
+
 - Fix a bug in the computation of the world coordinates of the fitted
   (*aligned*) sources. [#36]
 
