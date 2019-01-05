@@ -12,7 +12,7 @@ of ``WCS``.
 import logging
 import sys
 from copy import deepcopy
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 
 # THIRD-PARTY
 import numpy as np
@@ -30,7 +30,6 @@ from . import __version__, __version_date__
 __author__ = 'Mihai Cara'
 
 __all__ = ['TPWCS', 'JWSTgWCS', 'FITSWCS']
-
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -207,6 +206,10 @@ class TPWCS(ABC):
     @property
     def meta(self):
         return self._meta
+
+    @property
+    def bounding_box(self):
+        return None
 
 
 class JWSTgWCS(TPWCS):
@@ -486,6 +489,20 @@ class JWSTgWCS(TPWCS):
         ra, dec = self._v23_to_world(v2, v3)
         return ra, dec
 
+    @property
+    def bounding_box(self):
+        if self._owcs.pixel_bounds is not None:
+            return self._owcs.pixel_bounds
+        else:
+            if self._owcs.pixel_shape is not None:
+                nx, ny = self._owcs.pixel_shape
+            elif self._owcs.array_shape is not None:
+                ny, nx = self._owcs.array_shape
+            else:
+                return None
+
+        return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
+
 
 class FITSWCS(TPWCS):
     """ A class for holding ``FITS`` ``WCS`` information and for managing
@@ -709,6 +726,20 @@ class FITSWCS(TPWCS):
         y = y + crpix2
         ra, dec = self._wcslin.all_pix2world(x, y, 1)
         return ra, dec
+
+    @property
+    def bounding_box(self):
+        if self._owcs.pixel_bounds is not None:
+            return self._owcs.pixel_bounds
+        else:
+            if self._owcs.pixel_shape is not None:
+                nx, ny = self._owcs.pixel_shape
+            elif self._owcs.array_shape is not None:
+                ny, nx = self._owcs.array_shape
+            else:
+                return None
+
+        return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
 
 
 def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):

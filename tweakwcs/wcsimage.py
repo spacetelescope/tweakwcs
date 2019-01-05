@@ -12,11 +12,9 @@ source catalogs.
 import logging
 import sys
 from copy import deepcopy
-from distutils.version import LooseVersion
 
 # THIRD-PARTY
 import numpy as np
-import astropy
 import gwcs
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
@@ -37,8 +35,6 @@ __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
-
-ASTROPY_VER_GE311 = LooseVersion(astropy.__version__) >= LooseVersion('3.1.1')
 
 _INT_TYPE = (int, long,) if sys.version_info < (3,) else (int,)
 
@@ -326,37 +322,21 @@ class WCSImageCatalog(object):
         if self.imwcs is None or (self.shape is None and self.catalog is None):
             return
 
-        if ASTROPY_VER_GE311:
-            if self.imwcs.original_wcs.pixel_bounds is None:
-                if self.shape is not None:
-                    ny, nx = self.shape
-                elif self.imwcs.original_wcs.array_shape is not None:
-                    ny, nx = self.imwcs.array_shape
-                else:
-                    # just take max image coordinates from catalogs as bounds:
-                    nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
-                    ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
-
-                lx = -0.5
-                ly = -0.5
-                hx = nx - 0.5
-                hy = ny - 0.5
-
+        if self.imwcs.bounding_box is None:
+            if self.shape is not None:
+                ny, nx = self.shape
             else:
-                ((lx, hx), (ly, hy)) = self.imwcs.original_wcs.pixel_bounds
-
-        else:
-            if self.shape is None:
                 # just take max image coordinates from catalogs as bounds:
                 nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
                 ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
-            else:
-                ny, nx = self.shape
 
             lx = -0.5
             ly = -0.5
             hx = nx - 0.5
             hy = ny - 0.5
+
+        else:
+            ((lx, hx), (ly, hy)) = self.imwcs.original_wcs.pixel_bounds
 
         if stepsize is None:
             nintx = 2
