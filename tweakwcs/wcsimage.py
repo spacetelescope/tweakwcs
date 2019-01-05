@@ -12,9 +12,11 @@ source catalogs.
 import logging
 import sys
 from copy import deepcopy
+from distutils.version import LooseVersion
 
 # THIRD-PARTY
 import numpy as np
+import astropy
 import gwcs
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
@@ -36,6 +38,7 @@ __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
+ASTROPY_VER_GE311 = LooseVersion(astropy.__version__) >= LooseVersion('3.1.1')
 
 _INT_TYPE = (int, long,) if sys.version_info < (3,) else (int,)
 
@@ -323,21 +326,47 @@ class WCSImageCatalog(object):
         if self.imwcs is None or (self.shape is None and self.catalog is None):
             return
 
-        if self.shape is None:
-            nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
-            ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
+        if ASTROPY_VER_GE311:
+            if self.imwcs.original_wcs.pixel_bounds is None:
+                if self.shape is not None:
+                    ny, nx = self.shape
+                elif self.imwcs.original_wcs.array_shape is not None:
+                    ny, nx = self.imwcs.array_shape
+                else:
+                    # just take max image coordinates from catalogs as bounds:
+                    nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
+                    ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
+
+                lx = -0.5
+                ly = -0.5
+                hx = nx - 0.5
+                hy = ny - 0.5
+
+            else:
+                ((lx, hx), (ly, hy)) = self.imwcs.original_wcs.pixel_bounds
+
         else:
-            ny, nx = self.shape
+            if self.shape is None:
+                # just take max image coordinates from catalogs as bounds:
+                nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
+                ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
+            else:
+                ny, nx = self.shape
+
+            lx = -0.5
+            ly = -0.5
+            hx = nx - 0.5
+            hy = ny - 0.5
 
         if stepsize is None:
             nintx = 2
             ninty = 2
         else:
-            nintx = max(2, int(np.ceil((nx + 1.0) / stepsize)))
-            ninty = max(2, int(np.ceil((ny + 1.0) / stepsize)))
+            nintx = max(2, int(np.ceil((hx - lx) / stepsize)))
+            ninty = max(2, int(np.ceil((hy - ly) / stepsize)))
 
-        xs = np.linspace(-0.5, nx - 0.5, nintx, dtype=np.float)
-        ys = np.linspace(-0.5, ny - 0.5, ninty, dtype=np.float)[1:-1]
+        xs = np.linspace(lx, hx, nintx, dtype=np.float)
+        ys = np.linspace(ly, hy, ninty, dtype=np.float)[1:-1]
         nptx = xs.size
         npty = ys.size
 
@@ -348,18 +377,18 @@ class WCSImageCatalog(object):
 
         # "bottom" points:
         borderx[:nptx] = xs
-        bordery[:nptx] = -0.5
+        bordery[:nptx] = ly
         # "right"
         sl = np.s_[nptx:nptx + npty]
-        borderx[sl] = nx - 0.5
+        borderx[sl] = hx
         bordery[sl] = ys
         # "top"
         sl = np.s_[nptx + npty:2 * nptx + npty]
         borderx[sl] = xs[::-1]
-        bordery[sl] = ny - 0.5
+        bordery[sl] = hy
         # "left"
         sl = np.s_[2 * nptx + npty:-1]
-        borderx[sl] = -0.5
+        borderx[sl] = lx
         bordery[sl] = ys[::-1]
 
         # close polygon:
@@ -370,7 +399,7 @@ class WCSImageCatalog(object):
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
         #       dec[0] != dec[-1] (even though we close the polygon in the
         #       previous two lines). Then SphericalPolygon fails because
-        #       points are not closed. Threfore we force it to be closed:
+        #       points are not closed. Therefore we force it to be closed:
         ra[-1] = ra[0]
         dec[-1] = dec[0]
 
