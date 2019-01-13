@@ -8,6 +8,12 @@ Release Notes
 tweakwcs (DEVELOPMENT)
 ======================
 
+- Bug fix related to not switching to using ``bounding_box`` instead of
+  ``pixel_shape``. [#41]
+
+- Added support for optional ``'weight'`` column in catalogs indicating
+  the weight of each source in fitting linear transformations. [#41]
+
 - Add support for weights to the linear fitting routines. [#40]
 
 - Replaced the use of RMS for each axis with a single RMSD value, see
