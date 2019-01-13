@@ -35,19 +35,30 @@ class NotEnoughPointsError(Exception):
     pass
 
 
-def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
-                    fitgeom='general', nclip=3, sigma=3.0, center=None):
+def iter_linear_fit(xy, uv, wxy=None, wuv=None,
+                    xyindx=None, uvindx=None, xyorig=None, uvorig=None,
+                    fitgeom='general', nclip=3, sigma=3.0, center=None,
+                    verbose=True):
     """
     Compute iteratively using sigma-clipping linear transformation parameters
     that fit `xy` sources to `uv` sources.
 
     """
-
     minobj_per_fitgeom = {'shift': 1, 'rscale': 2, 'general': 3}
     minobj = minobj_per_fitgeom[fitgeom]
 
-    xy = np.asanyarray(xy, dtype=np.float64)
-    uv = np.asanyarray(uv, dtype=np.float64)
+    xy = np.array(xy)
+    uv = np.array(uv)
+
+    mask = np.ones(len(xy), dtype=np.bool_)
+
+    if wxy is not None:
+        wxy = np.asarray(wxy)
+        mask *= wxy > 0.0
+
+    if wuv is not None:
+        wuv = np.asarray(wuv)
+        mask *= wxy > 0.0
 
     if xy.shape[0] < nclip:
         log.warning("The number of sources for the fit < number of clipping "
@@ -56,33 +67,40 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
         nclip = 0
 
     if center is None:
-        xcen = uv[:, 0].mean(dtype=np.float64)
-        ycen = uv[:, 1].mean(dtype=np.float64)
-        center = [xcen, ycen]
+        center = uv.mean(axis=0, dtype=np.longdouble)
 
     xy -= center
     uv -= center
 
-    fit = linear_fit(xy, uv, fitgeom=fitgeom, verbose=True)
+    if fitgeom == 'general':
+        linear_fit = fit_general
+    elif fitgeom == 'rscale':
+        linear_fit = fit_rscale
+    elif fitgeom == 'shift':
+        linear_fit = fit_shifts
+    else:
+        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
 
-    npts = xy.shape[0]
-    npts0 = 0
+    if verbose:
+        log.info("Performing '{:s}' fit".format(fitgeom))
+
+    # initial fit:
+    fit = linear_fit(xy, uv, wxy, wuv)
 
     if nclip is None:
         nclip = 0
-
     effective_nclip = 0
 
-    # define index to initially include all points
+    # clipping iterations:
     for n in range(nclip):
         resids = fit['resids']
 
         # redefine what pixels will be included in next iteration
-        whtfrac = npts / (npts - npts0 - 1.0)
-        cutx = sigma * (fit['rms'][0] * whtfrac)
-        cuty = sigma * (fit['rms'][1] * whtfrac)
+        cutoff = sigma * fit['rmsd']
 
-        goodpix = (np.abs(resids[:, 0]) < cutx) & (np.abs(resids[:, 1]) < cuty)
+        goodpix = np.linalg.norm(resids, axis=1) < cutoff
+        if n == 0:
+            goodpix *= mask
         ngoodpix = np.count_nonzero(goodpix)
 
         if ngoodpix < minobj:
@@ -90,7 +108,6 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
 
         effective_nclip += 1
 
-        npts0 = npts - goodpix.shape[0]
         xy = xy[goodpix]
         uv = uv[goodpix]
 
@@ -104,7 +121,12 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
         if uvorig is not None:
             uvorig = uvorig[goodpix]
 
-        fit = linear_fit(xy, uv, fitgeom=fitgeom, verbose=False)
+        if wxy is not None:
+            wxy = wxy[goodpix]
+        if wuv is not None:
+            wuv = wuv[goodpix]
+
+        fit = linear_fit(xy, uv, wxy, wuv)
 
     fit['xy_coords'] = xy
     fit['uv_coords'] = uv
@@ -113,35 +135,10 @@ def iter_linear_fit(xy, uv, xyindx=None, uvindx=None, xyorig=None, uvorig=None,
     fit['xy_orig_xy'] = xyorig
     fit['uv_orig_xy'] = uvorig
     fit['eff_nclip'] = effective_nclip
-
     return fit
 
 
-def linear_fit(xy, uv, fitgeom='rscale', verbose=False):
-    """ Performs an 'rscale' fit between matched lists of pixel positions
-        xy and uv
-    """
-    fitgeom = fitgeom.lower()
-
-    xy = np.asanyarray(xy)
-    uv = np.asanyarray(uv)
-
-    if verbose:
-        log.info("Performing '{:s}' fit".format(fitgeom))
-
-    if fitgeom == 'general':
-        result = fit_general(xy, uv)
-    elif fitgeom == 'rscale':
-        result = fit_rscale(xy, uv)
-    elif fitgeom == 'shift':
-        result = fit_shifts(xy, uv)
-    else:
-        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
-
-    return result
-
-
-def fit_shifts(xy, uv):
+def fit_shifts(xy, uv, wxy=None, wuv=None):
     """ Performs a simple fit for the shift only between
         matched lists of positions 'xy' and 'uv'.
 
@@ -168,24 +165,54 @@ def fit_shifts(xy, uv):
         )
 
     diff_pts = xy - uv
-    meanx = (diff_pts[:, 0].mean(dtype=np.float64)).astype(np.float64)
-    meany = (diff_pts[:, 1].mean(dtype=np.float64)).astype(np.float64)
+
+    if wxy is None and wuv is None:
+        # no weighting
+        meanx = (diff_pts[:, 0].mean(dtype=np.longdouble)).astype(np.float64)
+        meany = (diff_pts[:, 1].mean(dtype=np.longdouble)).astype(np.float64)
+
+    else:
+        if wxy is None:
+            w = np.array(wuv, dtype=np.longdouble)
+        elif wuv is None:
+            w = np.array(wxy, dtype=np.longdouble)
+        else:
+            # 1/w = sigma**2 = sigma_xy**2 + sigma_uv**2 = 1/wxy + 1/wuv
+            wuv = np.array(wuv, dtype=np.longdouble)
+            wxy = np.array(wxy, dtype=np.longdouble)
+            m = np.logical_and(wuv > 0, wxy > 0)
+            w = np.zeros_like(wuv)
+            w[m] = wxy[m] * wuv[m] / (wxy[m] + wuv[m])
+
+        if np.any(w < 0.0):
+            raise ValueError("Invalid weights: weights must be non-negative.")
+
+        if np.sum(w > 0) < 1:
+            raise ValueError("Not enough valid data for 'shift' fit: "
+                             "too many weights are zero!")
+
+        w /= np.sum(w, dtype=np.longdouble)
+
+        meanx = np.dot(w, diff_pts[:, 0]).astype(np.float64)
+        meany = np.dot(w, diff_pts[:, 1]).astype(np.float64)
+
     Pcoeffs = np.array([1.0, 0.0, meanx])
     Qcoeffs = np.array([0.0, 1.0, meany])
 
     fit = build_fit(Pcoeffs, Qcoeffs, 'shift')
     resids = diff_pts - fit['offset']
-    rms = [resids[:, 0].std(dtype=np.float64),
-           resids[:, 1].std(dtype=np.float64)]
     fit['resids'] = resids
-    fit['rms'] = rms
+    if wxy is None and wuv is None:
+        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+    else:
+        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
     return fit
 
 
 # Implementation of geomap 'rscale' fitting based on 'lib/geofit.x'
 # by Warren Hack. Support for axis flips added by Mihai Cara.
-def fit_rscale(xyin, xyref):
+def fit_rscale(xy, uv, wxy=None, wuv=None):
     """
     Set up the products used for computing the fit derived using the code from
     lib/geofit.x for the function 'geo_fmagnify()'. Comparisons with results
@@ -197,47 +224,83 @@ def fit_rscale(xyin, xyref):
     fit: dict
         Dictionary containing full solution for fit.
     """
-    if len(xyin) < 2:
+    if len(xy) < 2:
         raise NotEnoughPointsError(
             "At least two points are required to find shifts, rotation, and "
             "scale."
         )
 
-    dx = xyref[:, 0].astype(np.longdouble)
-    dy = xyref[:, 1].astype(np.longdouble)
-    du = xyin[:, 0].astype(np.longdouble)
-    dv = xyin[:, 1].astype(np.longdouble)
+    x = np.array(xy[:, 0], dtype=np.longdouble)
+    y = np.array(xy[:, 1], dtype=np.longdouble)
+    u = np.array(uv[:, 0], dtype=np.longdouble)
+    v = np.array(uv[:, 1], dtype=np.longdouble)
 
-    n = xyref.shape[0]
-    Sx = dx.sum()
-    Sy = dy.sum()
-    Su = du.sum()
-    Sv = dv.sum()
-    xr0 = Sx / n
-    yr0 = Sy / n
-    xi0 = Su / n
-    yi0 = Sv / n
-    Sxrxr = np.power((dx - xr0), 2).sum()
-    Syryr = np.power((dy - yr0), 2).sum()
-    Syrxi = ((dy - yr0) * (du - xi0)).sum()
-    Sxryi = ((dx - xr0) * (dv - yi0)).sum()
-    Sxrxi = ((dx - xr0) * (du - xi0)).sum()
-    Syryi = ((dy - yr0) * (dv - yi0)).sum()
+    if wxy is None and wuv is None:
+        # no weighting
+        xm = np.mean(x)
+        ym = np.mean(y)
+        um = np.mean(u)
+        vm = np.mean(v)
 
-    rot_num = Sxrxi * Syryi
-    rot_denom = Syrxi * Sxryi
+        x -= xm
+        y -= ym
+        u -= um
+        v -= vm
 
-    if rot_num == rot_denom:
-        det = 0.0
+        Su2 = np.dot(u, u)
+        Sv2 = np.dot(v, v)
+        Sxv = np.dot(x, v)
+        Syu = np.dot(y, u)
+        Sxu = np.dot(x, u)
+        Syv = np.dot(y, v)
+        Su2v2 = np.dot(u**2, v**2)
+
     else:
-        det = rot_num - rot_denom
+        if wxy is None:
+            w = np.array(wuv, dtype=np.longdouble)
+        elif wuv is None:
+            w = np.array(wxy, dtype=np.longdouble)
+        else:
+            # 1/w = sigma**2 = sigma_xy**2 + sigma_uv**2 = 1/wxy + 1/wuv
+            wuv = np.array(wuv, dtype=np.longdouble)
+            wxy = np.array(wxy, dtype=np.longdouble)
+            m = np.logical_and(wuv > 0, wxy > 0)
+            w = np.zeros_like(wuv)
+            w[m] = wxy[m] * wuv[m] / (wxy[m] + wuv[m])
 
+        if np.any(w < 0.0):
+            raise ValueError("Invalid weights: weights must be non-negative.")
+
+        if np.sum(w > 0) < 2:
+            raise ValueError("Not enough valid data for 'rscale' fit: "
+                             "too many weights are zero!")
+
+        w /= np.sum(w, dtype=np.longdouble)
+        xm = np.dot(w, x)
+        ym = np.dot(w, y)
+        um = np.dot(w, u)
+        vm = np.dot(w, v)
+
+        x -= xm
+        y -= ym
+        u -= um
+        v -= vm
+
+        Su2 = np.dot(w, u**2)
+        Sv2 = np.dot(w, v**2)
+        Sxv = np.dot(w, x * v)
+        Syu = np.dot(w, y * u)
+        Sxu = np.dot(w, x * u)
+        Syv = np.dot(w, y * v)
+        Su2v2 = np.dot(w, u**2 + v**2)
+
+    det = Sxu * Syv - Sxv * Syu
     if (det < 0):
-        rot_num = Syrxi + Sxryi
-        rot_denom = Sxrxi - Syryi
+        rot_num = Sxv + Syu
+        rot_denom = Sxu - Syv
     else:
-        rot_num = Syrxi - Sxryi
-        rot_denom = Sxrxi + Syryi
+        rot_num = Sxv - Syu
+        rot_denom = Sxu + Syv
 
     if rot_num == rot_denom:
         theta = 0.0
@@ -249,12 +312,9 @@ def fit_rscale(xyin, xyref):
     ctheta = np.cos(np.deg2rad(theta))
     stheta = np.sin(np.deg2rad(theta))
     s_num = rot_denom * ctheta + rot_num * stheta
-    s_denom = Sxrxr + Syryr
 
-    if s_denom < 0.0:
-        mag = 1.0
-    elif s_denom > 0.0:
-        mag = s_num / s_denom
+    if Su2v2 > 0.0:
+        mag = s_num / Su2v2
     else:
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
@@ -274,21 +334,22 @@ def fit_rscale(xyin, xyref):
     sthetay = mag * stheta
 
     sdet = np.sign(det)
-    xshift = (xi0 - (xr0 * cthetax + sdet * yr0 * sthetax)).astype(np.float64)
-    yshift = (yi0 - (-sdet * xr0 * sthetay + yr0 * cthetay)).astype(np.float64)
+    xshift = xm - um * cthetax - sdet * vm * sthetax
+    yshift = ym + sdet * um * sthetay - vm * cthetay
 
     P = np.array([cthetax, sthetay, xshift], dtype=np.float64)
     Q = np.array([-sthetax, cthetay, yshift], dtype=np.float64)
 
     # Return the shift, rotation, and scale changes
-    result = build_fit(P, Q, fitgeom='rscale')
-    resids = xyin - np.dot((xyref), result['fit_matrix']) - result['offset']
-    rms = [resids[:, 0].std(dtype=np.float64),
-           resids[:, 1].std(dtype=np.float64)]
-    result['rms'] = rms
-    result['resids'] = resids
+    fit = build_fit(P, Q, fitgeom='rscale')
+    resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
+    fit['resids'] = resids
+    if wxy is None and wuv is None:
+        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+    else:
+        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
-    return result
+    return fit
 
 
 def _inv3x3(x):
@@ -299,6 +360,7 @@ def _inv3x3(x):
     x2 = x[:, 2]
     m = np.array([np.cross(x1, x2), np.cross(x2, x0), np.cross(x0, x1)])
     d = np.dot(x0, np.cross(x1, x2))
+
     if np.abs(d) < np.finfo(np.float64).tiny:
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
@@ -306,7 +368,7 @@ def _inv3x3(x):
     return (m / d)
 
 
-def fit_general(xy, uv):
+def fit_general(xy, uv, wxy=None, wuv=None):
     """ Performs a simple fit for the shift only between
         matched lists of positions 'xy' and 'uv'.
 
@@ -333,25 +395,65 @@ def fit_general(xy, uv):
             "affine transformations."
         )
 
-    # Set up products used for computing the fit
-    gxy = xy.astype(np.longdouble)
-    guv = uv.astype(np.longdouble)
+    x = np.array(xy[:, 0], dtype=np.longdouble)
+    y = np.array(xy[:, 1], dtype=np.longdouble)
+    u = np.array(uv[:, 0], dtype=np.longdouble)
+    v = np.array(uv[:, 1], dtype=np.longdouble)
 
-    Sx = gxy[:, 0].sum()
-    Sy = gxy[:, 1].sum()
-    Su = guv[:, 0].sum()
-    Sv = guv[:, 1].sum()
+    if wxy is None and wuv is None:
+        # no weighting
 
-    Sxu = np.dot(gxy[:, 0], guv[:, 0])
-    Syu = np.dot(gxy[:, 1], guv[:, 0])
-    Sxv = np.dot(gxy[:, 0], guv[:, 1])
-    Syv = np.dot(gxy[:, 1], guv[:, 1])
-    Suu = np.dot(guv[:, 0], guv[:, 0])
-    Svv = np.dot(guv[:, 1], guv[:, 1])
-    Suv = np.dot(guv[:, 0], guv[:, 1])
+        # Set up products used for computing the fit
+        Sw = float(x.size)
+        Sx = x.sum()
+        Sy = y.sum()
+        Su = u.sum()
+        Sv = v.sum()
 
-    n = len(xy[:, 0])
-    M = np.array([[Su, Sv, n], [Suu, Suv, Su], [Suv, Svv, Sv]])
+        Sxu = np.dot(x, u)
+        Syu = np.dot(y, u)
+        Sxv = np.dot(x, v)
+        Syv = np.dot(y, v)
+        Suu = np.dot(u, u)
+        Svv = np.dot(v, v)
+        Suv = np.dot(u, v)
+
+    else:
+        if wxy is None:
+            w = np.array(wuv, dtype=np.longdouble)
+        elif wuv is None:
+            w = np.array(wxy, dtype=np.longdouble)
+        else:
+            # 1/w = sigma**2 = sigma_xy**2 + sigma_uv**2 = 1/wxy + 1/wuv
+            wuv = np.array(wuv, dtype=np.longdouble)
+            wxy = np.array(wxy, dtype=np.longdouble)
+            m = np.logical_and(wuv > 0, wxy > 0)
+            w = np.zeros_like(wuv)
+            w[m] = wxy[m] * wuv[m] / (wxy[m] + wuv[m])
+
+        if np.any(w < 0.0):
+            raise ValueError("Invalid weights: weights must be non-negative.")
+
+        if np.sum(w > 0) < 3:
+            raise ValueError("Not enough valid data for 'general' fit: "
+                             "too many weights are zero!")
+
+        # Set up products used for computing the fit
+        Sw = np.sum(w, dtype=np.longdouble)
+        Sx = np.dot(w, x)
+        Sy = np.dot(w, y)
+        Su = np.dot(w, u)
+        Sv = np.dot(w, v)
+
+        Sxu = np.dot(w, x * u)
+        Syu = np.dot(w, y * u)
+        Sxv = np.dot(w, x * v)
+        Syv = np.dot(w, y * v)
+        Suu = np.dot(w, u * u)
+        Svv = np.dot(w, v * v)
+        Suv = np.dot(w, u * v)
+
+    M = np.array([[Su, Sv, Sw], [Suu, Suv, Su], [Suv, Svv, Sv]])
     U = np.array([Sx, Sxu, Sxv])
     V = np.array([Sy, Syu, Syv])
 
@@ -360,7 +462,8 @@ def fit_general(xy, uv):
     #   u = P0 + P1*x + P2*y
     #   v = Q0 + Q1*x + Q2*y
     #
-    invM = _inv3x3(M)
+    #invM = _inv3x3(M)
+    invM = np.linalg.inv(M.astype(np.float64))
     P = np.dot(invM, U).astype(np.float64)
     Q = np.dot(invM, V).astype(np.float64)
     if not (np.all(np.isfinite(P)) and np.all(np.isfinite(Q))):
@@ -369,14 +472,15 @@ def fit_general(xy, uv):
         )
 
     # Return the shift, rotation, and scale changes
-    result = build_fit(P, Q, 'general')
-    resids = xy - np.dot(uv, result['fit_matrix']) - result['offset']
-    rms = [resids[:, 0].std(dtype=np.float64),
-           resids[:, 1].std(dtype=np.float64)]
-    result['rms'] = rms
-    result['resids'] = resids
+    fit = build_fit(P, Q, 'general')
+    resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
+    fit['resids'] = resids
+    if wxy is None and wuv is None:
+        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+    else:
+        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
-    return result
+    return fit
 
 
 def build_fit(P, Q, fitgeom):
@@ -386,7 +490,7 @@ def build_fit(P, Q, fitgeom):
     # determinant of the transformation
     det = P[0] * Q[1] - P[1] * Q[0]
     sdet = np.sign(det)
-    proper = (sdet >= 0)
+    proper = sdet >= 0
 
     # Create a working copy (no reflections) for computing transformation
     # parameters (scale, rotation angle, skew):
@@ -471,10 +575,10 @@ def build_fit_matrix(rot, scale=1):
 
     """
     if hasattr(rot, '__iter__'):
-        rx = rot[0]
-        ry = rot[1]
+        rx = np.deg2rad(rot[0])
+        ry = np.deg2rad(rot[1])
     else:
-        rx = float(rot)
+        rx = np.deg2rad(float(rot))
         ry = rx
 
     if hasattr(scale, '__iter__'):
@@ -484,11 +588,7 @@ def build_fit_matrix(rot, scale=1):
         sx = float(scale)
         sy = sx
 
-    matrix = np.array(
-        [
-            [sx * np.cos(np.deg2rad(rx)), -sx * np.sin(np.deg2rad(rx))],
-            [sy * np.sin(np.deg2rad(ry)), sy * np.cos(np.deg2rad(ry))]
-        ]
-    )
+    matrix = np.array([[sx * np.cos(rx), -sx * np.sin(rx)],
+                       [sy * np.sin(ry), sy * np.cos(ry)]])
 
     return matrix

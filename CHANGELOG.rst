@@ -8,6 +8,12 @@ Release Notes
 tweakwcs (DEVELOPMENT)
 ======================
 
+- Add support for weights to the linear fitting routines. [#40]
+
+- Replaced the use of RMS for each axis with a single RMSD value, see
+  [Root-Mean-Square Deviation]\
+  (https://en.wikipedia.org/wiki/Root-mean-square_deviation). [#40]
+
 - Rely on ``pixel_bounds``
   [see APE 14](https://github.com/astropy/astropy-APEs/blob/master/APE14.rst)
   when available for computation of image's bounding box. [#39]
