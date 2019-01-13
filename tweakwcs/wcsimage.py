@@ -336,7 +336,7 @@ class WCSImageCatalog(object):
             hy = ny - 0.5
 
         else:
-            ((lx, hx), (ly, hy)) = self.imwcs.original_wcs.pixel_bounds
+            ((lx, hx), (ly, hy)) = self.imwcs.bounding_box
 
         if stepsize is None:
             nintx = 2
@@ -583,10 +583,17 @@ class WCSGroupCatalog(object):
         """
         catalogs = []
         catno = 0
+        has_weights = None
         for image in self._images:
             catlen = len(image.catalog)
-            if not catlen:
+            if catlen == 0:
                 continue
+
+            if has_weights is None:
+                has_weights = 'weight' in image.catalog.colnames
+            elif has_weights != ('weight' in image.catalog.colnames):
+                raise KeyError("Non-empty catalogs in a group must all "
+                               "either have or not have 'weight' column.")
 
             if image.name is None:
                 catname = 'Catalog #{:d}'.format(catno)
@@ -606,11 +613,22 @@ class WCSGroupCatalog(object):
             col_ra = table.MaskedColumn(ra, dtype=np.float64, name='RA')
             col_dec = table.MaskedColumn(dec, dtype=np.float64, name='DEC')
 
-            cat = table.Table(
-                [col_imcatidx, col_catname, col_id, col_x,
-                 col_y, col_ra, col_dec],
-                masked=True
-            )
+            if has_weights:
+                col_wght = table.MaskedColumn(image.catalog['weight'],
+                                              dtype=np.float64)
+
+                cat = table.Table(
+                    [col_imcatidx, col_catname, col_id, col_x,
+                     col_y, col_ra, col_dec, col_wght],
+                    masked=True
+                )
+
+            else:
+                cat = table.Table(
+                    [col_imcatidx, col_catname, col_id, col_x,
+                     col_y, col_ra, col_dec],
+                    masked=True
+                )
 
             catalogs.append(cat)
             catno += 1
@@ -792,12 +810,12 @@ class WCSGroupCatalog(object):
                 sigma=3.0):
         """
         Perform linear fit of this group's combined catalog to the reference
-        catalog.
-
+        catalog. When either/both group's catalog or/and the reference catalog
+        contain ``'weight'`` column, weigted fitting will be performed.
+        See ``Notes`` section for further details.
 
         Parameters
         ----------
-
         refcat : RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
@@ -819,11 +837,47 @@ class WCSGroupCatalog(object):
         sigma : float, optional
             Clipping limit in sigma units.
 
+        Notes
+        -----
+        When fitting image sources to reference catalog sources, we can
+        specify which sources have higher weights. This can be done by
+        assigning a "weight" to each source by specifying these values
+        in the optional ``'weight'`` column of either the reference catalog,
+        image catalog, or both.
+
+        When weights are not provided, all sources are weighed equally. When
+        only one of image or reference catalog weights are provided,
+        the sources will be weighted with the specified weights.
+        When *both* image *and* reference catalogs specify weights for
+        the same sources, the two weights will be combined into a single
+        weight as:
+
+        .. math::
+            1/w = 1/w_i + 1/w_r
+
+        .. warning::
+            Keep in mind that when a group catalog is created from individual
+            catalogs, weights of the group catalog are created by
+            *concatenating* weights of individual catalogs. Therefore,
+            for the weighting of groups of catalogs to work correctly,
+            the weights of individual catalogs should be scaled in such a way
+            that when individual catalogs are combined into a single
+            "group catalog", weights preserve their relative values.
+
+            For example, let's say a group is formed from two individual
+            catalogs. Let's say first catalog contains four sources with equal
+            weights ``[1,1,1,1]`` and the second catalog contains two sources
+            with weights ``[1,1]`` then the group's catalogs sources will
+            also have equal weights ``[1,1,1,1,1,1]``. However, if each
+            individual catalog's weights were normalized such that sum of
+            all weights is 1, then group's sources will be weighed unequally:
+            ``[0.25,0.25,0.25,0.25,0.5,0.5]``.
+
         """
-        im_xyref = np.asanyarray([self._catalog['TPx'],
-                                  self._catalog['TPy']]).T
-        refxy = np.asanyarray([refcat.catalog['TPx'],
-                               refcat.catalog['TPy']]).T
+        im_xyref = np.asarray([self._catalog['TPx'],
+                               self._catalog['TPy']]).T
+        refxy = np.asarray([refcat.catalog['TPx'],
+                            refcat.catalog['TPy']]).T
 
         # mask = np.logical_not(self._catalog['matched_ref_id'].mask)
         # im_xyref = im_xyref[mask]
@@ -842,8 +896,20 @@ class WCSGroupCatalog(object):
 
         refxy = refxy[ref_idx]
 
+        # process weights:
+        if 'weight' in self._catalog.colnames:
+            im_weight = np.asarray(self._catalog['weight'])[minput_idx]
+        else:
+            im_weight = None
+
+        if 'weight' in refcat.catalog.colnames:
+            ref_weight = np.asarray(refcat.catalog['weight'])[ref_idx]
+        else:
+            ref_weight = None
+
         fit = iter_linear_fit(
-            refxy, im_xyref, xyindx=ref_idx, uvindx=minput_idx,
+            refxy, im_xyref, ref_weight, im_weight,
+            xyindx=ref_idx, uvindx=minput_idx,
             fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
@@ -874,8 +940,7 @@ class WCSGroupCatalog(object):
             raise ValueError("Unsupported fit geometry.")
 
         log.info("")
-        log.info("XRMS: {:.6g}    YRMS: {:.6g}".format(fit['rms'][0],
-                                                       fit['rms'][1]))
+        log.info("FIT RMSD: {:.6g}".format(fit['rmsd']))
         log.info("Final solution based on {:d} objects."
                  .format(fit['resids'].shape[0]))
 
@@ -941,8 +1006,9 @@ class WCSGroupCatalog(object):
             * **'scale'**: a tuple of (mean scale, scale along X-axis, scale
               along Y-axis)
             * **'skew'**: computed skew
-            * **'rms'**: fit RMS in *image* coordinates as a tuple of two
-              values: (RMS_X, RMS_Y)
+            * **'rmsd'**: fit Root-Mean-Square Deviation in *tangent plane*
+              coordinates of corrected image source positions from reference
+              source positions.
             * **'fit_RA'**: first (corrected) world coordinate of input source
               positions used in fitting.
             * **'fit_DEC'**: second (corrected) world coordinate of input
@@ -955,7 +1021,7 @@ class WCSGroupCatalog(object):
         .. note::
             A ``'SUCCESS'`` status does not indicate a "good" alignment. It
             simply indicates that alignment algortithm has completed without
-            errors. Use other fields to evaluate alignment: residual RMS
+            errors. Use other fields to evaluate alignment: fit RMSD
             values, number of matched sources, etc.
 
 
@@ -1057,7 +1123,7 @@ class WCSGroupCatalog(object):
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
             'skew': fit['skew'],  # skew
-            'rms': fit['rms'],  # fit RMS in image coords (RMS_X, RMS_Y)
+            'rmsd': fit['rmsd'],  # fit RMSD in tangent plane coords
             'fit_RA': fit['fit_RA'],
             'fit_DEC': fit['fit_DEC'],
             'status': 'SUCCESS',

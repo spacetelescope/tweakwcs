@@ -61,12 +61,16 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
     refcat : astropy.table.Table
         A reference source catalog. The catalog must contain ``'RA'`` and
         ``'DEC'`` columns which indicate reference source world
-        coordinates (in degrees).
+        coordinates (in degrees). An optional column in the catalog is
+        the ``'weight'`` column, which when present, will be used in fitting.
+        See ``Notes`` section for further details.
 
     imcat : astropy.table.Table
         Source catalog associated with an image. Must contain ``'x'`` and
         ``'y'`` columns which indicate source coordinates (in pixels) in
-        the associated image.
+        the associated image. An optional column in the catalog is
+        the ``'weight'`` column, which when present, will be used in fitting.
+        See ``Notes`` section for further details.
 
     imwcs : TPWCS
         A ``WCS`` associated with the image from which the catalog was derived.
@@ -97,6 +101,38 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
     Notes
     -----
 
+    When fitting image sources to reference catalog sources, we can specify
+    which sources have higher weights. This can be done by assigning a "weight"
+    to each source by specifying these values in the optional ``'weight'``
+    column of either the reference catalog, image catalog, or both.
+
+    When weights are not provided, all sources are weighed equally. When
+    only either image or reference catalog weights are provided, the sources
+    will be weighted with the specified weights. When *both* image *and*
+    reference catalogs specify weights for the same sources, the two weights
+    will be combined into a single weight as:
+
+    .. math::
+        1/w = 1/w_i + 1/w_r
+
+    .. warning::
+        Keep in mind that when a group catalog is created from individual
+        catalogs, weights of the group catalog are created by
+        *concatenating* weights of individual catalogs. Therefore,
+        for the weighting of groups of catalogs to work correctly,
+        the weights of individual catalogs should be scaled in such a way
+        that when individual catalogs are combined into a single
+        "group catalog", weights preserve their relative values.
+
+        For example, let's say a group is formed from two individual
+        catalogs. Let's say first catalog contains four sources with equal
+        weights ``[1,1,1,1]`` and the second catalog contains two sources
+        with weights ``[1,1]`` then the group's catalogs sources will
+        also have equal weights ``[1,1,1,1,1,1]``. However, if each
+        individual catalog's weights were normalized such that sum of
+        all weights is 1, then group's sources will be weighed unequally:
+        ``[0.25,0.25,0.25,0.25,0.5,0.5]``.
+
     Upon successful completion, this function will set the following ``meta``
     fields of the ``meta`` attribute of the returned ``TPWCS`` object:
 
@@ -116,8 +152,9 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
           Y-axis)
         * **'skew'**: computed skew
-        * **'rms'**: fit RMS in *image* coordinates as a tuple of two values:
-          (RMS_X, RMS_Y)
+        * **'rmsd'**: fit Root-Mean-Square Deviation in *tangent plane*
+          coordinates of corrected image source positions from reference
+          source positions.
         * **'status'**: Alignment status. Currently two possible status are
           possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
           When alignment failed, the reason for failure is provided after
@@ -214,7 +251,13 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
     ----------
     images : list of astropy.nddata.NDDataBase
         A list of `astropy.nddata.NDDataBase` objects whose WCS (provided
-        through its ``meta['wcs']`` attribute) should be adjusted.
+        through its ``meta['wcs']`` attribute) should be adjusted. Each image
+        must contain a catalog - an `~astropy.table.Table` - in the
+        ``meta['catalog']`` attribute. This catalog must contain ``'x'`` and
+        ``'y'`` columns which indicate source coordinates (in pixels) in
+        the associated image. An optional column in the catalog is
+        the ``'weight'`` column, which when present, will be used in fitting.
+        See ``Notes`` section for further details.
 
         .. warning::
             This function modifies the WCS of the input images provided
@@ -225,7 +268,9 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         A reference source catalog. When ``refcat`` is an
         `astropy.table.Table`, the catalog must contain ``'RA'`` and
         ``'DEC'`` columns which indicate reference source world
-        coordinates (in degrees).
+        coordinates (in degrees). An optional column in the catalog is
+        the ``'weight'`` column, which when present, will be used in fitting.
+        See ``Notes`` section for further details.
 
         When ``refcat`` is an  `astropy.nddata.NDDataBase`, its ``meta``
         attribute must contain at least ``'catalog'`` item that is an
@@ -283,6 +328,45 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
 
     sigma : float, optional
         Clipping limit in sigma units.
+
+    Notes
+    -----
+
+    When fitting image sources to reference catalog sources, we can specify
+    which sources have higher weights. This can be done by assigning a "weight"
+    to each source by specifying these values in the optional ``'weight'``
+    column of either the reference catalog, image catalog, or both.
+
+    When weights are not provided, all sources are weighed equally. When
+    only either image or reference catalog weights are provided, the sources
+    will be weighted with the specified weights. When *both* image *and*
+    reference catalogs specify weights for the same sources, the two weights
+    will be combined into a single weight as:
+
+    .. math::
+        1/w = 1/w_i + 1/w_r
+
+    .. warning::
+        Keep in mind that when a group catalog is created from individual
+        catalogs, weights of the group catalog are created by
+        *concatenating* weights of individual catalogs. Therefore,
+        for the weighting of groups of catalogs to work correctly,
+        the weights of individual catalogs should be scaled in such a way
+        that when individual catalogs are combined into a single
+        "group catalog", weights preserve their relative values.
+
+        For example, let's say a group is formed from two individual
+        catalogs. Let's say first catalog contains four sources with equal
+        weights ``[1,1,1,1]`` and the second catalog contains two sources
+        with weights ``[1,1]`` then the group's catalogs sources will
+        also have equal weights ``[1,1,1,1,1,1]``. However, if each
+        individual catalog's weights were normalized such that sum of
+        all weights is 1, then group's sources will be weighed unequally:
+        ``[0.25,0.25,0.25,0.25,0.5,0.5]``.
+
+    .. warning::
+        When image catalogs contain optional ``'weight'`` column, then
+        all image catalogs in a group must contain this column.
 
     """
     function_name = tweak_image_wcs.__name__
