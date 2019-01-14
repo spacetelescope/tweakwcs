@@ -21,6 +21,7 @@ Content
    linearfit
    groupwcs
    wcsutils
+   linalg
    LICENSE.rst
 
 
