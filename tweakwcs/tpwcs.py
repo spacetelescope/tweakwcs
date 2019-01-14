@@ -25,6 +25,7 @@ except:
     TPCorr = None
 
 # LOCAL
+from .linalg import inv
 from . import __version__, __version_date__
 
 __author__ = 'Mihai Cara'
@@ -624,30 +625,25 @@ class FITSWCS(TPWCS):
         shift = (np.asarray(shift) - np.dot(self._wcslin.wcs.crpix, matrix) +
                  self._wcslin.wcs.crpix)
 
-        if matrix.shape == (2, 2):
-            matrix = _inv2x2(matrix).T
-        else:
-            matrix = np.linalg.inv(matrix).T
+        matrix = inv(matrix).T
 
         cwcs = self._wcs.deepcopy()
-        cd_eye = np.eye(self._wcs.wcs.cd.shape[0], dtype=np.longdouble)
 
         # estimate step for numerical differentiation. We need a step
         # large enough to avoid rounding errors and small enough to get a
         # better precision for numerical differentiation.
         # TODO: The logic below should be revised at a later time so that it
         # better takes into account the two competing requirements.
-        hx = max(1.0,
-                 min(20.0, (self._wcs.wcs.crpix[0] - 1.0) / 100.0,
-                     (self._wcs.pixel_shape[0] - self._wcs.wcs.crpix[0]) / 100.0))
-        hy = max(1.0,
-                 min(20.0, (self._wcs.wcs.crpix[1] - 1.0) / 100.0,
-                     (self._wcs.pixel_shape[1] - self._wcs.wcs.crpix[1]) / 100.0))
+        crpix1, crpix2 = self._wcs.wcs.crpix
+        hx = max(1.0, min(20.0, (crpix1 - 1.0) / 100.0,
+                          (self._wcs.pixel_shape[0] - crpix1) / 100.0))
+        hy = max(1.0, min(20.0, (crpix2 - 1.0) / 100.0,
+                          (self._wcs.pixel_shape[1] - crpix2) / 100.0))
 
         # compute new CRVAL for the image WCS:
         crpixinref = self._wcslin.wcs_world2pix(
             self._wcs.wcs_pix2world([self._wcs.wcs.crpix],1),1)
-        crpixinref = np.dot(matrix, (crpixinref - shift).T).T
+        crpixinref = np.dot(crpixinref - shift, matrix.T).astype(np.float64)
         self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
         self._wcs.wcs.set()
 
@@ -659,7 +655,7 @@ class FITSWCS(TPWCS):
         self._wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
-        self._meta['matrix'] = matrix
+        self._meta['matrix'] = matrix.astype(np.float64)
         self._meta['shift'] = shift
         if meta is not None:
             self._meta.update(meta)
@@ -757,12 +753,15 @@ def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
                     [x0, y0 + hy]],
                    dtype=np.float64)
     # convert image coordinates to reference image coordinates:
-    p = wcsref.wcs_world2pix(wcsim.wcs_pix2world(p, 1), 1).astype(np.longdouble)
+    p = wcsref.wcs_world2pix(
+        wcsim.wcs_pix2world(p, 1), 1
+    ).astype(np.longdouble)
     # apply linear fit transformation:
     p = np.dot(f, (p - shift).T).T
     # convert back to image coordinate system:
     p = wcsima.wcs_world2pix(
-        wcsref.wcs_pix2world(p.astype(np.float64), 1), 1).astype(np.longdouble)
+        wcsref.wcs_pix2world(p.astype(np.float64), 1), 1
+    ).astype(np.longdouble)
 
     # derivative with regard to x:
     u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6 * hx)
@@ -770,22 +769,3 @@ def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
     u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6 * hy)
 
     return (np.asarray([u1, u2]).T, p[0])
-
-
-def _inv2x2(x):
-    assert(x.shape == (2, 2))
-    inv = x.astype(np.longdouble)
-    det = inv[0, 0] * inv[1, 1] - inv[0,1] * inv[1, 0]
-    if np.abs(det) < np.finfo(np.float64).tiny:
-        raise ArithmeticError('Singular matrix.')
-    a = inv[0, 0]
-    d = inv[1, 1]
-    inv[1, 0] *= -1.0
-    inv[0, 1] *= -1.0
-    inv[0, 0] = d
-    inv[1, 1] = a
-    inv /= det
-    inv = inv.astype(np.float64)
-    if not np.all(np.isfinite(inv)):
-        raise ArithmeticError('Singular matrix.')
-    return inv

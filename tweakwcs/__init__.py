@@ -12,5 +12,7 @@ from .tpwcs import *
 from .matchutils import *
 from .imalign import *
 from .wcsimage import *
+from .linalg import *
+from .linearfit import *
 #from .jwst_types import *
 #from .jwextension import *

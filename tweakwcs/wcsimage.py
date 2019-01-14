@@ -24,6 +24,7 @@ from stsci.stimage import xyxymatch
 from .wcsutils import cartesian2spherical, spherical2cartesian, planar_rot_3D
 from .tpwcs import TPWCS
 from .matchutils import TPMatch
+from .linalg import inv
 from .linearfit import iter_linear_fit
 
 from . import __version__, __version_date__
@@ -951,20 +952,20 @@ class WCSGroupCatalog(object):
         """
         # compute the matrix for the scale and rotation correction
         matrix = matrix.T
-        shift = -np.dot(np.linalg.inv(matrix), shift)
+        shift = -np.dot(inv(matrix), shift)
 
         for imcat in self:
             # compute linear transformation from the tangent plane used for
             # alignment to the tangent plane of another image in the group:
             if imcat.imwcs == tanplane_wcs:
                 m = matrix.copy()
-                s = shift.copy()
+                s = np.array(shift, dtype=np.float64)
             else:
                 r1, t1 = _tp2tp(imcat.imwcs, tanplane_wcs)
                 r2, t2 = _tp2tp(tanplane_wcs, imcat.imwcs)
                 m = np.linalg.multi_dot([r2, matrix, r1])
-                s = t1 + np.dot(np.linalg.inv(r1), shift) + \
-                    np.dot(np.linalg.inv(np.dot(matrix, r1)), t2)
+                s = (t1 + np.dot(inv(r1), shift) +
+                     np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.float64)
 
             imcat.imwcs.set_correction(m, s, meta=meta)
 
@@ -1154,7 +1155,7 @@ def _tp2tp(imwcs1, imwcs2):
     xrp, yrp = imwcs2.world_to_tanp(*imwcs1.tanp_to_world(x, y))
 
     matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])])
-    shift = -np.dot(np.linalg.inv(matrix), [xrp[0], yrp[0]])
+    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.float64)
 
     return matrix, shift
 
@@ -1322,7 +1323,7 @@ class RefCatalog(object):
         rotm = [planar_rot_3D(np.deg2rad(alpha), 2 - axis)
                 for axis, alpha in enumerate([ra_ref, dec_ref])]
         euler_rot = np.linalg.multi_dot(rotm)
-        inv_euler_rot = np.linalg.inv(euler_rot)
+        inv_euler_rot = inv(euler_rot)
         xr, yr, zr = np.dot(euler_rot, (x, y, z))
         x = yr / xr
         y = zr / xr
@@ -1370,7 +1371,7 @@ class RefCatalog(object):
         # "unrotate" cartezian coordinates back to their original
         # ra_ref and dec_ref "positions":
         xt = np.ones_like(xv)
-        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv))
+        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.float64)
         # convert cartesian to spherical coordinates:
         ra, dec = cartesian2spherical(xcr, ycr, zcr)
 
