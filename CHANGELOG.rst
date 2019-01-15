@@ -9,6 +9,13 @@ Release Notes
    ======================
 
 
+
+tweakwcs v0.3.1 (14-January-2019)
+=================================
+
+- Fixed Read-The-Docs build failure. [#45]
+
+
 tweakwcs v0.3.0 (14-January-2019)
 =================================
 
