@@ -1,20 +1,19 @@
 name: tweakwcs
 channels:
-    - http://ssb.stsci.edu/astroconda
-    - conda-forge
+    - defaults
 dependencies:
-    - python>=3.5
+    - "python>=3.5"
     - setuptools
     - numpy
     - numpydoc
-    - astropy>=3.1
+    - "astropy>=3.1"
     - graphviz
-    - matplotlib
-    - sphinx
     - pip:
+      - sphinx
       - sphinx_rtd_theme
       - stsci_rtd_theme
       - sphinx_automodapi
+      - matplotlib
       - gwcs
       - stsci.imagestats
       - stsci.stimage
