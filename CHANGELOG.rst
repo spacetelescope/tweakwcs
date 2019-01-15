@@ -5,8 +5,14 @@ Release Notes
 =============
 
 
-tweakwcs (DEVELOPMENT)
-======================
+.. tweakwcs (DEVELOPMENT)
+   ======================
+
+
+tweakwcs v0.3.0 (14-January-2019)
+=================================
+
+- Implemented higher-accuracy matrix inversion. [#42]
 
 - Bug fix related to not switching to using ``bounding_box`` instead of
   ``pixel_shape``. [#41]
