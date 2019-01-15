@@ -10,7 +10,7 @@ source catalogs.
 """
 # STDLIB
 import logging
-import sys
+import numbers
 from copy import deepcopy
 
 # THIRD-PARTY
@@ -37,12 +37,10 @@ __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-_INT_TYPE = (int, long,) if sys.version_info < (3,) else (int,)
-
 
 def _is_int(n):
     return (
-        (isinstance(n, _INT_TYPE) and not isinstance(n, bool)) or
+        (isinstance(n, numbers.Integral) and not isinstance(n, bool)) or
         (isinstance(n, np.generic) and np.issubdtype(n, np.integer))
     )
 

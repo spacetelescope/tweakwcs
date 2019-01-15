@@ -10,7 +10,6 @@ of ``WCS``.
 """
 # STDLIB
 import logging
-import sys
 from copy import deepcopy
 from abc import ABC, abstractmethod, abstractproperty
 
