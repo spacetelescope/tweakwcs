@@ -10,6 +10,12 @@ Release Notes
 
 
 
+tweakwcs v0.3.2 (15-January-2019)
+=================================
+
+- Fixed the formula for computing ``RMSD`` of non-weighted fit. [#46]
+
+
 tweakwcs v0.3.1 (14-January-2019)
 =================================
 
