@@ -204,7 +204,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     resids = diff_pts - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
     else:
         fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
@@ -346,7 +346,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
     else:
         fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
@@ -461,7 +461,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.sum(resids**2)))
+        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
     else:
         fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
 
