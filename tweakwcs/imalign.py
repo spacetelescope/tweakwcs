@@ -88,7 +88,7 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         Number (a non-negative integer) of clipping iterations in fit.
 
     sigma : float, optional
-        Clipping limit in sigma units.
+        Clipping limit in ``RMSE`` units.
 
     Returns
     -------
@@ -152,7 +152,10 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
           Y-axis)
         * **'skew'**: computed skew
-        * **'rmsd'**: fit Root-Mean-Square Deviation in *tangent plane*
+        * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
+          coordinates of corrected image source positions from reference
+          source positions.
+        * **'mae'**: fit Mean Absolute Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
         * **'status'**: Alignment status. Currently two possible status are
@@ -327,7 +330,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         Number (a non-negative integer) of clipping iterations in fit.
 
     sigma : float, optional
-        Clipping limit in sigma units.
+        Clipping limit in ``RMSE`` units.
 
     Notes
     -----
