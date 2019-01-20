@@ -10,7 +10,9 @@ tweakwcs (DEVELOPMENT)
 
 - Corrected a bug in the computation of ``RMSE`` for the "general" fit. [#47]
 
-- Added computation of ``MAD`` of the fit (in addition to ``RMSE``). [#47]
+- Added computation of ``MAE`` of the fit (in addition to ``RMSE``), see
+  [Mean Absolute Error](https://en.wikipedia.org/wiki/Mean_absolute_error).
+  [#47]
 
 - Renamed ``RMSD`` to ``RMSE`` (Root-Mean-Square Error). [#47]
 

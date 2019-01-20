@@ -88,7 +88,7 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         Number (a non-negative integer) of clipping iterations in fit.
 
     sigma : float, optional
-        Clipping limit in sigma units.
+        Clipping limit in ``RMSE`` units.
 
     Returns
     -------
@@ -330,7 +330,7 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         Number (a non-negative integer) of clipping iterations in fit.
 
     sigma : float, optional
-        Clipping limit in sigma units.
+        Clipping limit in ``RMSE`` units.
 
     Notes
     -----
