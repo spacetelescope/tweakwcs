@@ -97,7 +97,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         resids = fit['resids']
 
         # redefine what pixels will be included in next iteration
-        cutoff = sigma * fit['rmsd']
+        cutoff = sigma * fit['rmse']
 
         goodpix = np.linalg.norm(resids, axis=1) < cutoff
         if n == 0:
@@ -204,9 +204,11 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     resids = diff_pts - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
     else:
-        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
+        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
+        fit['mae'] = float(np.dot(w, np.linalg.norm(resids, axis=1)))
 
     return fit
 
@@ -346,9 +348,11 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
     else:
-        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
+        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
+        fit['mae'] = float(np.dot(w, np.linalg.norm(resids, axis=1)))
 
     return fit
 
@@ -461,9 +465,11 @@ def fit_general(xy, uv, wxy=None, wuv=None):
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
     if wxy is None and wuv is None:
-        fit['rmsd'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
+        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
     else:
-        fit['rmsd'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
+        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w / Sw, resids**2))))
+        fit['mae'] = float(np.dot(w / Sw, np.linalg.norm(resids, axis=1)))
 
     return fit
 

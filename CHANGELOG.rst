@@ -5,9 +5,14 @@ Release Notes
 =============
 
 
-.. tweakwcs (DEVELOPMENT)
-   ======================
+tweakwcs (DEVELOPMENT)
+======================
 
+- Corrected a bug in the computation of ``RMSE`` for the "general" fit. [#47]
+
+- Added computation of ``MAD`` of the fit (in addition to ``RMSE``). [#47]
+
+- Renamed ``RMSD`` to ``RMSE`` (Root-Mean-Square Error). [#47]
 
 
 tweakwcs v0.3.2 (15-January-2019)
@@ -35,7 +40,7 @@ tweakwcs v0.3.0 (14-January-2019)
 
 - Add support for weights to the linear fitting routines. [#40]
 
-- Replaced the use of RMS for each axis with a single RMSD value, see
+- Replaced the use of ``RMS`` for each axis with a single ``RMSD`` value, see
   [Root-Mean-Square Deviation]\
   (https://en.wikipedia.org/wiki/Root-mean-square_deviation). [#40]
 

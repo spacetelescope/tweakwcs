@@ -19,7 +19,6 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS)
 #This is needed with git because git doesn't create a dir if it's empty
 $(shell [ -d "_static" ] || mkdir -p _static)
 
-
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
@@ -81,17 +80,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/packagename.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/tweakwcs.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/packagename.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/tweakwcs.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/packagename"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/packagename"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/tweakwcs"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/tweakwcs"
 	@echo "# devhelp"
 
 epub:

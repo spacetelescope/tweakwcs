@@ -939,7 +939,8 @@ class WCSGroupCatalog(object):
             raise ValueError("Unsupported fit geometry.")
 
         log.info("")
-        log.info("FIT RMSD: {:.6g}".format(fit['rmsd']))
+        log.info("FIT RMSE: {:.6g}   FIT MAE: {:.6g}"
+                 .format(fit['rmse'], fit['mae']))
         log.info("Final solution based on {:d} objects."
                  .format(fit['resids'].shape[0]))
 
@@ -1005,7 +1006,10 @@ class WCSGroupCatalog(object):
             * **'scale'**: a tuple of (mean scale, scale along X-axis, scale
               along Y-axis)
             * **'skew'**: computed skew
-            * **'rmsd'**: fit Root-Mean-Square Deviation in *tangent plane*
+            * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
+              coordinates of corrected image source positions from reference
+              source positions.
+            * **'mae'**: fit Mean Absolute Error in *tangent plane*
               coordinates of corrected image source positions from reference
               source positions.
             * **'fit_RA'**: first (corrected) world coordinate of input source
@@ -1020,8 +1024,8 @@ class WCSGroupCatalog(object):
         .. note::
             A ``'SUCCESS'`` status does not indicate a "good" alignment. It
             simply indicates that alignment algortithm has completed without
-            errors. Use other fields to evaluate alignment: fit RMSD
-            values, number of matched sources, etc.
+            errors. Use other fields to evaluate alignment: fit ``RMSE``
+            and ``MAE`` values, number of matched sources, etc.
 
 
         Parameters
@@ -1122,7 +1126,8 @@ class WCSGroupCatalog(object):
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
             'scale': fit['scale'],  # <s>, sx, sy
             'skew': fit['skew'],  # skew
-            'rmsd': fit['rmsd'],  # fit RMSD in tangent plane coords
+            'rmse': fit['rmse'],  # fit RMSE in tangent plane coords
+            'mae': fit['mae'],  # fit MAE in tangent plane coords
             'fit_RA': fit['fit_RA'],
             'fit_DEC': fit['fit_DEC'],
             'status': 'SUCCESS',
