@@ -256,7 +256,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         Syu = np.dot(y, u)
         Sxu = np.dot(x, u)
         Syv = np.dot(y, v)
-        Su2v2 = np.dot(u**2, v**2)
+        Su2v2 = Su2 + Sv2
 
     else:
         if wxy is None:
@@ -295,7 +295,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         Syu = np.dot(w, y * u)
         Sxu = np.dot(w, x * u)
         Syv = np.dot(w, y * v)
-        Su2v2 = np.dot(w, u**2 + v**2)
+        Su2v2 = Su2 + Sv2
 
     det = Sxu * Syv - Sxv * Syu
     if (det < 0):
