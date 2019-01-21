@@ -4,9 +4,14 @@
 Release Notes
 =============
 
+.. 0.3.4 (unreleased)
+   ==================
 
-tweakwcs (DEVELOPMENT)
-======================
+
+0.3.3 (21-January-2019)
+=======================
+
+- Corrected a bug in the non-weighted ``rscale`` fit. [#49]
 
 - Corrected a bug in the computation of ``RMSE`` for the "general" fit. [#47]
 
@@ -17,20 +22,20 @@ tweakwcs (DEVELOPMENT)
 - Renamed ``RMSD`` to ``RMSE`` (Root-Mean-Square Error). [#47]
 
 
-tweakwcs v0.3.2 (15-January-2019)
-=================================
+0.3.2 (15-January-2019)
+=======================
 
 - Fixed the formula for computing ``RMSD`` of non-weighted fit. [#46]
 
 
-tweakwcs v0.3.1 (14-January-2019)
-=================================
+0.3.1 (14-January-2019)
+=======================
 
 - Fixed Read-The-Docs build failure. [#45]
 
 
-tweakwcs v0.3.0 (14-January-2019)
-=================================
+0.3.0 (14-January-2019)
+=======================
 
 - Implemented higher-accuracy matrix inversion. [#42]
 
@@ -54,8 +59,8 @@ tweakwcs v0.3.0 (14-January-2019)
   (*aligned*) sources. [#36]
 
 
-tweakwcs v0.2.0 (20-December-2018)
-==================================
+0.2.0 (20-December-2018)
+========================
 
 - Fix swapped reported reference and input indices of sources used for
   fitting. [#34]
@@ -65,8 +70,8 @@ tweakwcs v0.2.0 (20-December-2018)
 - Changelog correction. [#33]
 
 
-tweakwcs v0.1.1 (11-December-2018)
-==================================
+0.1.1 (11-December-2018)
+========================
 
 - Fixeded a bug due to which ``'fit_ref_idx'`` and ``'fit_input_idx'``
   fields in the ``fit`` dictionary were never updated. [#31]
@@ -83,8 +88,8 @@ tweakwcs v0.1.1 (11-December-2018)
 - Updated ``C`` code to avoid ``numpy`` deprecation warnings. [#30]
 
 
-tweakwcs v0.1.0 (08-December-2018)
-==================================
+0.1.0 (08-December-2018)
+========================
 
 - Added support for aligning FITS WCS. [#15, #16]
 
@@ -100,7 +105,7 @@ tweakwcs v0.1.0 (08-December-2018)
   #19, #22, #24, #25, #26, #27, #28, #29]
 
 
-tweakwcs v0.0.1 (25-April-2018)
-===============================
+0.0.1 (25-April-2018)
+=====================
 
 Initial release. [#1]
