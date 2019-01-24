@@ -9,6 +9,7 @@ sets of 2D points.
 
 """
 import logging
+import numbers
 import numpy as np
 
 from .linalg import inv
@@ -38,8 +39,8 @@ class NotEnoughPointsError(Exception):
 
 def iter_linear_fit(xy, uv, wxy=None, wuv=None,
                     xyindx=None, uvindx=None, xyorig=None, uvorig=None,
-                    fitgeom='general', nclip=3, sigma=3.0, center=None,
-                    verbose=True):
+                    fitgeom='general', nclip=3, sigma=(3.0, 'rmse'),
+                    center=None, verbose=True):
     """
     Compute iteratively using sigma-clipping linear transformation parameters
     that fit `xy` sources to `uv` sources.
@@ -61,9 +62,35 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         wuv = np.asarray(wuv)
         mask *= wxy > 0.0
 
-    if xy.shape[0] < nclip:
-        log.warning("The number of sources for the fit < number of clipping "
-                    "iterations.")
+    if sigma is None and nclip is not None and nclip > 0:
+        raise ValueError("Argument 'sigma' cannot be None when 'nclip' is "
+                         "not None or zero.")
+
+    if isinstance(sigma, numbers.Number):
+        sigstat = 'rmse'  # default value
+        nsigma = float(sigma)
+
+    elif sigma is not None:
+        nsigma = float(sigma[0])
+        sigstat = sigma[1]
+        if sigstat not in ['rmse', 'mae', 'std']:
+            raise ValueError("Unsupported sigma statistics value.")
+
+    if sigma is not None and nsigma <= 0.0:
+        raise ValueError("The value of sigma for clipping iterations must be "
+                         "positive.")
+
+    if nclip is None:
+        nclip = 0
+    else:
+        if nclip < 0:
+            raise ValueError("Argument 'nclip' must be non-negative.")
+        nclip = int(nclip)
+
+    if xy.shape[0] == minobj:
+        log.warning("The number of sources for the fit is smaller than the "
+                    "minimum number of sources necessary for the requested "
+                    ".")
         log.warning("Resetting number of clipping iterations to 0.")
         nclip = 0
 
@@ -88,16 +115,13 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     # initial fit:
     fit = linear_fit(xy, uv, wxy, wuv)
 
-    if nclip is None:
-        nclip = 0
-    effective_nclip = 0
-
     # clipping iterations:
+    effective_nclip = 0
     for n in range(nclip):
         resids = fit['resids']
 
         # redefine what pixels will be included in next iteration
-        cutoff = sigma * fit['rmse']
+        cutoff = nsigma * fit[sigstat]
 
         goodpix = np.linalg.norm(resids, axis=1) < cutoff
         if n == 0:
@@ -139,6 +163,38 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     return fit
 
 
+def _compute_stat(fit, residuals, weights):
+    if weights is None:
+        fit['rmse'] = float(np.sqrt(np.mean(2 * residuals**2)))
+        fit['mae'] = float(np.mean(np.linalg.norm(residuals, axis=1)))
+        fit['std'] = float(np.linalg.norm(residuals.std(axis=0)))
+    else:
+        # assume all weights > 0 (this should be insured by the caller => no
+        # need to repeat the check here)
+        npts = len(weights)
+        wt = np.sum(weights)
+        if npts == 0 or wt == 0.0:
+            fit['rmse'] = float('nan')
+            fit['mae'] = float('nan')
+            fit['std'] = float('nan')
+            return
+
+        w = weights / wt
+        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w, residuals**2))))
+        fit['mae'] = float(np.dot(w, np.linalg.norm(residuals, axis=1)))
+
+        if npts == 1:
+            fit['std'] = 0.0
+        else:
+            # see:
+            # https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Reliability_weights_2
+            wmean = np.dot(w, residuals)
+            fit['std'] = float(
+                np.sqrt(np.sum(np.dot(w, (residuals - wmean)**2) /
+                               (1.0 - np.sum(w**2))))
+            )
+
+
 def fit_shifts(xy, uv, wxy=None, wuv=None):
     """ Performs a simple fit for the shift only between
         matched lists of positions 'xy' and 'uv'.
@@ -171,6 +227,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
         # no weighting
         meanx = (diff_pts[:, 0].mean(dtype=np.longdouble)).astype(np.float64)
         meany = (diff_pts[:, 1].mean(dtype=np.longdouble)).astype(np.float64)
+        w = None
 
     else:
         if wxy is None:
@@ -203,13 +260,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     fit = build_fit(Pcoeffs, Qcoeffs, 'shift')
     resids = diff_pts - fit['offset']
     fit['resids'] = resids
-    if wxy is None and wuv is None:
-        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
-        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
-    else:
-        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
-        fit['mae'] = float(np.dot(w, np.linalg.norm(resids, axis=1)))
-
+    _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
@@ -347,13 +398,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     fit = build_fit(P, Q, fitgeom='rscale')
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
-    if wxy is None and wuv is None:
-        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
-        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
-    else:
-        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w, resids**2))))
-        fit['mae'] = float(np.dot(w, np.linalg.norm(resids, axis=1)))
-
+    _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
@@ -464,13 +509,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
     fit = build_fit(P, Q, 'general')
     resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
     fit['resids'] = resids
-    if wxy is None and wuv is None:
-        fit['rmse'] = float(np.sqrt(np.mean(2 * resids**2)))
-        fit['mae'] = float(np.mean(np.linalg.norm(resids, axis=1)))
-    else:
-        fit['rmse'] = float(np.sqrt(np.sum(np.dot(w / Sw, resids**2))))
-        fit['mae'] = float(np.dot(w / Sw, np.linalg.norm(resids, axis=1)))
-
+    _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 

@@ -806,7 +806,7 @@ class WCSGroupCatalog(object):
         return nmatches, mref_idx, minput_idx
 
     def fit2ref(self, refcat, tanplane_wcs, fitgeom='general', nclip=3,
-                sigma=3.0):
+                sigma=(3.0, 'rmse')):
         """
         Perform linear fit of this group's combined catalog to the reference
         catalog. When either/both group's catalog or/and the reference catalog
@@ -830,11 +830,22 @@ class WCSGroupCatalog(object):
             fit geometry allows for independent scale and rotation for
             each axis.
 
-        nclip : int, optional
+        nclip : int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
+            Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-        sigma : float, optional
-            Clipping limit in sigma units.
+        sigma : float, tuple of the form (float, str), optional
+            When a tuple is provided, first value (a positive number)
+            indicates the number of "fit error estimates" to use for clipping.
+            The second value (a string) indicates the statistic to be
+            used for "fit error estimate". Currently the following values are
+            supported: ``'rmse'``, ``'mae'``, and ``'std'``
+            - see `~tweakwcs.linearfit.iter_linear_fit` for more details.
+
+            When ``sigma`` is a single number, it must be a positive number and
+            the default error estimate ``'rmse'`` is assumed.
+
+            This parameter is ignored when ``nclip`` is either `None` or 0.
 
         Notes
         -----
@@ -969,7 +980,7 @@ class WCSGroupCatalog(object):
             imcat.imwcs.set_correction(m, s, meta=meta)
 
     def align_to_ref(self, refcat, match=None, minobj=None,
-                     fitgeom='rscale', nclip=3, sigma=3.0):
+                     fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
         """
         Matches sources from the image catalog to the sources in the
         reference catalog, finds the affine transformation between matched
@@ -1056,13 +1067,25 @@ class WCSGroupCatalog(object):
             fit geometry allows for independent scale and rotation for each
             axis. This parameter is ignored if ``match`` is `False`.
 
-        nclip : int, optional
+        nclip : int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
+            Clipping will be turned off if ``nclip`` is either `None` or 0.
+
             This parameter is ignored if ``match`` is `False`.
 
-        sigma : float, optional
-            Clipping limit in sigma units. This parameter is ignored if
-            ``match`` is `False`.
+        sigma : float, tuple of the form (float, str), optional
+            When a tuple is provided, first value (a positive number)
+            indicates the number of "fit error estimates" to use for clipping.
+            The second value (a string) indicates the statistic to be
+            used for "fit error estimate". Currently the following values are
+            supported: ``'rmse'``, ``'mae'``, and ``'std'``
+            - see `~tweakwcs.linearfit.iter_linear_fit` for more details.
+
+            When ``sigma`` is a single number, it must be a positive number and
+            the default error estimate ``'rmse'`` is assumed.
+
+            This parameter is ignored when ``nclip`` is either `None` or 0
+            or when ``match`` is `False`.
 
 
         Returns
