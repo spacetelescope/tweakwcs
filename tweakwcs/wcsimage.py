@@ -1023,6 +1023,8 @@ class WCSGroupCatalog(object):
             * **'mae'**: fit Mean Absolute Error in *tangent plane*
               coordinates of corrected image source positions from reference
               source positions.
+            * **'std'**: Norm of the STandard Deviation of the residuals
+              in *tangent plane* along each axis.
             * **'fit_RA'**: first (corrected) world coordinate of input source
               positions used in fitting.
             * **'fit_DEC'**: second (corrected) world coordinate of input

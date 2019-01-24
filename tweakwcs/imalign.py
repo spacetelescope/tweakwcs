@@ -170,6 +170,8 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3,
         * **'mae'**: fit Mean Absolute Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+        * **'std'**: Norm of the standard deviation of the residuals
+          in *tangent plane* along each axis.
         * **'status'**: Alignment status. Currently two possible status are
           possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
           When alignment failed, the reason for failure is provided after
