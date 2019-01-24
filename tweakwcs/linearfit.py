@@ -225,9 +225,10 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
 
     if wxy is None and wuv is None:
         # no weighting
+        w = None
+
         meanx = (diff_pts[:, 0].mean(dtype=np.longdouble)).astype(np.float64)
         meany = (diff_pts[:, 1].mean(dtype=np.longdouble)).astype(np.float64)
-        w = None
 
     else:
         if wxy is None:
@@ -291,6 +292,8 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
 
     if wxy is None and wuv is None:
         # no weighting
+        w = None
+
         xm = np.mean(x)
         ym = np.mean(y)
         um = np.mean(u)
@@ -436,6 +439,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
 
     if wxy is None and wuv is None:
         # no weighting
+        w = None
 
         # Set up products used for computing the fit
         Sw = float(x.size)

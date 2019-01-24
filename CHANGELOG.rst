@@ -11,7 +11,7 @@ Release Notes
 0.4.0 (unreleased)
 ==================
 
-- Added option to specify statistics used for clipping. [#51]
+- Added option to specify statistics used for clipping. [#51, #52]
 
 
 0.3.3 (21-January-2019)
