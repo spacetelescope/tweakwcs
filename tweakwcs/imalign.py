@@ -45,7 +45,8 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
+def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3,
+              sigma=(3.0, 'rmse')):
     """ "Tweak" image's ``WCS`` by fitting image catalog to a reference
     catalog.
 
@@ -84,11 +85,22 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         changes from the matched object lists. The 'general' fit geometry
         allows for independent scale and rotation for each axis.
 
-    nclip : int, optional
+    nclip : int, None, optional
         Number (a non-negative integer) of clipping iterations in fit.
+        Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-    sigma : float, optional
-        Clipping limit in ``RMSE`` units.
+    sigma : float, tuple of the form (float, str), optional
+        When a tuple is provided, first value (a positive number)
+        indicates the number of "fit error estimates" to use for clipping.
+        The second value (a string) indicates the statistic to be
+        used for "fit error estimate". Currently the following values are
+        supported: ``'rmse'``, ``'mae'``, and ``'std'``
+        - see `~tweakwcs.linearfit.iter_linear_fit` for more details.
+
+        When ``sigma`` is a single number, it must be a positive number and
+        the default error estimate ``'rmse'`` is assumed.
+
+        This parameter is ignored when ``nclip`` is either `None` or 0.
 
     Returns
     -------
@@ -158,6 +170,8 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
         * **'mae'**: fit Mean Absolute Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+        * **'std'**: Norm of the standard deviation of the residuals
+          in *tangent plane* along each axis.
         * **'status'**: Alignment status. Currently two possible status are
           possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
           When alignment failed, the reason for failure is provided after
@@ -213,7 +227,7 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3, sigma=3.0):
 
 def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
                     expand_refcat=False, minobj=None, match=TPMatch(),
-                    fitgeom='general', nclip=3, sigma=3.0):
+                    fitgeom='general', nclip=3, sigma=(3.0, 'rmse')):
     """
     Align (groups of) images by adjusting the parameters of their WCS based on
     fits between matched sources in these images and a reference catalog which
@@ -326,11 +340,22 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         changes from the matched object lists. The 'general' fit geometry
         allows for independent scale and rotation for each axis.
 
-    nclip : int, optional
+    nclip : int, None, optional
         Number (a non-negative integer) of clipping iterations in fit.
+        Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-    sigma : float, optional
-        Clipping limit in ``RMSE`` units.
+    sigma : float, tuple of the form (float, str), optional
+        When a tuple is provided, first value (a positive number)
+        indicates the number of "fit error estimates" to use for clipping.
+        The second value (a string) indicates the statistic to be
+        used for "fit error estimate". Currently the following values are
+        supported: ``'rmse'``, ``'mae'``, and ``'std'``
+        - see `~tweakwcs.linearfit.iter_linear_fit` for more details.
+
+        When ``sigma`` is a single number, it must be a positive number and
+        the default error estimate ``'rmse'`` is assumed.
+
+        This parameter is ignored when ``nclip`` is either `None` or 0.
 
     Notes
     -----
