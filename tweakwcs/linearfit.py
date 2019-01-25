@@ -38,12 +38,160 @@ class NotEnoughPointsError(Exception):
 
 
 def iter_linear_fit(xy, uv, wxy=None, wuv=None,
-                    xyindx=None, uvindx=None, xyorig=None, uvorig=None,
-                    fitgeom='general', nclip=3, sigma=(3.0, 'rmse'),
-                    center=None, verbose=True):
+                    fitgeom='general', center=None,
+                    nclip=3, sigma=(3.0, 'rmse'), clip_accum=False):
     """
-    Compute iteratively using sigma-clipping linear transformation parameters
-    that fit `xy` sources to `uv` sources.
+    Compute linear transformation parameters that "best" (in the sense of
+    minimizing residuals) transform ``uv`` source position to ``xy``
+    sources iteratively using sigma-clipping.
+
+    More precisely, this functions attempts to find a ``2x2`` matrix ``F`` and
+    a shift vector ``s`` that minimize the residuals between the *transformed*
+    ``uv`` source coordinates
+
+    .. math::
+        \mathbf{xy}'_k = \mathbf{F}^T\cdot(\mathbf{uv_k}-\mathbf{c})+\mathbf{s}+\mathbf{c}
+        :label: ilf1
+
+    and the "observed" source positions ``xy``:
+
+    .. math::
+        \epsilon^2 = \Sigma_k w_k \|\mathbf{xy}_k-\mathbf{xy}'_k\|^2.
+        :label: ilf2
+
+    In the above equations, :math:`\mathbf{F}` is a ``2x2`` matrix while
+    :math:`\mathbf{xy}_k` and :math:`\mathbf{uv}_k` are the position coordinates
+    of the ``k``-th source (row in input ``xy`` and ``uv`` arrays).
+
+    One of the two catalogs (``xy`` or ``uv``) contains what we refer to as
+    "image" source positions and the other one as "reference" source positions.
+    The meaning assigned to ``xy`` and ``uv`` parameters are up to the
+    caller of this function.
+
+    Parameters
+    ----------
+    xy : numpy.ndarray
+        A ``(N, 2)``-shaped array of source positions (one 2-coordinate
+        position per line).
+
+    uv : numpy.ndarray
+        A ``(N, 2)``-shaped array of source positions (one 2-coordinate
+        position per line). This array *must have* the same length (shape)
+        as the ``xy`` array.
+
+    wxy : numpy.ndarray, None, optional
+        A 1-dimensional array of weights of the same length (``N``)
+        as ``xy`` array indicating how much a given coordinate should be
+        weighted in the fit. If not provided or set to `None`, all positions
+        will be contribute equally to the fit if ``wuv`` is also set to `None`.
+        See ``Notes`` section for more details.
+
+    wuv : numpy.ndarray, None, optional
+        A 1-dimensional array of weights of the same length (``N``)
+        as ``xy`` array indicating how much a given coordinate should be
+        weighted in the fit. If not provided or set to `None`, all positions
+        will be contribute equally to the fit if ``wxy`` is also set to `None`.
+        See ``Notes`` section for more details.
+
+    fitgeom : {'shift', 'rscale', 'general'}, optional
+        The fitting geometry to be used in fitting the matched object lists.
+        This parameter is used in fitting the offsets, rotations and/or scale
+        changes from the matched object lists. The 'general' fit geometry
+        allows for independent scale and rotation for each axis.
+
+    center : tuple, list, numpy.ndarray, None, optional
+        A list-like container with two ``X``- and ``Y``-positions of the center
+        (origin) of rotations in the ``uv`` and ``xy`` coordinate frames.
+        If not provided, ``center`` is estimated as a (weighted) mean position
+        in the ``uv`` frame.
+
+    nclip : int, None, optional
+        Number (a non-negative integer) of clipping iterations in fit.
+        Clipping will be turned off if ``nclip`` is either `None` or 0.
+
+    sigma : float, tuple of the form (float, str), optional
+        When a tuple is provided, first value (a positive number)
+        indicates the number of "fit error estimates" to use for clipping.
+        The second value (a string) indicates the statistic to be
+        used for "fit error estimate". Currently the following values are
+        supported: ``'rmse'``, ``'mae'``, and ``'std'``
+        - see ``Notes`` section for more details.
+
+        When ``sigma`` is a single number, it must be a positive number and
+        the default error estimate ``'rmse'`` is assumed.
+
+        This parameter is ignored when ``nclip`` is either `None` or 0.
+
+    clip_accum : bool, optional
+        Indicates whether or not to reset the list of "bad" (clipped out)
+        sources after each clipping iteration. When set to `True` the list
+        only grows with each iteration as "bad" positions never re-enter the
+        pool of available position for the fit. By default the list of
+        "bad" source positions is purged at each iteration.
+
+    Returns
+    -------
+    fit : dict
+        A dictionary containing the following items:
+            - ``'offset'``: A tuple of two computed shifts
+            - ``'matrix'``: Computed generalized ``2x2`` rotation matrix
+            - ``'rot'``: Rotation angle (degree) as if the rotation is proper
+            - ``'rotxy'``: A tuple of ``(rotx, roty, rot, skew)``:
+              rotation angle with regard to the ``X`` and ``Y`` axes, proper
+              rotation, and skew.
+            - ``'scale'``: A tuple of ``(s, sx, sy)`` - "average" scale, and
+              two scales for each axis
+            - ``'skew'``: skew
+            - ``'proper'``: a boolean indicating whether the rotation is proper
+            - ``'fitgeom'``: Fit geometry (allowed transformations) used for
+              fitting data (to minimize residuals). This is copy of the input
+              argument ``fitgeom``.
+            - ``'center'``: Center of rotation
+            - ``'fitmask'``: A boolean array indicating which source positions
+              where used for fitting (`True`) and which were clipped out
+              (`False`). **NOTE** For weighted fits, positions with zero
+              weights are automatically excluded from the fits.
+            - ``'eff_nclip'``: Effective number of clipping iterations
+            - ``'rmse'``: Root-Mean-Square Error
+            - ``'mae'``: Mean Absolute Error
+            - ``'std'``: Standard Deviation of the residuals
+            - ``'resids'``: An array of residuals of the fit.
+              **NOTE:** Only the residuals for the "valid" points are reported
+              here. Therefore the length of this array may be smaller than the
+              length of input arrays of positions.
+
+    Notes
+    -----
+    **Weights**
+
+    Weights can be provided for both "image" source positions and "reference"
+    source positions. When no weights are given, all positions are weighted
+    equally. When only one set of positions have weights (i.e., either ``wxy``
+    or ``wuv`` is not `None`) then weights in :eq:`ilf2` are set to be equal
+    to the provided set of weights. When weights for *both* "image" source
+    positions and "reference" source positions are provided, then the
+    combined weight that is used in :eq:`ilf2` is computed as:
+
+    .. math::
+        1/w = 1/w_{xy} + 1/w_{uv}.
+
+    **Statistics for clipping**
+
+    Several statistics are available for clipping iterations and all of them
+    are reported in the returned ``fit`` dictionary regardless of the
+    setting in ``sigma``:
+
+    .. math::
+        \mathrm{RMSE} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k\|^2}
+
+    .. math::
+        \mathrm{MAE} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k\|}
+
+    .. math::
+        \mathrm{STD} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k - \mathbf{\overline{r}}\|^2}/(1-V_2)
+
+    where :math:`\mathbf{r}_k=\mathbf{xy}_k-\mathbf{xy}'_k`,
+    :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
 
     """
     minobj_per_fitgeom = {'shift': 1, 'rscale': 2, 'general': 3}
@@ -52,15 +200,17 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     xy = np.array(xy)
     uv = np.array(uv)
 
-    mask = np.ones(len(xy), dtype=np.bool_)
+    wmask = np.ones(len(xy), dtype=np.bool_)
 
     if wxy is not None:
         wxy = np.asarray(wxy)
-        mask *= wxy > 0.0
+        wmask *= wxy > 0.0
 
     if wuv is not None:
         wuv = np.asarray(wuv)
-        mask *= wxy > 0.0
+        wmask *= wxy > 0.0
+
+    mask = wmask
 
     if sigma is None and nclip is not None and nclip > 0:
         raise ValueError("Argument 'sigma' cannot be None when 'nclip' is "
@@ -87,7 +237,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
             raise ValueError("Argument 'nclip' must be non-negative.")
         nclip = int(nclip)
 
-    if xy.shape[0] == minobj:
+    if np.count_nonzero(mask) == minobj:
         log.warning("The number of sources for the fit is smaller than the "
                     "minimum number of sources necessary for the requested "
                     ".")
@@ -95,10 +245,10 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         nclip = 0
 
     if center is None:
-        center = uv.mean(axis=0, dtype=np.longdouble)
+        center = uv[mask].mean(axis=0, dtype=np.longdouble)
 
-    xy -= center
-    uv -= center
+    xy[mask] -= center
+    uv[mask] -= center
 
     if fitgeom == 'general':
         linear_fit = fit_general
@@ -109,11 +259,12 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     else:
         raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
 
-    if verbose:
-        log.info("Performing '{:s}' fit".format(fitgeom))
+    log.info("Performing '{:s}' fit".format(fitgeom))
 
     # initial fit:
-    fit = linear_fit(xy, uv, wxy, wuv)
+    wmxy = None if wxy is None else wxy[mask]
+    wmuv = None if wuv is None else wuv[mask]
+    fit = linear_fit(xy[mask], uv[mask], wmxy, wmuv)
 
     # clipping iterations:
     effective_nclip = 0
@@ -123,42 +274,23 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         # redefine what pixels will be included in next iteration
         cutoff = nsigma * fit[sigstat]
 
-        goodpix = np.linalg.norm(resids, axis=1) < cutoff
-        if n == 0:
-            goodpix *= mask
-        ngoodpix = np.count_nonzero(goodpix)
-
-        if ngoodpix < minobj:
+        nonclipped = np.linalg.norm(resids, axis=1) < cutoff
+        if np.count_nonzero(nonclipped) < minobj or nonclipped.all():
             break
 
         effective_nclip += 1
 
-        xy = xy[goodpix]
-        uv = uv[goodpix]
+        prev_mask = mask
+        if not clip_accum:
+            mask = np.array(wmask)
+        mask[prev_mask] *= nonclipped
 
-        if xyindx is not None:
-            xyindx = xyindx[goodpix]
-        if uvindx is not None:
-            uvindx = uvindx[goodpix]
+        wmxy = None if wxy is None else wxy[mask]
+        wmuv = None if wuv is None else wuv[mask]
+        fit = linear_fit(xy[mask], uv[mask], wmxy, wmuv)
 
-        if xyorig is not None:
-            xyorig = xyorig[goodpix]
-        if uvorig is not None:
-            uvorig = uvorig[goodpix]
-
-        if wxy is not None:
-            wxy = wxy[goodpix]
-        if wuv is not None:
-            wuv = wuv[goodpix]
-
-        fit = linear_fit(xy, uv, wxy, wuv)
-
-    fit['xy_coords'] = xy
-    fit['uv_coords'] = uv
-    fit['xy_indx'] = xyindx
-    fit['uv_indx'] = uvindx
-    fit['xy_orig_xy'] = xyorig
-    fit['uv_orig_xy'] = uvorig
+    fit['center'] = center
+    fit['fitmask'] = mask
     fit['eff_nclip'] = effective_nclip
     return fit
 
@@ -196,24 +328,13 @@ def _compute_stat(fit, residuals, weights):
 
 
 def fit_shifts(xy, uv, wxy=None, wuv=None):
-    """ Performs a simple fit for the shift only between
-        matched lists of positions 'xy' and 'uv'.
-
-        =================================
-        DEVELOPMENT NOTE:
-            Checks need to be put in place to verify that
-            enough objects are available for a fit.
-        =================================
-
-        Output:
-           (Xo,Yo),Rot,(Scale,Sx,Sy)
-           where
-                Xo,Yo:  offset,
-                Rot:    rotation,
-                Scale:  average scale change, and
-                Sx,Sy:  scale changes in X and Y separately.
-
-        Algorithm and nomenclature provided by: Colin Cox (11 Nov 2004)
+    """ Fits (non-iteratively and without sigma-clipping) a displacement
+    transformation only between input lists of positions ``xy`` and ``uv``.
+    When weights are provided, a weighted fit is performed. Parameter
+    descriptions and return values are identical to those in `iter_linear_fit`,
+    except returned ``fit`` dictionary does not contain the following
+    keys irrelevant to this function: ``'center'``, ``'fitmask'``, and
+    ``'eff_nclip'``.
 
     """
     if len(xy) < 1:
@@ -258,7 +379,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     Pcoeffs = np.array([1.0, 0.0, meanx])
     Qcoeffs = np.array([0.0, 1.0, meany])
 
-    fit = build_fit(Pcoeffs, Qcoeffs, 'shift')
+    fit = _build_fit(Pcoeffs, Qcoeffs, 'shift')
     resids = diff_pts - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
@@ -268,16 +389,14 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
 # Implementation of geomap 'rscale' fitting based on 'lib/geofit.x'
 # by Warren Hack. Support for axis flips added by Mihai Cara.
 def fit_rscale(xy, uv, wxy=None, wuv=None):
-    """
-    Set up the products used for computing the fit derived using the code from
-    lib/geofit.x for the function 'geo_fmagnify()'. Comparisons with results
-    from geomap (no additional clipping) were made and produced the same
-    results out to 5 decimal places.
+    """ Fits (non-iteratively and without sigma-clipping) a displacement,
+    rotation and scale transformations between input lists of positions
+    ``xy`` and ``uv``. When weights are provided, a weighted fit is performed.
+    Parameter descriptions and return values are identical to those
+    in `iter_linear_fit`, except returned ``fit`` dictionary does not contain
+    the following keys irrelevant to this function: ``'center'``,
+    ``'fitmask'``, and ``'eff_nclip'``.
 
-    Output
-    ------
-    fit: dict
-        Dictionary containing full solution for fit.
     """
     if len(xy) < 2:
         raise NotEnoughPointsError(
@@ -379,8 +498,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
 
     if det < 0:
         # "flip" y-axis (reflection about x-axis *after* rotation)
-        # NOTE: keep in mind that 'fit_matrix'
-        #       is the transposed rotation matrix.
+        # NOTE: keep in mind that 'matrix' is the transposed rotation matrix.
         sthetax = -mag * stheta
         cthetay = -mag * ctheta
     else:
@@ -398,32 +516,22 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     Q = np.array([-sthetax, cthetay, yshift], dtype=np.float64)
 
     # Return the shift, rotation, and scale changes
-    fit = build_fit(P, Q, fitgeom='rscale')
-    resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
+    fit = _build_fit(P, Q, fitgeom='rscale')
+    resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
 def fit_general(xy, uv, wxy=None, wuv=None):
-    """ Performs a simple fit for the shift only between
-        matched lists of positions 'xy' and 'uv'.
-
-        =================================
-        DEVELOPMENT NOTE:
-            Checks need to be put in place to verify that
-            enough objects are available for a fit.
-        =================================
-
-        Output:
-           (Xo,Yo),Rot,(Scale,Sx,Sy)
-           where
-                Xo,Yo:  offset,
-                Rot:    rotation,
-                Scale:  average scale change, and
-                Sx,Sy:  scale changes in X and Y separately.
-
-        Algorithm and nomenclature provided by: Colin Cox (11 Nov 2004)
+    """ Fits (non-iteratively and without sigma-clipping) a displacement,
+    rotation, scale, and skew transformations (i.e., the full ``2x2``
+    transformation matrix) between input lists of positions
+    ``xy`` and ``uv``. When weights are provided, a weighted fit is performed.
+    Parameter descriptions and return values are identical to those
+    in `iter_linear_fit`, except returned ``fit`` dictionary does not contain
+    the following keys irrelevant to this function: ``'center'``,
+    ``'fitmask'``, and ``'eff_nclip'``.
 
     """
     if len(xy) < 3:
@@ -510,14 +618,14 @@ def fit_general(xy, uv, wxy=None, wuv=None):
         )
 
     # Return the shift, rotation, and scale changes
-    fit = build_fit(P, Q, 'general')
-    resids = xy - np.dot(uv, fit['fit_matrix']) - fit['offset']
+    fit = _build_fit(P, Q, 'general')
+    resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
-def build_fit(P, Q, fitgeom):
+def _build_fit(P, Q, fitgeom):
     # Build fit matrix:
     fit_matrix = np.dstack((P[:2], Q[:2]))[0]
 
@@ -535,11 +643,10 @@ def build_fit(P, Q, fitgeom):
 
     if fitgeom == 'shift':
         return {'offset': (P[2], Q[2]),
-                'fit_matrix': fit_matrix,
+                'matrix': fit_matrix,
                 'rot': 0.0,
                 'rotxy': (0.0, 0.0, 0.0, skew),
                 'scale': (1.0, 1.0, 1.0),
-                'coeffs': (P, Q),
                 'skew': skew,
                 'proper': proper,
                 'fitgeom': fitgeom}
@@ -576,11 +683,10 @@ def build_fit(P, Q, fitgeom):
         skew = roty - rotx
 
     return {'offset': (P[2], Q[2]),
-            'fit_matrix': fit_matrix,
+            'matrix': fit_matrix,
             'rot': prop_rot,
             'rotxy': (rotx, roty, rot, skew),
             'scale': (s, sx, sy),
-            'coeffs': (P, Q),
             'skew': skew,
             'proper': proper,
             'fitgeom': fitgeom}
