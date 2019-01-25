@@ -11,6 +11,13 @@ Release Notes
 0.4.0 (unreleased)
 ==================
 
+- Modified the clipping algorithm to start with all valid sources at each
+  iteration. In other words, clippings do not accumulate by default.
+  Old behavior can be replicated by setting ``clip_accum`` to `True`. [#53]
+
+- Cleaned-up ``iter_linear_fit`` interface as well as simplified the
+  ``fit`` dictionary returned by ``iter_linear_fit``. [#53]
+
 - Added option to specify statistics used for clipping. [#51, #52]
 
 

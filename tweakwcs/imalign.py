@@ -149,13 +149,12 @@ def tweak_wcs(refcat, imcat, imwcs, fitgeom='general', nclip=3,
     fields of the ``meta`` attribute of the returned ``TPWCS`` object:
 
         * **'fitgeom'**: the value of the ``fitgeom`` argument
+        * **'eff_minobj'**: effective value of the ``minobj`` parameter
         * **'matrix'**: computed rotation matrix
         * **'shift'**: offset along X- and Y-axis
-        * **'eff_minobj'**: effective value of the ``minobj`` parameter
-        * **'fit_ref_idx'**: indices of the sources from the reference catalog
-          used for fitting
-        * **'fit_input_idx'**: indices of the sources from the "input" (image)
-          catalog used for fitting
+        * **'center'**: center of rotation in geometric transformations
+        * **'fitmask'**: boolean array indicating (with `True`) sources
+          **used** for fitting
         * **'rot'**: rotation angle as if rotation is a proper rotation
         * **'proper'**: Indicates whether the rotation is a proper rotation
           (boolean)

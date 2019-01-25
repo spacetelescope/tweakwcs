@@ -6412,6 +6412,10 @@ span[id*='MathJax-Span'] {
     text-align: center
 }
 
+.eqno {
+    float: right;
+}
+
 @font-face {
     font-family: "Inconsolata";
     font-style: normal;

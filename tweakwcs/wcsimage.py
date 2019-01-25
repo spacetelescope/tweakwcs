@@ -919,11 +919,11 @@ class WCSGroupCatalog(object):
 
         fit = iter_linear_fit(
             refxy, im_xyref, ref_weight, im_weight,
-            xyindx=ref_idx, uvindx=minput_idx,
             fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
-        xy_fit = fit['offset'] + np.dot(fit['uv_coords'], fit['fit_matrix'])
+        xy_fit = fit['offset'] + np.dot(im_xyref[fit['fitmask']],
+                                        fit['matrix'])
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
@@ -991,9 +991,12 @@ class WCSGroupCatalog(object):
         (a `TPWCS`-derived object) of each member `WCSImageCatalog` object:
 
             * **'fitgeom'**: the value of the ``fitgeom`` argument
+            * **'eff_minobj'**: effective value of the ``minobj`` parameter
             * **'matrix'**: computed rotation matrix
             * **'shift'**: offset along X- and Y-axis
-            * **'eff_minobj'**: effective value of the ``minobj`` parameter
+            * **'center'**: center of rotation in geometric transformations
+            * **'fitmask'**: boolean array indicating (with `True`) sources
+              **used** for fitting
             * **'nmatches'** [when ``match`` is not `None`]: number of matched
               sources
             * **'matched_ref_idx'** [when ``match`` is not `None`]: indices of
@@ -1141,11 +1144,11 @@ class WCSGroupCatalog(object):
 
         meta = {
             'fitgeom' : fitgeom,
-            'matrix': fit['fit_matrix'],
-            'shift': fit['offset'],
             'eff_minobj': minobj,
-            'fit_ref_idx': fit['xy_indx'],  # indices after fit clipping
-            'fit_input_idx': fit['uv_indx'],  # indices after fit clipping
+            'matrix': fit['matrix'],
+            'shift': fit['offset'],
+            'center': fit['center'], # center of rotation in geom. transforms
+            'fitmask': fit['fitmask'],  # sources was used for fitting
             'rot': fit['rot'],  # proper rotation
             'proper': fit['proper'],  # is a proper rotation? True/False
             'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
@@ -1167,7 +1170,7 @@ class WCSGroupCatalog(object):
 
         self.apply_affine_to_wcs(
             tanplane_wcs=tanplane_wcs,
-            matrix=fit['fit_matrix'],
+            matrix=fit['matrix'],
             shift=fit['offset'],
             meta=meta
         )
