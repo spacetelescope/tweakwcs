@@ -1427,6 +1427,17 @@ class RefCatalog(object):
         """
         Expand current reference catalog with sources from another catalog.
 
+        If current catalog is empty, then the catalog being added will become
+        the new reference catalog. In this case if the ``catalog`` does have
+        ``id`` column, those ID values will be preserved. If the ``catalog``
+        does not contain an ID column, then the new IDs will be assigned
+        in increasing order starting with 1.
+
+        If the existing reference catalog is not empty, then the IDs from the
+        ``catalog`` being added will be discarded and new IDs will be assigned
+        in the increasing order such as to continue the numbering of existing
+        source positions in the reference catalog.
+
         Parameters
         ----------
         catalog : astropy.table.Table
@@ -1442,11 +1453,14 @@ class RefCatalog(object):
             if 'id' not in self._catalog.colnames:
                 self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
         else:
+            maxid = self.catalog['id'].max()
+            oldlen = len(self.catalog)
             self._catalog = table.vstack([self.catalog, cat],
                                          join_type='outer')
-            # overwrite source ID since when expanding the catalog,
-            # there could be duplicates in source ID:
-            self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
+            # assign ids to the newly added source positions in consecutive
+            # order above the largest id in the already existing catalog:
+            self._catalog['id'][oldlen:] = np.arange(maxid + 1,
+                                                     maxid + len(cat) + 1)
 
         self.calc_bounding_polygon()
 
