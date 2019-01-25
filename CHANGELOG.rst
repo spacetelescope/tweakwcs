@@ -11,6 +11,16 @@ Release Notes
 0.4.0 (unreleased)
 ==================
 
+- ``tweak_image_wcs()`` now returns effective reference catalog used for
+  image alignment. [$54]
+
+- Modified how IDs are assigned to the reference catalog source positions when
+  ``expand_refcat`` is `True`: instead of having all sources numbered
+  consecutively starting with 1, now the code will attempt to preserve
+  the original IDs (if any) of the input reference catalog (``refcat``)
+  or an input image used as a reference catalog and consecutively number only
+  the sources being added to the ``refcat``. [#54]
+
 - Modified the clipping algorithm to start with all valid sources at each
   iteration. In other words, clippings do not accumulate by default.
   Old behavior can be replicated by setting ``clip_accum`` to `True`. [#53]

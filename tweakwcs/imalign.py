@@ -321,6 +321,15 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
         expanded reference catalog. By delault, the reference catalog is not
         being expanded.
 
+        If ``refcat`` is not `None` and contains an ``'id'`` column, then
+        sources being added to the reference catalog will be assigned
+        consecutive IDs that continue maximum ID in the ``refcat``.
+
+        If one desires to uniquely associate source in the expanded catalog
+        to their original catalogs, it is recommended that one assign unique
+        IDs to all sources in all input catalogs **and** in the reference
+        catalog in a separate column such as ``'uuid'``.
+
     minobj : int, None, optional
         Minimum number of identified objects from each input image to use
         in matching objects from other images. If the default `None` value is
@@ -356,9 +365,18 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
 
         This parameter is ignored when ``nclip`` is either `None` or 0.
 
+    Returns
+    -------
+    eff_refcat : astropy.table.Table
+        Effective reference catalog used for aligning all images. Depending
+        on the values of the input parameters ``refcat``,
+        ``enforce_user_order``, and ``expand_refcat``, effective
+        reference catalog may be one of the input image catalogs, the original
+        ``refcat`` catalog, an expanded ``refcat`` with a combination of
+        source positions from all input images.
+
     Notes
     -----
-
     When fitting image sources to reference catalog sources, we can specify
     which sources have higher weights. This can be done by assigning a "weight"
     to each source by specifying these values in the optional ``'weight'``
@@ -685,7 +703,8 @@ def tweak_image_wcs(images, refcat=None, enforce_user_order=True,
              .format(__name__, function_name, runtime_end - runtime_begin))
     log.info(" ")
 
-    # return aligned_imcat # aligned_imcat may be out of order wrt to input
+    eff_refcat = refcat.catalog
+    return eff_refcat
 
 
 def overlap_matrix(images):
