@@ -403,20 +403,20 @@ class WCSImageCatalog(object):
 
         elif len(x) > 2:
             ra, dec = convex_hull(x, y, wcs=self.det_to_world)
-        # else, for len(x) in [1, 2], use entire image footprint.
-        # TODO: a more robust algorithm should be implemented to deal with
-        #       len(x) in [1, 2] cases.
+            # else, for len(x) in [1, 2], use entire image footprint.
+            # TODO: a more robust algorithm should be implemented to deal with
+            #       len(x) in [1, 2] cases.
 
-        # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
-        #       dec[0] != dec[-1] (even though we close the polygon in the
-        #       previous two lines). Then SphericalPolygon fails because
-        #       points are not closed. Threfore we force it to be closed:
-        ra[-1] = ra[0]
-        dec[-1] = dec[0]
+            # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
+            #       dec[0] != dec[-1] (even though we close the polygon in the
+            #       previous two lines). Then SphericalPolygon fails because
+            #       points are not closed. Threfore we force it to be closed:
+            ra[-1] = ra[0]
+            dec[-1] = dec[0]
 
-        self._bb_radec = (ra, dec)
-        self._polygon = SphericalPolygon.from_radec(ra, dec)
-        self._poly_area = np.fabs(self._polygon.area())
+            self._bb_radec = (ra, dec)
+            self._polygon = SphericalPolygon.from_radec(ra, dec)
+            self._poly_area = np.fabs(self._polygon.area())
 
     def calc_bounding_polygon(self):
         """

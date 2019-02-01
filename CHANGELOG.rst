@@ -11,8 +11,11 @@ Release Notes
 0.4.0 (unreleased)
 ==================
 
+- Fixed a bug due to which the code might crash due to an undefined ``ra``
+  variable, see issue #55. [#56]
+
 - ``tweak_image_wcs()`` now returns effective reference catalog used for
-  image alignment. [$54]
+  image alignment. [#54]
 
 - Modified how IDs are assigned to the reference catalog source positions when
   ``expand_refcat`` is `True`: instead of having all sources numbered
