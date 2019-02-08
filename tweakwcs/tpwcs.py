@@ -3,7 +3,7 @@
 This module provides support for manipulating tangent-plane corrections
 of ``WCS``.
 
-:Authors: Mihai Cara (contact: help@stsci.edu)
+:Authors: Mihai Cara
 
 :License: :doc:`../LICENSE`
 
@@ -40,18 +40,20 @@ class TPWCS(ABC):
     and for managing tangent-plane corrections.
 
     """
-    def __init__(self, wcs):
+    def __init__(self, wcs, meta=None):
         """
         Parameters
         ----------
-
         wcs : ``WCS object``
             A `WCS` object supported by a child class.
+
+        meta : dict, None, optional
+            Dictionary that will be merged to the object's ``meta`` fields.
 
         """
         self._owcs = wcs
         self._wcs = deepcopy(wcs)
-        self._meta = {}
+        self._meta = {} if meta is None else dict(meta)
 
     @property
     def wcs(self):
@@ -94,7 +96,11 @@ class TPWCS(ABC):
             Optional parameters for the WCS corrector.
 
         """
-        pass
+        # save linear transformation info to the meta attribute:
+        self._meta['matrix'] = np.array(matrix, dtype=np.float64)
+        self._meta['shift'] = shift
+        if meta is not None:
+            self._meta.update(meta)
 
     @abstractmethod
     def det_to_world(self, x, y):
@@ -192,7 +198,6 @@ class TPWCS(ABC):
 
         Returns
         -------
-
         pscale : float
             Pixel scale [in units used in the tangent plane coordinate system]
             in the tangent plane near a location in the detector's plane
@@ -209,6 +214,11 @@ class TPWCS(ABC):
 
     @property
     def bounding_box(self):
+        """
+        Get the bounding box (if any) of the underlying image for which
+        the original WCS is defined.
+
+        """
         return None
 
 
@@ -217,11 +227,10 @@ class JWSTgWCS(TPWCS):
     tangent-plane corrections.
 
     """
-    def __init__(self, wcs, wcsinfo):
+    def __init__(self, wcs, wcsinfo, meta=None):
         """
         Parameters
         ----------
-
         wcs : GWCS
             A `GWCS` object.
 
@@ -241,6 +250,9 @@ class JWSTgWCS(TPWCS):
             'roll_ref' : float
                 Roll angle in degrees.
 
+        meta : dict, None, optional
+            Dictionary that will be merged to the object's ``meta`` fields.
+
         """
         if TPCorr is None:
             raise ImportError("The 'jwst' package must be installed in order "
@@ -249,6 +261,8 @@ class JWSTgWCS(TPWCS):
         valid, message =  self._check_wcs_structure(wcs)
         if not valid:
             raise ValueError("Unsupported WCS structure: {}".format(message))
+
+        super().__init__(wcs=wcs, meta=meta)
 
         v2_ref = wcsinfo['v2_ref']
         v3_ref = wcsinfo['v3_ref']
@@ -294,7 +308,6 @@ class JWSTgWCS(TPWCS):
                 name='tangent-plane linear correction'
             )
 
-        super().__init__(wcs)
         self._update_transformations()
 
     def _update_transformations(self):
@@ -388,10 +401,7 @@ class JWSTgWCS(TPWCS):
         self._update_transformations()
 
         # save linear transformation info to the meta attribute:
-        self._meta['matrix'] = matrix
-        self._meta['shift'] = shift
-        if meta is not None:
-            self._meta.update(meta)
+        super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
 
     def _check_wcs_structure(self, wcs):
         if wcs is None or wcs.pipeline is None:
@@ -429,7 +439,6 @@ class JWSTgWCS(TPWCS):
                     "in the WCS pipeline.")
 
         return True, ''
-
 
     def det_to_world(self, x, y):
         """
@@ -480,10 +489,7 @@ class JWSTgWCS(TPWCS):
         return x, y
 
     def tanp_to_world(self, x, y):
-        """
-        Convert tangent plane coordinates to world coordinates.
-
-        """
+        """ Convert tangent plane coordinates to world coordinates. """
         tpc = self._default_tpcorr if self._tpcorr is None else self._tpcorr
         v2, v3 = tpc.tanp_to_v2v3(x, y)
         ra, dec = self._v23_to_world(v2, v3)
@@ -491,6 +497,11 @@ class JWSTgWCS(TPWCS):
 
     @property
     def bounding_box(self):
+        """
+        Get the bounding box (if any) of the underlying image for which
+        the original WCS is defined.
+
+        """
         if self._owcs.pixel_bounds is not None:
             return self._owcs.pixel_bounds
         else:
@@ -514,7 +525,7 @@ class FITSWCS(TPWCS):
         supported.
 
     """
-    def __init__(self, wcs):
+    def __init__(self, wcs, meta=None):
         """
         Parameters
         ----------
@@ -525,12 +536,9 @@ class FITSWCS(TPWCS):
         """
         valid, message =  self._check_wcs_structure(wcs)
         if not valid:
-            raise ValueError("Unsupported WCS structure." + message)
+            raise ValueError("Unsupported WCS structure: " + message)
 
-        super().__init__(wcs)
-
-        self._owcs = wcs.deepcopy()
-        self._wcs = wcs.deepcopy()
+        super().__init__(wcs=wcs, meta=meta)
         wcslin = wcs.deepcopy()
 
         # strip all *known* distortions:
@@ -654,10 +662,7 @@ class FITSWCS(TPWCS):
         self._wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
-        self._meta['matrix'] = matrix.astype(np.float64)
-        self._meta['shift'] = shift
-        if meta is not None:
-            self._meta.update(meta)
+        super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
 
     def det_to_world(self, x, y):
         """
@@ -712,10 +717,7 @@ class FITSWCS(TPWCS):
         return x, y
 
     def tanp_to_world(self, x, y):
-        """
-        Convert tangent plane coordinates to world coordinates.
-
-        """
+        """ Convert tangent plane coordinates to world coordinates. """
         crpix1, crpix2 = self._wcs.wcs.crpix
         x = x + crpix1
         y = y + crpix2
@@ -724,6 +726,11 @@ class FITSWCS(TPWCS):
 
     @property
     def bounding_box(self):
+        """
+        Get the bounding box (if any) of the underlying image for which
+        the original WCS is defined.
+
+        """
         if self._owcs.pixel_bounds is not None:
             return self._owcs.pixel_bounds
         else:

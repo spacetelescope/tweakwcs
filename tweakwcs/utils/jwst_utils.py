@@ -1,10 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-A module that provides functions for automatically adding ``tweakwcs_group_id``
+A module that provides functions for automatically adding ``group_id``
 tag to images based on information recorded in image's ``meta`` attribute.
 
-This ``tweakwcs_group_id`` tag, if set, can be used by ``tweak_wcs``,
-``tweak_image_wcs``, and other functions from the ``imalign`` module to
+This ``tweakwcs_group_id`` tag, if set, can be used by ``align_wcs``,
+and other functions from the ``imalign`` module to
 identify images that should be treated together as a group when "tweaking"
 their ``WCS``. That is, all images within a group will have the same
 correction applied to their ``WCS``\ es. This is often the case with images
@@ -31,7 +31,7 @@ import numpy as np
 from astropy.nddata import NDDataBase
 
 # LOCAL
-from . import __version__, __version_date__
+from .. import __version__, __version_date__
 
 
 log = logging.getLogger(__name__)

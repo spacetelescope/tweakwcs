@@ -3,7 +3,7 @@
 This module provides support for working with image footprints on the sky and
 source catalogs.
 
-:Authors: Mihai Cara (contact: help@stsci.edu)
+:Authors: Mihai Cara
 
 :License: :doc:`../LICENSE`
 
@@ -50,123 +50,140 @@ class WCSImageCatalog(object):
     A class that holds information pertinent to an image WCS and a source
     catalog of the sources found in that image.
 
+    .. warning::
+        If ``tpwcs.meta`` dictionary contains any of the following
+        keywords ``'catalog'``, ``'name'``, or ``'group_id'``, they
+        will be ignored without warning.
+
     """
-    def __init__(self, catalog, imwcs, shape=None, name=None, meta={}):
+    def __init__(self, catalog, tpwcs, name=None, group_id=None, meta={}):
         """
         Parameters
         ----------
-
         catalog : astropy.table.Table
             Source catalog associated with an image. Must contain ``'x'`` and
             ``'y'`` columns which indicate source coordinates (in pixels) in
             the associated image.
 
-        imwcs : TPWCS
-            WCS associated with the image from which the catalog was derived.
-
-        shape : tuple, None, optional
-            A tuple of two integer values indicating the size of the image
-            along each axis. Must follow the same convention as the shape of
-            a :py:class:`numpy.ndarray` objects. Specifically,
-            first size should be indicate the number of rows in the image and
-            second size should indicate the number of columns in the image.
-            When ``shape`` has the default value of `None`, image shape is
-            estimated as :math:`(\max(y, 1), \max(x, 1))`.
+        tpwcs : TPWCS
+            ``TPWCS``-derived tangent-plane WCS corrector object associated
+            with the image from which the catalog was derived.
 
         name : str, None, optional
-            Image catalog's name.
+            Image catalog's name. This is used to identify catalog during
+            logging. If ``name`` is `None`, the ``name`` of this
+            ``WCSImageCatalog`` object will be set to ``'Unknown'``.
+
+        group_id : hashable, None, optional
+            Group ID that may be used for identifying catalogs that need
+            to be aligned together. ``group_id`` must be hashable.
 
         meta : dict, optional
             Additional information about image, catalog, and/or WCS to be
             stored (for convenience) within `WCSImageCatalog` object.
 
         """
-        self._shape = shape
-        self._name = name
+        self.name = name
+        self.group_id = group_id
+
         self._catalog = None
         self._bb_radec = None
+
 
         self.img_bounding_ra = None
         self.img_bounding_dec = None
 
-        self.meta = {}
-        self.meta.update(meta)
+        self.meta = dict(meta)
+        self._fit_info = {'status': 'SKIPPED'}
 
-        self.imwcs = imwcs
+        self.tpwcs = tpwcs
         self.catalog = catalog
 
     @property
-    def imwcs(self):
+    def tpwcs(self):
         """ Get :py:class:`TPWCS` WCS. """
-        return self._imwcs
+        return self._tpwcs
 
-    @imwcs.setter
-    def imwcs(self, imwcs):
-        """ Get/Set catalog's WCS (a :py:class:`TPWCS` object).
+    @tpwcs.setter
+    def tpwcs(self, tpwcs):
+        """ Get/Set catalog's WCS (a :py:class:`TPWCS`-derived object).
 
         .. note::
             Setting the WCS triggers automatic bounding polygon recalculation.
 
         Parameters
         ----------
-
-        imwcs : TPWCS
-            WCS associated with the image from which the catalog was derived.
+        tpwcs : TPWCS
+            ``TPWCS``-derived tangent-plane WCS corrector object associated
+            with the image from which the catalog was extracted.
 
         """
-        if not isinstance(imwcs, TPWCS):
-            raise TypeError("Unsupported 'imwcs' type. "
-                            "'imwcs' must be a subtype of TPWCS.")
-        self._imwcs = imwcs
+        if not isinstance(tpwcs, TPWCS):
+            raise TypeError("Unsupported 'tpwcs' type. "
+                            "'tpwcs' must be a subtype of TPWCS.")
+        self._tpwcs = tpwcs
 
         # create spherical polygon bounding the image
         self.calc_bounding_polygon()
 
     @property
     def name(self):
-        """ Get/set :py:class:`WCSImageCatalog` object's name.
+        """
+        Get/set catalog's name. This is used to identify catalog during
+        logging. Upon setting, the value will be converted to a `str`.
+        When setting to `None`, the ``name`` will be set to ``'Unknown'``.
+
         """
         return self._name
 
     @name.setter
     def name(self, name):
-        self._name = name
-        if hasattr(self, '_catalog'):
-            if self._catalog is not None:
-                self._catalog.meta['name'] = name
+        self._name = 'Unknown' if name is None else str(name)
 
     @property
-    def shape(self):
+    def group_id(self):
         """
-        Get/set image's shape. This must be a tuple of two dimensions
-        following the same convention as the shape of `numpy.ndarray`.
+        Get/set :py:class:`WCSImageCatalog` object's group ID that may be used
+        for identifying catalogs that need to be aligned together.
+        ``group_id`` must be hashable.
 
         """
-        return self._shape
+        return self._group_id
 
-    @shape.setter
-    def shape(self, shape):
-        if shape is None:
-            self._shape = None
-            return
+    @group_id.setter
+    def group_id(self, group_id):
+        # check if input is hashable:
+        {group_id: None}
+        self._group_id = group_id
 
-        try:
-            is_int = all(map(_is_int, shape))
-            if not is_int:
-                raise TypeError
-        except TypeError:
-            raise TypeError("'shape' must be a 1D list/tuple/array with "
-                            "exactly two integer elements or None.")
+    @property
+    def fit_status(self):
+        """
+        Get/Set fit status. This property is a shortcut to the ``'status'``
+        key value in the ``fit_info`` dictionary. When the
+        :py:class:`WCSImageCatalog` object is created, ``fit_status`` is
+        initially set to ``'SKIPPED'``. Alignment tools are reponsible for
+        updating catalog's fit status.
 
-        if not all(npix > 0 for npix in shape):
-            raise ValueError("Null image: Image dimension must be positive.")
+        """
+        return self._fit_info['status']
 
-        self._shape = (int(shape[0]), int(shape[1]))
+    @fit_status.setter
+    def fit_status(self, fit_status):
+        self._fit_info['status'] = fit_status
+
+    @property
+    def fit_info(self):
+        """
+        Get fit information - a dictionary. This class sets only the
+        ``'status'`` field but fitting routines may set additional fields.
+
+        """
+        return self._fit_info
 
     @property
     def catalog(self):
-        """ Get/set image's catalog.
-        """
+        """ Get/set image's catalog. """
         return self._catalog
 
     @catalog.setter
@@ -197,9 +214,9 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.det_to_world(x, y)
+        return self._tpwcs.det_to_world(x, y)
 
     def world_to_det(self, ra, dec):
         """
@@ -207,45 +224,45 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.world_to_det(ra, dec)
+        return self._tpwcs.world_to_det(ra, dec)
 
     def det_to_tanp(self, x, y):
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.det_to_tanp(x, y)
+        return self._tpwcs.det_to_tanp(x, y)
 
     def tanp_to_det(self, x, y):
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.tanp_to_det(x, y)
+        return self._tpwcs.tanp_to_det(x, y)
 
     def tanp_to_world(self, x, y):
         """
         Convert tangent plane coordinates to world coordinates.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.tanp_to_world(x, y)
+        return self._tpwcs.tanp_to_world(x, y)
 
     def world_to_tanp(self, ra, dec):
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        if self._imwcs is None:
+        if self._tpwcs is None:
             raise RuntimeError("WCS has not been set")
-        return self._imwcs.world_to_tanp(ra, dec)
+        return self._tpwcs.world_to_tanp(ra, dec)
 
     @property
     def polygon(self):
@@ -318,24 +335,18 @@ class WCSImageCatalog(object):
             bounding polygon will contain only vertices of the image.
 
         """
-        if self.imwcs is None or (self.shape is None and self.catalog is None):
+        if self.tpwcs is None or self.catalog is None:
             return
 
-        if self.imwcs.bounding_box is None:
-            if self.shape is not None:
-                ny, nx = self.shape
-            else:
-                # just take max image coordinates from catalogs as bounds:
-                nx = max(1, int(np.ceil(np.amax(self._catalog['x']))))
-                ny = max(1, int(np.ceil(np.amax(self._catalog['y']))))
-
+        if self.tpwcs.bounding_box is None:
+            # just take max image coordinates from catalogs as bounds:
             lx = -0.5
             ly = -0.5
-            hx = nx - 0.5
-            hy = ny - 0.5
+            hx = max(1, int(np.ceil(np.amax(self._catalog['x'])))) - 0.5
+            hy = max(1, int(np.ceil(np.amax(self._catalog['y'])))) - 0.5
 
         else:
-            ((lx, hx), (ly, hy)) = self.imwcs.bounding_box
+            ((lx, hx), (ly, hy)) = self.tpwcs.bounding_box
 
         if stepsize is None:
             nintx = 2
@@ -391,7 +402,7 @@ class WCSImageCatalog(object):
         Compute convex hull that bounds the sources in the catalog.
 
         """
-        if self.imwcs is None or self.catalog is None:
+        if self.tpwcs is None or self.catalog is None:
             return
 
         x = self.catalog['x']
@@ -463,6 +474,9 @@ class WCSGroupCatalog(object):
 
         if isinstance(images, WCSImageCatalog):
             self._images = [images]
+            if images.catalog is None:
+                raise ValueError("Each input WCS image catalog must have a "
+                                 "valid catalog.")
 
         elif hasattr(images, '__iter__'):
             if not images:
@@ -473,6 +487,9 @@ class WCSGroupCatalog(object):
                 if not isinstance(im, WCSImageCatalog):
                     raise TypeError("Each element of the 'images' parameter "
                                     "must be an 'WCSImageCatalog' object.")
+                if im.catalog is None:
+                    raise ValueError("Each input WCS image catalog must have "
+                                     "a valid catalog.")
                 self._images.append(im)
 
         else:
@@ -958,8 +975,7 @@ class WCSGroupCatalog(object):
         return fit
 
     def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
-        """ Applies a general affine transformation to the WCS.
-        """
+        """ Applies a general affine transformation to the WCS. """
         # compute the matrix for the scale and rotation correction
         matrix = matrix.T
         shift = -np.dot(inv(matrix), shift)
@@ -967,17 +983,17 @@ class WCSGroupCatalog(object):
         for imcat in self:
             # compute linear transformation from the tangent plane used for
             # alignment to the tangent plane of another image in the group:
-            if imcat.imwcs == tanplane_wcs:
+            if imcat.tpwcs == tanplane_wcs:
                 m = matrix.copy()
                 s = np.array(shift, dtype=np.float64)
             else:
-                r1, t1 = _tp2tp(imcat.imwcs, tanplane_wcs)
-                r2, t2 = _tp2tp(tanplane_wcs, imcat.imwcs)
+                r1, t1 = _tp2tp(imcat.tpwcs, tanplane_wcs)
+                r2, t2 = _tp2tp(tanplane_wcs, imcat.tpwcs)
                 m = np.linalg.multi_dot([r2, matrix, r1])
                 s = (t1 + np.dot(inv(r1), shift) +
                      np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.float64)
 
-            imcat.imwcs.set_correction(m, s, meta=meta)
+            imcat.tpwcs.set_correction(m, s, meta=meta)
 
     def align_to_ref(self, refcat, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
@@ -987,8 +1003,8 @@ class WCSGroupCatalog(object):
         sources, and adjusts images' WCS according to this fit.
 
         Upon successful return, this function will also set the following
-        fields of the ``meta`` attribute of the tangent-plane ``WCS``
-        (a `TPWCS`-derived object) of each member `WCSImageCatalog` object:
+        fields of the ``fit_info`` attribute of each member
+        `WCSImageCatalog` object:
 
             * **'fitgeom'**: the value of the ``fitgeom`` argument
             * **'eff_minobj'**: effective value of the ``minobj`` parameter
@@ -1043,10 +1059,8 @@ class WCSGroupCatalog(object):
             errors. Use other fields to evaluate alignment: fit ``RMSE``
             and ``MAE`` values, number of matched sources, etc.
 
-
         Parameters
         ----------
-
         refcat : RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources
             as well as a valid reference WCS.
@@ -1095,7 +1109,6 @@ class WCSGroupCatalog(object):
 
         Returns
         -------
-
         bool
             Returns `True` if the number of matched sources is larger or equal
             to ``minobj`` and all steps have been performed, including catalog
@@ -1111,7 +1124,7 @@ class WCSGroupCatalog(object):
 
         # set initial status to 'FAILED':
         for imcat in self:
-            imcat.imwcs.meta['status'] = "FAILED: Unknown error"
+            imcat.fit_status = "FAILED: Unknown error"
 
         if minobj is None:
             if fitgeom == 'general':
@@ -1121,7 +1134,7 @@ class WCSGroupCatalog(object):
             else:
                 minobj = 1
 
-        tanplane_wcs = deepcopy(self._images[0].imwcs)
+        tanplane_wcs = deepcopy(self._images[0].tpwcs)
 
         self.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
         refcat.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
@@ -1136,13 +1149,13 @@ class WCSGroupCatalog(object):
             log.warning("Not enough matches (< {:d}) found for image "
                         "catalog '{:s}'.".format(nmatches, name))
             for imcat in self:
-                imcat.imwcs.meta['status'] = 'FAILED: not enough matches'
+                imcat.fit_status = 'FAILED: not enough matches'
             return False
 
         fit = self.fit2ref(refcat=refcat, tanplane_wcs=tanplane_wcs,
                            fitgeom=fitgeom, nclip=nclip, sigma=sigma)
 
-        meta = {
+        fit_info = {
             'fitgeom' : fitgeom,
             'eff_minobj': minobj,
             'matrix': fit['matrix'],
@@ -1162,7 +1175,7 @@ class WCSGroupCatalog(object):
         }
 
         if match is not None:
-            meta.update({
+            fit_info.update({
                 'nmatches': nmatches,
                 'matched_ref_idx': mref_idx,
                 'matched_input_idx': minput_idx
@@ -1172,18 +1185,21 @@ class WCSGroupCatalog(object):
             tanplane_wcs=tanplane_wcs,
             matrix=fit['matrix'],
             shift=fit['offset'],
-            meta=meta
+            # meta=meta
         )
+
+        for imcat in self:
+            imcat.fit_info.update(deepcopy(fit_info))
 
         self.recalc_catalog_radec()
 
         return True
 
 
-def _tp2tp(imwcs1, imwcs2):
+def _tp2tp(tpwcs1, tpwcs2):
     x = np.array([0.0, 1.0, 0.0], dtype=np.float)
     y = np.array([0.0, 0.0, 1.0], dtype=np.float)
-    xrp, yrp = imwcs2.world_to_tanp(*imwcs1.tanp_to_world(x, y))
+    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
 
     matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])])
     shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.float64)
@@ -1205,7 +1221,7 @@ class RefCatalog(object):
         catalog : astropy.table.Table
             Reference catalog.
 
-            ..note::
+            .. note::
                 Reference catalogs (:py:class:`~astropy.table.Table`)
                 *must* contain *both* ``'RA'`` and ``'DEC'`` columns.
 

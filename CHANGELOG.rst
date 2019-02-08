@@ -8,8 +8,27 @@ Release Notes
    ==================
 
 
-0.4.0 (unreleased)
-==================
+0.4.0 (08-February-2019)
+========================
+
+- Updated example notebook to reflect changes to API. [#57]
+
+- Allow ``TPWCS`` classes to set ``meta`` during object instantiation.
+  This allows attaching, for example, a source catalog to the tangent-plane
+  WCS corrector object. [#57]
+
+- ``align_wcs`` no longer supports ``NDData`` input. Instead catalogs can be
+  provided directly in the ``meta`` attribute of ``TPWCS``-derived WCS
+  "correctors". This fundamentally transfers the responsibility of
+  instantiating the correct tangent-plane WCS to the caller. This, in turn,
+  will allow future WCS to be supported by providing a custom ``TPWCS``-derived
+  corrector defined externally to ``tweakwcs`` package. Second benefit is that
+  image data no longer need to be kept in memory in ``NDData`` objects as
+  image data are not needed for image alignment once catalogs have been
+  created. [#57]
+
+- Renamed ``tweak_wcs`` to ``fit_wcs`` and ``tweak_image_wcs`` to
+  ``align_wcs``. [#57]
 
 - Fixed a bug due to which the code might crash due to an undefined ``ra``
   variable, see issue #55. [#56]
