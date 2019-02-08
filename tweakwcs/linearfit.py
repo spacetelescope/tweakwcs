@@ -3,7 +3,7 @@
 A module that provides algorithms for performing linear fit between
 sets of 2D points.
 
-:Authors: Mihai Cara, Warren Hack (contact: help@stsci.edu)
+:Authors: Mihai Cara, Warren Hack
 
 :License: :doc:`../LICENSE`
 
@@ -214,7 +214,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     if sigma is None and nclip is not None and nclip > 0:
         raise ValueError("Argument 'sigma' cannot be None when 'nclip' is "
-                         "not None or zero.")
+                         "neither None nor zero.")
 
     if isinstance(sigma, numbers.Number):
         sigstat = 'rmse'  # default value
