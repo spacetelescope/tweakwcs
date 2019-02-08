@@ -11,6 +11,10 @@ Release Notes
 0.4.0 (08-February-2019)
 ========================
 
+- Matched indices, linear fit results and fit residuals are now set in the
+  input "WCS catalogs" ``meta['fit_info']`` instead of
+  ``meta['tweakwcs_info']``. [#57]
+
 - Updated example notebook to reflect changes to API. [#57]
 
 - Allow ``TPWCS`` classes to set ``meta`` during object instantiation.
