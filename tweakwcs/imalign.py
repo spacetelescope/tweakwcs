@@ -579,9 +579,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         )
 
         for wcat in current_wcat:
-            print(wcat.tpwcs.meta.keys())
             wcat.tpwcs.meta['fit_info'] = wcat.fit_info
-            print(wcat.tpwcs.meta.keys())
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:
