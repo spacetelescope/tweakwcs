@@ -208,7 +208,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     if wuv is not None:
         wuv = np.asarray(wuv)
-        wmask *= wxy > 0.0
+        wmask *= wuv > 0.0
 
     mask = wmask
 

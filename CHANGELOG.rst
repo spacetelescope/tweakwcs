@@ -4,9 +4,19 @@
 Release Notes
 =============
 
-.. 0.4.1 (unreleased)
+.. 0.4.3 (unreleased)
    ==================
 
+0.4.2 (21-February-2019)
+========================
+
+- Fixed a bug due to which the fitting code would crash is ``wuv`` were
+  provided but ``wxy`` were set to ``None``. [#60]
+
+0.4.1 (14-February-2019)
+========================
+
+- Code cleanup: removed debug print statements. [#59]
 
 0.4.0 (08-February-2019)
 ========================
