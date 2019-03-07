@@ -1,15 +1,11 @@
 #!/usr/bin/env python
-import sys
+import numpy
 import os
-import shutil
-import inspect
 import pkgutil
-import importlib
-from subprocess import check_call, CalledProcessError
-from configparser import ConfigParser
-from setuptools import setup, find_packages, Extension, _install_setup_requires
-from setuptools.command.install import install
+import sys
+from setuptools import setup, find_packages, Extension
 from setuptools.command.test import test as TestCommand
+from subprocess import check_call, CalledProcessError
 
 try:
     from distutils.config import ConfigParser
@@ -70,21 +66,6 @@ if not version.date:
     )
 relic.release.write_template(version,  os.path.join(*PACKAGENAME.split('.')))
 
-# Install packages required for this setup to proceed:
-SETUP_REQUIRES = [
-    'numpy',
-]
-
-_install_setup_requires(dict(setup_requires=SETUP_REQUIRES))
-
-for dep_pkg in SETUP_REQUIRES:
-    try:
-        importlib.import_module(dep_pkg)
-    except ImportError:
-        print("{0} is required in order to install '{1}'.\n"
-              "Please install {0} first.".format(dep_pkg, PACKAGENAME),
-              file=sys.stderr)
-        exit(1)
 
 def get_transforms_data():
     # Installs the schema files in jwst/transforms
@@ -105,6 +86,7 @@ def get_transforms_data():
     transforms_schemas = [os.path.join('schemas', s) for s in transforms_schemas]
     return transforms_schemas
 
+
 PACKAGE_DATA = {
     '': [
         'README.rst',
@@ -122,7 +104,6 @@ PACKAGE_DATA = {
 }
 
 # Setup C module include directories
-import numpy
 include_dirs = [numpy.get_include()]
 
 # Setup C module macros
@@ -134,27 +115,6 @@ if sys.platform == 'win32':
         ('_CRT_SECURE_NO_WARNING', None),
         ('__STDC__', 1)
     ]
-
-
-class InstallCommand(install):
-    """Ensure tweakwcs's C extensions are available when imported relative
-    to the documentation, instead of relying on `site-packages`. What comes
-    from `site-packages` may not be the same tweakwcs that was *just*
-    compiled.
-    """
-    def run(self):
-        build_cmd = self.reinitialize_command('build_ext')
-        build_cmd.inplace = 1
-        self.run_command('build_ext')
-
-        # Explicit request for old-style install?  Just do it
-        if self.old_and_unmanageable or self.single_version_externally_managed:
-            install.run(self)
-        elif not self._called_from_setup(inspect.currentframe()):
-            # Run in backward-compatibility mode to support bdist_* commands.
-            install.run(self)
-        else:
-            self.do_egg_install()
 
 
 class PyTest(TestCommand):
@@ -170,7 +130,7 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-INSTALL_REQUIRES=[
+INSTALL_REQUIRES = [
     'numpy',
     'astropy>=3.1',
     'gwcs',
@@ -198,7 +158,6 @@ setup(
         'Development Status :: 3 - Alpha',
     ],
     python_requires='>=3.5',
-    setup_requires=SETUP_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     tests_require=['pytest'],
     packages=find_packages(),
@@ -211,11 +170,10 @@ setup(
     ],
     cmdclass={
         'test': PyTest,
-        'install': InstallCommand,
-        },
+    },
     project_urls={
         'Bug Reports': 'https://github.com/spacetelescope/tweakwcs/issues/',
         'Source': 'https://github.com/spacetelescope/tweakwcs/',
         'Help': 'https://hsthelp.stsci.edu/',
-        },
+    },
 )
