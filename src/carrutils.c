@@ -35,7 +35,8 @@ double **ptrvector(long n)
     Memory is allocated!                                    */
 double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin)  {
     double **c, *a;
-    long i, n, m;
+    long i;
+    npy_int n, m;
 
     n = PyArray_DIMS(arrayin)[0];
     m = PyArray_DIMS(arrayin)[1];
@@ -92,10 +93,29 @@ arrxyzero(PyObject *obj, PyObject *args)
   imgnum = PyArray_DIMS(imgxy)[0];
   refnum = PyArray_DIMS(refxy)[0];
 
+  double dx_check, dy_check;
+  double c1, c2, c3, c4,
+         c5, c6, c7, c8,
+         c9, c10;
+
   /* For each entry in the input image...*/
   for (j=0; j< imgnum; j++){
     /* compute the delta relative to each source in ref image */
     for (k = 0; k < refnum; k++){
+        c1 = *(float *)PyArray_DATA(imgxy);
+        c2 = j * PyArray_STRIDES(imgxy)[0];
+        c3 = *(float *)PyArray_DATA(refxy);
+        c4 = k * PyArray_STRIDES(refxy)[0];
+        dx_check = (c1 + c2) - (c3 + c4);
+
+        c5 = *(float *)PyArray_DATA(imgxy);
+        c6 = j * PyArray_STRIDES(imgxy)[0];
+        c7 = PyArray_STRIDES(imgxy)[1];
+        c8 = *(float *)PyArray_DATA(refxy);
+        c9 = k * PyArray_STRIDES(refxy)[0];
+        c10 = PyArray_STRIDES(refxy)[1];
+        dy_check = (c5 + c6 + c7) - (c8 + c9 + c10);
+
         dx = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]) - *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]);
         dy = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]+ PyArray_STRIDES(imgxy)[1]) -
              *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]+ PyArray_STRIDES(refxy)[1]);
