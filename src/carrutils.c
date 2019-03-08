@@ -63,9 +63,6 @@ arrxyzero(PyObject *obj, PyObject *args)
   integer_t dimensions[2];
   integer_t xind, yind;
   double dx, dy;
-  double c1, c2, c3, c4,
-         c5, c6, c7, c8,
-         c9, c10;
   long j, k;
 
   if (!PyArg_ParseTuple(args,"OOd:arrxyzero", &oimgxy, &orefxy, &searchrad)){
@@ -99,23 +96,12 @@ arrxyzero(PyObject *obj, PyObject *args)
   for (j=0; j< imgnum; j++){
     /* compute the delta relative to each source in ref image */
     for (k = 0; k < refnum; k++){
-        c1 = *(float *)PyArray_DATA(imgxy);
-        c2 = j * (long)PyArray_STRIDES(imgxy)[0];
-        c3 = *(float *)PyArray_DATA(refxy);
-        c4 = k * (long)PyArray_STRIDES(refxy)[0];
-        dx = (c1 + c2) - (c3 + c4);
+        dx = (*(float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0])
+           - (*(float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0]);
 
-        c5 = *(float *)PyArray_DATA(imgxy);
-        c6 = j * (long)PyArray_STRIDES(imgxy)[0];
-        c7 = (long)PyArray_STRIDES(imgxy)[1];
-        c8 = *(float *)PyArray_DATA(refxy);
-        c9 = k * (long)PyArray_STRIDES(refxy)[0];
-        c10 = (long)PyArray_STRIDES(refxy)[1];
-        dy = (c5 + c6 + c7) - (c8 + c9 + c10);
+        dy = (*(float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0] + (long)PyArray_STRIDES(imgxy)[1])
+           - (*(float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0] + (long)PyArray_STRIDES(refxy)[1]);
 
-        //dx = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]) - *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]);
-        //dy = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]+ PyArray_STRIDES(imgxy)[1]) -
-        //     *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]+ PyArray_STRIDES(refxy)[1]);
         if ((fabs(dx) < searchrad) && (fabs(dy) < searchrad)) {
             xind = (integer_t)(dx+searchrad);
             yind = (integer_t)(dy+searchrad);
