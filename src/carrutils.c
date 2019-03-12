@@ -96,11 +96,10 @@ arrxyzero(PyObject *obj, PyObject *args)
   for (j=0; j< imgnum; j++){
     /* compute the delta relative to each source in ref image */
     for (k = 0; k < refnum; k++){
-        dx = (*(float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0])
-           - (*(float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0]);
-
-        dy = (*(float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0] + (long)PyArray_STRIDES(imgxy)[1])
-           - (*(float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0] + (long)PyArray_STRIDES(refxy)[1]);
+        dx = *((float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0])
+           - *((float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0]);
+        dy = *((float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0] + (long)PyArray_STRIDES(imgxy)[1])
+           - *((float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0] + (long)PyArray_STRIDES(refxy)[1]);
 
         if ((fabs(dx) < searchrad) && (fabs(dy) < searchrad)) {
             xind = (integer_t)(dx+searchrad);
