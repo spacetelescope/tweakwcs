@@ -38,7 +38,7 @@ double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin) {
     c = (double **) ptrvector(n);
     a = (double *) PyArray_DATA(arrayin);  /* pointer to arrayin data as double */
     for (i=0; i < n; i++)
-      c[i] = a + i * m;
+        c[i] = a + i * m;
     return c;
 }
 
@@ -64,7 +64,7 @@ static PyObject * arrxyzero(PyObject *obj, PyObject *args) {
 
     imgxy = (PyArrayObject *)PyArray_ContiguousFromAny(oimgxy, NPY_FLOAT32, 2, 2);
     if (!imgxy)
-      goto _exit;
+        goto _exit;
 
     refxy = (PyArrayObject *)PyArray_ContiguousFromAny(orefxy, NPY_FLOAT32, 2, 2);
     if (!refxy)
@@ -85,20 +85,20 @@ static PyObject * arrxyzero(PyObject *obj, PyObject *args) {
 
     /* For each entry in the input image...*/
     for (j=0; j< imgnum; j++)
-      /* compute the delta relative to each source in ref image */
-      for (k = 0; k < refnum; k++){
-        dx = *((float *)PyArray_DATA(imgxy) + j * PyArray_STRIDES(imgxy)[0]) -
-             *((float *)PyArray_DATA(refxy) + k * PyArray_STRIDES(refxy)[0]);
-        dy = *((float *)PyArray_DATA(imgxy) +
-               (j * PyArray_STRIDES(imgxy)[0] + PyArray_STRIDES(imgxy)[1])) -
-             *((float *)PyArray_DATA(refxy) +
-               (k * PyArray_STRIDES(refxy)[0] + PyArray_STRIDES(refxy)[1]));
+        /* compute the delta relative to each source in ref image */
+        for (k = 0; k < refnum; k++){
+            dx = *((float *)PyArray_DATA(imgxy) + j * PyArray_STRIDES(imgxy)[0]) -
+                 *((float *)PyArray_DATA(refxy) + k * PyArray_STRIDES(refxy)[0]);
+            dy = *((float *)PyArray_DATA(imgxy) +
+                   (j * PyArray_STRIDES(imgxy)[0] + PyArray_STRIDES(imgxy)[1])) -
+                 *((float *)PyArray_DATA(refxy) +
+                   (k * PyArray_STRIDES(refxy)[0] + PyArray_STRIDES(refxy)[1]));
 
-        if ((fabs(dx) < searchrad) && (fabs(dy) < searchrad)) {
-            xind = (integer_t)(dx+searchrad);
-            yind = (integer_t)(dy+searchrad);
-            zpmat[yind][xind] += 1;
-        }
+            if ((fabs(dx) < searchrad) && (fabs(dy) < searchrad)) {
+                xind = (integer_t)(dx+searchrad);
+                yind = (integer_t)(dy+searchrad);
+                zpmat[yind][xind] += 1;
+            }
     }
 
   _exit:
