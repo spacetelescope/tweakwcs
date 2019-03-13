@@ -4,7 +4,7 @@
 Release Notes
 =============
 
-.. 0.4.4 (unreleased)
+.. 0.4.5 (unreleased)
    ==================
 
 0.4.3 (13-March-2019)
