@@ -37,8 +37,8 @@ double **pymatrix_to_Carrayptrs(PyArrayObject *arrayin)  {
     double **c, *a;
     long i, n, m;
 
-    n = PyArray_DIMS(arrayin)[0];
-    m = PyArray_DIMS(arrayin)[1];
+    n = (long)PyArray_DIMS(arrayin)[0];
+    m = (long)PyArray_DIMS(arrayin)[1];
     c = (double **) ptrvector(n);
     a = (double *) PyArray_DATA(arrayin);  /* pointer to arrayin data as double */
     for (i=0; i<n; i++)
@@ -89,16 +89,18 @@ arrxyzero(PyObject *obj, PyObject *args)
   /* Allocate memory for return matrix */
   zpmat = pymatrix_to_Carrayptrs(ozpmat);
 
-  imgnum = PyArray_DIMS(imgxy)[0];
-  refnum = PyArray_DIMS(refxy)[0];
+  imgnum = (long)PyArray_DIMS(imgxy)[0];
+  refnum = (long)PyArray_DIMS(refxy)[0];
 
   /* For each entry in the input image...*/
   for (j=0; j< imgnum; j++){
     /* compute the delta relative to each source in ref image */
     for (k = 0; k < refnum; k++){
-        dx = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]) - *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]);
-        dy = *(float *)(PyArray_DATA(imgxy) + j*PyArray_STRIDES(imgxy)[0]+ PyArray_STRIDES(imgxy)[1]) -
-             *(float *)(PyArray_DATA(refxy) + k*PyArray_STRIDES(refxy)[0]+ PyArray_STRIDES(refxy)[1]);
+        dx = *((float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0])
+           - *((float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0]);
+        dy = *((float *)PyArray_DATA(imgxy) + j * (long)PyArray_STRIDES(imgxy)[0] + (long)PyArray_STRIDES(imgxy)[1])
+           - *((float *)PyArray_DATA(refxy) + k * (long)PyArray_STRIDES(refxy)[0] + (long)PyArray_STRIDES(refxy)[1]);
+
         if ((fabs(dx) < searchrad) && (fabs(dy) < searchrad)) {
             xind = (integer_t)(dx+searchrad);
             yind = (integer_t)(dy+searchrad);
