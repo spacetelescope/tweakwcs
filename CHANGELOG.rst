@@ -4,8 +4,13 @@
 Release Notes
 =============
 
-.. 0.4.3 (unreleased)
+.. 0.4.4 (unreleased)
    ==================
+
+0.4.3 (13-March-2019)
+=====================
+
+- Fixed VS2017 compiler error, ``"void *": unknown size``.
 
 0.4.2 (21-February-2019)
 ========================
