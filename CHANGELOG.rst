@@ -4,13 +4,23 @@
 Release Notes
 =============
 
-.. 0.4.5 (unreleased)
+.. 0.4.6 (unreleased)
    ==================
+
+0.4.5 (14-March-2019)
+=====================
+
+- Fixed incorrect pointer type introduced in previous release [#67].
+
+0.4.4 (13-March-2019)
+=====================
+
+- Fixed VS2017 compiler error, ``"void *": unknown size``. [#62, #63, #64]
 
 0.4.3 (13-March-2019)
 =====================
 
-- Fixed VS2017 compiler error, ``"void *": unknown size``.
+- Package maintenance release.
 
 0.4.2 (21-February-2019)
 ========================
