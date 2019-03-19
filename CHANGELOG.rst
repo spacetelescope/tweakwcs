@@ -7,6 +7,15 @@ Release Notes
 .. 0.4.6 (unreleased)
    ==================
 
+0.4.6 (unreleased)
+==================
+
+- Improved "2dhist" algorithm that performs simple catalog pre-alignment used
+  for source matching. [#69]
+
+- Changed the default value of the ``searchrad`` parameter in
+  ``matchutils.TPMatch`` to 3. [#69]
+
 0.4.5 (14-March-2019)
 =====================
 
