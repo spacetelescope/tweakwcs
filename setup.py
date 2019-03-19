@@ -103,19 +103,6 @@ PACKAGE_DATA = {
     'tweakwcs': get_transforms_data()
 }
 
-# Setup C module include directories
-include_dirs = [numpy.get_include()]
-
-# Setup C module macros
-define_macros = [('NUMPY', '1')]
-
-# Handle MSVC `wcsset` redefinition
-if sys.platform == 'win32':
-    define_macros += [
-        ('_CRT_SECURE_NO_WARNING', None),
-        ('__STDC__', 1)
-    ]
-
 
 class PyTest(TestCommand):
     def finalize_options(self):
@@ -162,12 +149,7 @@ setup(
     tests_require=['pytest'],
     packages=find_packages(),
     package_data=PACKAGE_DATA,
-    ext_modules=[
-        Extension('tweakwcs.chelp',
-                  ['src/carrutils.c'],
-                  include_dirs=[numpy.get_include()],
-                  define_macros=define_macros),
-    ],
+    ext_modules=[],
     cmdclass={
         'test': PyTest,
     },
