@@ -15,19 +15,17 @@ from copy import deepcopy
 
 # THIRD-PARTY
 import numpy as np
-import gwcs
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
-from stsci.stimage import xyxymatch
 
 # LOCAL
-from .wcsutils import cartesian2spherical, spherical2cartesian, planar_rot_3D
+from .wcsutils import (cartesian_to_spherical, spherical_to_cartesian,
+                       planar_rot_3D)
 from .tpwcs import TPWCS
-from .matchutils import TPMatch
 from .linalg import inv
 from .linearfit import iter_linear_fit
 
-from . import __version__, __version_date__
+from . import __version__, __version_date__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
@@ -88,7 +86,6 @@ class WCSImageCatalog(object):
 
         self._catalog = None
         self._bb_radec = None
-
 
         self.img_bounding_ra = None
         self.img_bounding_dec = None
@@ -303,10 +300,10 @@ class WCSImageCatalog(object):
     #       The original implementation should be uncommented once the bug
     #       is fixed.
     #
-    #def intersection_area(self, wcsim):
-        #""" Calculate the area of the intersection polygon.
-        #"""
-        #return np.fabs(self.intersection(wcsim).area())
+    # def intersection_area(self, wcsim):
+        # """ Calculate the area of the intersection polygon.
+        # """
+        # return np.fabs(self.intersection(wcsim).area())
     def intersection_area(self, wcsim):
         """ Calculate the area of the intersection polygon.
         """
@@ -550,10 +547,10 @@ class WCSGroupCatalog(object):
     #       The original implementation should be uncommented once the bug
     #       is fixed.
     #
-    #def intersection_area(self, wcsim):
-        #""" Calculate the area of the intersection polygon.
-        #"""
-        #return np.fabs(self.intersection(wcsim).area())
+    # def intersection_area(self, wcsim):
+        # """ Calculate the area of the intersection polygon.
+        # """
+        # return np.fabs(self.intersection(wcsim).area())
     def intersection_area(self, wcsim):
         """ Calculate the area of the intersection polygon.
         """
@@ -791,7 +788,7 @@ class WCSGroupCatalog(object):
             self._catalog['matched_ref_id'].mask[:] = True
 
         self._catalog['matched_ref_id'].mask[minput_idx] = False
-        self._catalog['matched_ref_id'][minput_idx] = refcat.catalog['id'][mref_idx]
+        self._catalog['matched_ref_id'][minput_idx] = refcat.catalog['id'][mref_idx]  # noqa: E501
 
         # this is needed to index reference catalog directly without using
         # astropy table indexing which, at this moment, is experimental:
@@ -1156,11 +1153,11 @@ class WCSGroupCatalog(object):
                            fitgeom=fitgeom, nclip=nclip, sigma=sigma)
 
         fit_info = {
-            'fitgeom' : fitgeom,
+            'fitgeom': fitgeom,
             'eff_minobj': minobj,
             'matrix': fit['matrix'],
             'shift': fit['offset'],
-            'center': fit['center'], # center of rotation in geom. transforms
+            'center': fit['center'],  # center of rotation in geom. transforms
             'fitmask': fit['fitmask'],  # sources was used for fitting
             'rot': fit['rot'],  # proper rotation
             'proper': fit['proper'],  # is a proper rotation? True/False
@@ -1326,10 +1323,10 @@ class RefCatalog(object):
     #       The original implementation should be uncommented once the bug
     #       is fixed.
     #
-    #def intersection_area(self, wcsim):
-        #""" Calculate the area of the intersection polygon.
-        #"""
-        #return np.fabs(self.intersection(wcsim).area())
+    # def intersection_area(self, wcsim):
+        # """ Calculate the area of the intersection polygon.
+        # """
+        # return np.fabs(self.intersection(wcsim).area())
     def intersection_area(self, wcsim):
         """ Calculate the area of the intersection polygon.
         """
@@ -1359,10 +1356,10 @@ class RefCatalog(object):
         # Compute x, y coordinates in this tangent plane based on the
         # previously computed WCS and return the set of x, y coordinates and
         # "reference WCS".
-        x, y, z = spherical2cartesian(
+        x, y, z = spherical_to_cartesian(
             self.catalog['RA'], self.catalog['DEC']
         )
-        ra_ref, dec_ref = cartesian2spherical(
+        ra_ref, dec_ref = cartesian_to_spherical(
             x.mean(dtype=np.float64),
             y.mean(dtype=np.float64),
             z.mean(dtype=np.float64)
@@ -1420,7 +1417,7 @@ class RefCatalog(object):
         xt = np.ones_like(xv)
         xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.float64)
         # convert cartesian to spherical coordinates:
-        ra, dec = cartesian2spherical(xcr, ycr, zcr)
+        ra, dec = cartesian_to_spherical(xcr, ycr, zcr)
 
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
         #       dec[0] != dec[-1] (even though we close the polygon in the
@@ -1540,15 +1537,15 @@ Convex_hull/Monotone_chain>`_
     # Boring case: no points or a single point,
     # possibly repeated multiple times.
     if len(points) == 0:
-        if not ndarray:
-            return (np.array([]), np.array([]))
-        else:
+        if ndarray:
             return ([], [])
-    elif len(points) == 1:
-        if not ndarray:
-            return (np.array([points[0][0]]), np.array([points[0][1]]))
         else:
+            return (np.array([]), np.array([]))
+    elif len(points) == 1:
+        if ndarray:
             return ([points[0][0]], [points[0][1]])
+        else:
+            return (np.array([points[0][0]]), np.array([points[0][1]]))
 
     # 2D cross product of OA and OB vectors, i.e. z-component of their
     # 3D cross product.
@@ -1580,17 +1577,17 @@ Convex_hull/Monotone_chain>`_
     pty = total_hull[:, 1]
 
     if wcs is None:
-        if not ndarray:
-            return (ptx.tolist(), pty.tolist())
-        else:
+        if ndarray:
             return (ptx, pty)
+        else:
+            return (ptx.tolist(), pty.tolist())
 
     # convert x, y vertex coordinates to RA & DEC:
     ra, dec = wcs(ptx, pty)
     ra[-1] = ra[0]
     dec[-1] = dec[0]
 
-    if not ndarray:
-        return (ra.tolist(), dec.tolist())
-    else:
+    if ndarray:
         return (ra, dec)
+    else:
+        return (ra.tolist(), dec.tolist())

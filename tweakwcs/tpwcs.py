@@ -11,12 +11,11 @@ of ``WCS``.
 # STDLIB
 import logging
 from copy import deepcopy
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 # THIRD-PARTY
 import numpy as np
 import gwcs
-from astropy import wcs as fitswcs
 
 try:
     from jwst.transforms.tpcorr import TPCorr  # pylint: disable=W0611
@@ -25,7 +24,7 @@ except:
 
 # LOCAL
 from .linalg import inv
-from . import __version__, __version_date__
+from . import __version__, __version_date__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
@@ -258,7 +257,7 @@ class JWSTgWCS(TPWCS):
             raise ImportError("The 'jwst' package must be installed in order "
                               "to correct JWST WCS.")
 
-        valid, message =  self._check_wcs_structure(wcs)
+        valid, message = self._check_wcs_structure(wcs)
         if not valid:
             raise ValueError("Unsupported WCS structure: {}".format(message))
 
@@ -534,7 +533,7 @@ class FITSWCS(TPWCS):
             An `astropy.wcs.WCS` object.
 
         """
-        valid, message =  self._check_wcs_structure(wcs)
+        valid, message = self._check_wcs_structure(wcs)
         if not valid:
             raise ValueError("Unsupported WCS structure: " + message)
 
@@ -574,9 +573,7 @@ class FITSWCS(TPWCS):
                         [naxis1, naxis2], wcs.wcs.crpix])
 
         sky_all = wcs.all_pix2world(pts, 1)
-        sky_wcs = wcs.wcs_pix2world(pts, 1)
         foc_all = wcs.pix2foc(pts, 1)
-        crpix = np.array(wcs.wcs.crpix)
 
         # strip all *known* distortions:
         wcs.cpdis1 = None
@@ -649,7 +646,7 @@ class FITSWCS(TPWCS):
 
         # compute new CRVAL for the image WCS:
         crpixinref = self._wcslin.wcs_world2pix(
-            self._wcs.wcs_pix2world([self._wcs.wcs.crpix],1),1)
+            self._wcs.wcs_pix2world([self._wcs.wcs.crpix], 1), 1)
         crpixinref = np.dot(crpixinref - shift, matrix.T).astype(np.float64)
         self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
         self._wcs.wcs.set()

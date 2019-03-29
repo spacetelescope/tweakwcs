@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 # LOCAL
-from . import __version__, __version_date__
+from . import __version__, __version_date__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
@@ -110,7 +110,6 @@ def inv(m):
 
         if im != k or jm != k:
             # swap rows & columns:
-            p = np.eye(order, dtype=np.int)
             q = np.eye(order, dtype=np.int)
 
             # swap rows in the m and invm matrix:

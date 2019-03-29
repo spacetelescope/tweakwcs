@@ -13,13 +13,10 @@ image catalogs "align" to the reference catalog *on the sky*.
 import logging
 from datetime import datetime
 import collections
-from copy import deepcopy
 
 # THIRD PARTY
 import numpy as np
 import astropy
-from astropy.nddata import NDDataBase
-import gwcs
 
 # We need JWST DataModel so that we can detect this type and treat it
 # differently from astropy.nddata.NDData because JWST's WCS is stored in
@@ -30,9 +27,9 @@ except:
     DataModel = None
 
 # LOCAL
-from . wcsimage import *
-from . tpwcs import *
-from . matchutils import *
+from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
+from . tpwcs import TPWCS
+from . matchutils import TPMatch
 
 from . import __version__, __version_date__
 
@@ -484,7 +481,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
     # process reference catalog or image if provided:
     if refcat is not None:
         if isinstance(refcat, TPWCS):
-            if not 'catalog' in refcat.meta:
+            if 'catalog' not in refcat.meta:
                 raise ValueError("Reference 'TPWCS' must contain a "
                                  "catalog.")
 
@@ -502,7 +499,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
             refcat = RefCatalog(rcat, name=refcat_name)
 
-        elif isinstance(refcat,  astropy.table.Table):
+        elif isinstance(refcat, astropy.table.Table):
             if 'RA' not in refcat.colnames or 'DEC' not in refcat.colnames:
                 raise KeyError("Reference catalogs *must* contain *both* 'RA' "
                                "and 'DEC' columns.")

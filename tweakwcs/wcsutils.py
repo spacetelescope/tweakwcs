@@ -14,13 +14,15 @@ A module that provides utility functions for WCS transformations.
 import math
 import numpy as np
 
+from . import __version__, __version_date__  # noqa: F401
 
-__all__ = ['cartesian2spherical', 'spherical2cartesian', 'planar_rot_3D']
+
+__all__ = ['cartesian_to_spherical', 'spherical_to_cartesian', 'planar_rot_3D']
 
 __author__ = 'Mihai Cara'
 
 
-def planar_rot_3D(angle, axis):
+def planar_rot_3D(angle, axis):  # noqa: N802
     """
     Create a 3D rotation matrix that performs a rotation *in a plane*
     perpendicular to the specified ``axis``.
@@ -30,11 +32,11 @@ def planar_rot_3D(angle, axis):
     sn = math.sin(angle)
     axisv = np.array(axis * [0.0] + [1.0] + (2 - axis) * [0.0],
                      dtype=np.float)
-    mat2D = np.array([[cs, sn], [-sn, cs]], dtype=np.float)
+    mat2D = np.array([[cs, sn], [-sn, cs]], dtype=np.float)  # noqa: N806
     return np.insert(np.insert(mat2D, axis, [0.0, 0.0], 1), axis, axisv, 0)
 
 
-def cartesian2spherical(x, y, z):
+def cartesian_to_spherical(x, y, z):
     """ Convert cartesian coordinates to spherical coordinates (in deg). """
     h = np.hypot(x, y)
     alpha = np.rad2deg(np.arctan2(y, x))
@@ -42,7 +44,7 @@ def cartesian2spherical(x, y, z):
     return alpha, delta
 
 
-def spherical2cartesian(alpha, delta):
+def spherical_to_cartesian(alpha, delta):
     """ Convert spherical coordinates (in deg) to cartesian. """
     alpha = np.deg2rad(alpha)
     delta = np.deg2rad(delta)

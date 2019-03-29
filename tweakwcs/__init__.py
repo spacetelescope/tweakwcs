@@ -7,12 +7,10 @@ __docformat__ = 'restructuredtext'
 __taskname__ = 'tweakwcs'
 __author__ = 'Mihai Cara'
 
-from .version import __version__, __version_date__
-from .tpwcs import *
-from .matchutils import *
-from .imalign import *
-from .wcsimage import *
-from .linalg import *
-from .linearfit import *
-#from .jwst_types import *
-#from .jwextension import *
+from .version import __version__, __version_date__  # noqa
+from .tpwcs import *  # noqa
+from .matchutils import *  # noqa
+from .imalign import *  # noqa
+from .wcsimage import *  # noqa
+from .linalg import *  # noqa
+from .linearfit import *  # noqa
