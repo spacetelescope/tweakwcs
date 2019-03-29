@@ -11,7 +11,7 @@ Release Notes
 ==================
 
 - Renamed ``wcsutils.cartesian2spherical`` to
-  ``wcsutils.cartesian_to_spherical`` and ``wcsutils.spherical_to_cartesian``
+  ``wcsutils.cartesian_to_spherical`` and ``wcsutils.spherical2cartesian``
   to ``wcsutils.spherical_to_cartesian``. [#71]
 
 - Improved "2dhist" algorithm that performs simple catalog pre-alignment used
