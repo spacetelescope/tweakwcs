@@ -22,16 +22,9 @@ that come from differenct chips of the same sensor chip assembly (SCA).
 # STDLIB
 import logging
 import uuid
-from datetime import datetime
-import collections
-from copy import deepcopy
-
-# THIRD PARTY
-import numpy as np
-from astropy.nddata import NDDataBase
 
 # LOCAL
-from .. import __version__, __version_date__
+from .. import __version__, __version_date__  # noqa: F401
 
 
 log = logging.getLogger(__name__)

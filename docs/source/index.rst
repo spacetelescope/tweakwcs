@@ -19,7 +19,6 @@ Content
    matchutils
    wcsimage
    linearfit
-   groupwcs
    wcsutils
    linalg
    LICENSE.rst

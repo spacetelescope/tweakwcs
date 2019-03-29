@@ -13,7 +13,7 @@ import numbers
 import numpy as np
 
 from .linalg import inv
-from . import __version__, __version_date__
+from . import __version__, __version_date__  # noqa: F401
 
 __author__ = 'Mihai Cara, Warren Hack'
 
@@ -50,7 +50,8 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     ``uv`` source coordinates
 
     .. math::
-        \mathbf{xy}'_k = \mathbf{F}^T\cdot(\mathbf{uv_k}-\mathbf{c})+\mathbf{s}+\mathbf{c}
+        \mathbf{xy}'_k = \mathbf{F}^T\cdot(\mathbf{uv_k}-\mathbf{c})+\
+        \mathbf{s}+\mathbf{c}
         :label: ilf1
 
     and the "observed" source positions ``xy``:
@@ -60,8 +61,8 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         :label: ilf2
 
     In the above equations, :math:`\mathbf{F}` is a ``2x2`` matrix while
-    :math:`\mathbf{xy}_k` and :math:`\mathbf{uv}_k` are the position coordinates
-    of the ``k``-th source (row in input ``xy`` and ``uv`` arrays).
+    :math:`\mathbf{xy}_k` and :math:`\mathbf{uv}_k` are the position
+    coordinates of the ``k``-th source (row in input ``xy`` and ``uv`` arrays).
 
     One of the two catalogs (``xy`` or ``uv``) contains what we refer to as
     "image" source positions and the other one as "reference" source positions.
@@ -188,7 +189,8 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         \mathrm{MAE} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k\|}
 
     .. math::
-        \mathrm{STD} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k - \mathbf{\overline{r}}\|^2}/(1-V_2)
+        \mathrm{STD} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k - \
+                       \mathbf{\overline{r}}\|^2}/(1-V_2)
 
     where :math:`\mathbf{r}_k=\mathbf{xy}_k-\mathbf{xy}'_k`,
     :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
@@ -337,7 +339,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     ``'eff_nclip'``.
 
     """
-    if len(xy) < 1:
+    if xy.size == 0:
         raise NotEnoughPointsError(
             "At least one point is required to find shifts."
         )
@@ -376,10 +378,10 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
         meanx = np.dot(w, diff_pts[:, 0]).astype(np.float64)
         meany = np.dot(w, diff_pts[:, 1]).astype(np.float64)
 
-    Pcoeffs = np.array([1.0, 0.0, meanx])
-    Qcoeffs = np.array([0.0, 1.0, meany])
+    p = np.array([1.0, 0.0, meanx])
+    q = np.array([0.0, 1.0, meany])
 
-    fit = _build_fit(Pcoeffs, Qcoeffs, 'shift')
+    fit = _build_fit(p, q, 'shift')
     resids = diff_pts - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
@@ -423,13 +425,13 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         u -= um
         v -= vm
 
-        Su2 = np.dot(u, u)
-        Sv2 = np.dot(v, v)
-        Sxv = np.dot(x, v)
-        Syu = np.dot(y, u)
-        Sxu = np.dot(x, u)
-        Syv = np.dot(y, v)
-        Su2v2 = Su2 + Sv2
+        su2 = np.dot(u, u)
+        sv2 = np.dot(v, v)
+        sxv = np.dot(x, v)
+        syu = np.dot(y, u)
+        sxu = np.dot(x, u)
+        syv = np.dot(y, v)
+        su2v2 = su2 + sv2
 
     else:
         if wxy is None:
@@ -462,21 +464,21 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         u -= um
         v -= vm
 
-        Su2 = np.dot(w, u**2)
-        Sv2 = np.dot(w, v**2)
-        Sxv = np.dot(w, x * v)
-        Syu = np.dot(w, y * u)
-        Sxu = np.dot(w, x * u)
-        Syv = np.dot(w, y * v)
-        Su2v2 = Su2 + Sv2
+        su2 = np.dot(w, u**2)
+        sv2 = np.dot(w, v**2)
+        sxv = np.dot(w, x * v)
+        syu = np.dot(w, y * u)
+        sxu = np.dot(w, x * u)
+        syv = np.dot(w, y * v)
+        su2v2 = su2 + sv2
 
-    det = Sxu * Syv - Sxv * Syu
-    if (det < 0):
-        rot_num = Sxv + Syu
-        rot_denom = Sxu - Syv
+    det = sxu * syv - sxv * syu
+    if det < 0:
+        rot_num = sxv + syu
+        rot_denom = sxu - syv
     else:
-        rot_num = Sxv - Syu
-        rot_denom = Sxu + Syv
+        rot_num = sxv - syu
+        rot_denom = sxu + syv
 
     if rot_num == rot_denom:
         theta = 0.0
@@ -489,8 +491,8 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     stheta = np.sin(np.deg2rad(theta))
     s_num = rot_denom * ctheta + rot_num * stheta
 
-    if Su2v2 > 0.0:
-        mag = s_num / Su2v2
+    if su2v2 > 0.0:
+        mag = s_num / su2v2
     else:
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
@@ -512,11 +514,11 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     xshift = xm - um * cthetax - sdet * vm * sthetax
     yshift = ym + sdet * um * sthetay - vm * cthetay
 
-    P = np.array([cthetax, sthetay, xshift], dtype=np.float64)
-    Q = np.array([-sthetax, cthetay, yshift], dtype=np.float64)
+    p = np.array([cthetax, sthetay, xshift], dtype=np.float64)
+    q = np.array([-sthetax, cthetay, yshift], dtype=np.float64)
 
     # Return the shift, rotation, and scale changes
-    fit = _build_fit(P, Q, fitgeom='rscale')
+    fit = _build_fit(p, q, fitgeom='rscale')
     resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
@@ -550,19 +552,19 @@ def fit_general(xy, uv, wxy=None, wuv=None):
         w = None
 
         # Set up products used for computing the fit
-        Sw = float(x.size)
-        Sx = x.sum()
-        Sy = y.sum()
-        Su = u.sum()
-        Sv = v.sum()
+        sw = float(x.size)
+        sx = x.sum()
+        sy = y.sum()
+        su = u.sum()
+        sv = v.sum()
 
-        Sxu = np.dot(x, u)
-        Syu = np.dot(y, u)
-        Sxv = np.dot(x, v)
-        Syv = np.dot(y, v)
-        Suu = np.dot(u, u)
-        Svv = np.dot(v, v)
-        Suv = np.dot(u, v)
+        sxu = np.dot(x, u)
+        syu = np.dot(y, u)
+        sxv = np.dot(x, v)
+        syv = np.dot(y, v)
+        suu = np.dot(u, u)
+        svv = np.dot(v, v)
+        suv = np.dot(u, v)
 
     else:
         if wxy is None:
@@ -585,52 +587,52 @@ def fit_general(xy, uv, wxy=None, wuv=None):
                              "too many weights are zero!")
 
         # Set up products used for computing the fit
-        Sw = np.sum(w, dtype=np.longdouble)
-        Sx = np.dot(w, x)
-        Sy = np.dot(w, y)
-        Su = np.dot(w, u)
-        Sv = np.dot(w, v)
+        sw = np.sum(w, dtype=np.longdouble)
+        sx = np.dot(w, x)
+        sy = np.dot(w, y)
+        su = np.dot(w, u)
+        sv = np.dot(w, v)
 
-        Sxu = np.dot(w, x * u)
-        Syu = np.dot(w, y * u)
-        Sxv = np.dot(w, x * v)
-        Syv = np.dot(w, y * v)
-        Suu = np.dot(w, u * u)
-        Svv = np.dot(w, v * v)
-        Suv = np.dot(w, u * v)
+        sxu = np.dot(w, x * u)
+        syu = np.dot(w, y * u)
+        sxv = np.dot(w, x * v)
+        syv = np.dot(w, y * v)
+        suu = np.dot(w, u * u)
+        svv = np.dot(w, v * v)
+        suv = np.dot(w, u * v)
 
-    M = np.array([[Su, Sv, Sw], [Suu, Suv, Su], [Suv, Svv, Sv]])
-    U = np.array([Sx, Sxu, Sxv])
-    V = np.array([Sy, Syu, Syv])
+    m = np.array([[su, sv, sw], [suu, suv, su], [suv, svv, sv]])
+    a = np.array([sx, sxu, sxv])
+    b = np.array([sy, syu, syv])
 
     try:
-        invM = inv(M)
+        inv_m = inv(m)
     except ArithmeticError:
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
         )
 
-    P = np.dot(invM, U).astype(np.float64)
-    Q = np.dot(invM, V).astype(np.float64)
-    if not (np.all(np.isfinite(P)) and np.all(np.isfinite(Q))):
+    p = np.dot(inv_m, a).astype(np.float64)
+    q = np.dot(inv_m, b).astype(np.float64)
+    if not (np.all(np.isfinite(p)) and np.all(np.isfinite(q))):
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
         )
 
     # Return the shift, rotation, and scale changes
-    fit = _build_fit(P, Q, 'general')
+    fit = _build_fit(p, q, 'general')
     resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
     fit['resids'] = resids
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
-def _build_fit(P, Q, fitgeom):
+def _build_fit(p, q, fitgeom):
     # Build fit matrix:
-    fit_matrix = np.dstack((P[:2], Q[:2]))[0]
+    fit_matrix = np.dstack((p[:2], q[:2]))[0]
 
     # determinant of the transformation
-    det = P[0] * Q[1] - P[1] * Q[0]
+    det = p[0] * q[1] - p[1] * q[0]
     sdet = np.sign(det)
     proper = sdet >= 0
 
@@ -642,7 +644,7 @@ def _build_fit(P, Q, fitgeom):
     skew = 0.0
 
     if fitgeom == 'shift':
-        return {'offset': (P[2], Q[2]),
+        return {'offset': (p[2], q[2]),
                 'matrix': fit_matrix,
                 'rot': 0.0,
                 'rotxy': (0.0, 0.0, 0.0, skew),
@@ -655,8 +657,7 @@ def _build_fit(P, Q, fitgeom):
     s = np.sqrt(np.abs(det))
     # Compute scales for each axis:
     if fitgeom == 'general':
-        sx = np.sqrt(P[0]**2 + Q[0]**2)
-        sy = np.sqrt(P[1]**2 + Q[1]**2)
+        sx, sy = np.sqrt(p[:2]**2 + q[:2]**2)
     else:
         sx = s
         sy = s
@@ -682,7 +683,7 @@ def _build_fit(P, Q, fitgeom):
         rot = 0.5 * (rotx + roty)
         skew = roty - rotx
 
-    return {'offset': (P[2], Q[2]),
+    return {'offset': (p[2], q[2]),
             'matrix': fit_matrix,
             'rot': prop_rot,
             'rotxy': (rotx, roty, rot, skew),
@@ -715,18 +716,14 @@ def build_fit_matrix(rot, scale=1):
 
     """
     if hasattr(rot, '__iter__'):
-        rx = np.deg2rad(rot[0])
-        ry = np.deg2rad(rot[1])
+        rx, ry = map(np.deg2rad, rot)
     else:
-        rx = np.deg2rad(float(rot))
-        ry = rx
+        rx = ry = np.deg2rad(float(rot))
 
     if hasattr(scale, '__iter__'):
-        sx = scale[0]
-        sy = scale[1]
+        sx, sy = scale
     else:
-        sx = float(scale)
-        sy = sx
+        sx = sy = float(scale)
 
     matrix = np.array([[sx * np.cos(rx), -sx * np.sin(rx)],
                        [sy * np.sin(ry), sy * np.cos(ry)]])

@@ -12,10 +12,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 import astropy
 
-import stsci.imagestats as imagestats
 from stsci.stimage import xyxymatch
 
-from . import __version__, __version_date__
+from . import __version__, __version_date__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
@@ -310,7 +309,7 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
         return xp, yp
 
     (xp, yp), fit_status, fit_sl = _find_peak(zpmat, peak_fit_box=5,
-                                           mask=zpmat > 0)
+                                              mask=zpmat > 0)
 
     if fit_status.startswith('ERROR'):
         log.warning("No valid shift found within a search radius of {:g} "
@@ -470,6 +469,9 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         # we need at least 6 points to fit a 2D quadratic polynomial
         # attempt center-of-mass instead:
         dt = d.sum()
+        if dt == 0.0:
+            coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
+            return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
         xc = np.dot(v[:, 1], d) / dt
         yc = np.dot(v[:, 2], d) / dt
         return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]
@@ -481,6 +483,9 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
         # attempt center-of-mass instead:
         dt = d.sum()
+        if dt == 0.0:
+            coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
+            return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
         xc = np.dot(v[:, 1], d) / dt
         yc = np.dot(v[:, 2], d) / dt
         return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]

@@ -5,4 +5,4 @@ Instrument-specific utility functions.
 
 """
 
-from .jwst_utils import *    # noqa
+from .jwst_utils import *  # noqa
