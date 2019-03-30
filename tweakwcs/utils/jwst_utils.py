@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""
+r"""
 A module that provides functions for automatically adding ``group_id``
 tag to images based on information recorded in image's ``meta`` attribute.
 
@@ -75,10 +75,10 @@ def assign_jwst_tweakwcs_groups(images):
                     gid = str(uuid.uuid4())
                 group_ids[meta_ids] = gid
 
-        except:
+        except Exception as e:
             gid = 'None'
             log.warning("Unable to assign a 'tweakwcs_group_id' to image "
-                        "'{}'".format(model.meta['filename']))
+                        "'{}' due to '{}'".format(model.meta['filename'], e))
             log.warning("'tweakwcs_group_id' for image '{}' will be set "
                         "to None".format(model.meta['filename']))
 

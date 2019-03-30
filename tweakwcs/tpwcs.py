@@ -19,7 +19,7 @@ import gwcs
 
 try:
     from jwst.transforms.tpcorr import TPCorr  # pylint: disable=W0611
-except:
+except ImportError:
     TPCorr = None
 
 # LOCAL

@@ -139,7 +139,7 @@ class TPMatch(MatchCatalogs):
         self._yoffset = float(yoffset)
 
     def __call__(self, refcat, imcat, tp_wcs=None):
-        """ Performs catalog matching.
+        r""" Performs catalog matching.
 
         Parameters
         ----------

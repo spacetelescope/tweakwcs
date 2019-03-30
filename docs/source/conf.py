@@ -15,7 +15,6 @@
 import os
 import sys
 import datetime
-import importlib
 import sphinx
 import stsci_rtd_theme
 from distutils.version import LooseVersion
@@ -66,9 +65,9 @@ intersphinx_mapping = {
 if sys.version_info[0] == 2:
     intersphinx_mapping['python'] = ('http://docs.python.org/2/', None)
     # intersphinx_mapping['pythonloc'] = (
-    # 'http://docs.python.org/',
-    # os.path.abspath(os.path.join(os.path.dirname(__file__),
-    # 'local/python2_local_links.inv')))
+    #     'http://docs.python.org/',
+    #     os.path.abspath(os.path.join(os.path.dirname(__file__),
+    #     'local/python2_local_links.inv')))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -127,8 +126,8 @@ copyright = u'{0}, {1}'.format(datetime.datetime.now().year, author)
 # |version| and |release|, also used in various other places throughout the
 # build documents.
 #
-#package = importlib.import_module(setup_cfg['package_name'])
-#release = "{:s} ({:s})".format(package.__version__, package.__version_date__)
+# package = importlib.import_module(setup_cfg['package_name'])
+# release = "{:s} ({:s})".format(package.__version__, package.__version_date__)
 import tweakwcs
 release = "{:s} ({:s})".format(tweakwcs.__version__, tweakwcs.__version_date__)
 
@@ -143,7 +142,7 @@ language = 'en'
 # today_fmt = '%B %d, %Y'
 
 # List of documents that shouldn't be included in the build.
-#unused_docs = []
+# unused_docs = []
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.
