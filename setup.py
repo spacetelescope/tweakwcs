@@ -124,6 +124,12 @@ INSTALL_REQUIRES = [
     'stsci.imagestats',
     'spherical_geometry',
 ]
+TESTS_REQUIRE = [
+    'pytest'
+]
+DOCS_REQUIRE = [
+    'numpydoc'
+]
 
 setup(
     name=PACKAGENAME,
@@ -145,10 +151,14 @@ setup(
     ],
     python_requires='>=3.5',
     install_requires=INSTALL_REQUIRES,
-    tests_require=['pytest'],
+    tests_require=TESTS_REQUIRE,
     packages=find_packages(),
     package_data=PACKAGE_DATA,
     ext_modules=[],
+    extras_require={
+        'docs': DOCS_REQUIRE,
+        'test': TESTS_REQUIRE,
+    },
     cmdclass={
         'test': PyTest,
     },
