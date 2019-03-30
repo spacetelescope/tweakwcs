@@ -63,7 +63,7 @@ if not version.date:
         commit='',
         post='-1'
     )
-relic.release.write_template(version,  os.path.join(*PACKAGENAME.split('.')))
+relic.release.write_template(version, os.path.join(*PACKAGENAME.split('.')))
 
 
 def get_transforms_data():
@@ -98,7 +98,7 @@ PACKAGE_DATA = {
         '*.csv',
         '*.yaml',
         '*.json'
-        ],
+    ],
     'tweakwcs': get_transforms_data()
 }
 

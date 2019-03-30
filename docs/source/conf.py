@@ -43,6 +43,7 @@ needs_sphinx = '1.3'
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
+
 def check_sphinx_version(expected_version):
     sphinx_version = LooseVersion(sphinx.__version__)
     expected_version = LooseVersion(expected_version)
@@ -51,6 +52,7 @@ def check_sphinx_version(expected_version):
             "At least Sphinx version {0} is required to build this "
             "documentation.  Found {1}.".format(
                 expected_version, sphinx_version))
+
 
 # Configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
@@ -63,10 +65,10 @@ intersphinx_mapping = {
 
 if sys.version_info[0] == 2:
     intersphinx_mapping['python'] = ('http://docs.python.org/2/', None)
-    #intersphinx_mapping['pythonloc'] = (
-        #'http://docs.python.org/',
-        #os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                     #'local/python2_local_links.inv')))
+    # intersphinx_mapping['pythonloc'] = (
+    # 'http://docs.python.org/',
+    # os.path.abspath(os.path.join(os.path.dirname(__file__),
+    # 'local/python2_local_links.inv')))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -210,7 +212,7 @@ html_theme = 'sphinx_rtd_theme'
 # documentation.
 html_theme_options = {
     "collapse_navigation": True
-    }
+}
 #        "nosidebar": "false",
 #        "sidebarbgcolor": "#4db8ff",
 #        "sidebartextcolor": "black",
@@ -312,8 +314,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'tweakwcs.tex', u'tweakwcs Documentation',
-   author, 'manual'),
+    ('index', 'tweakwcs.tex', u'tweakwcs Documentation',
+     author, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -356,9 +358,9 @@ man_show_urls = True
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'tweakwcs.tex', u'tweakwcs Documentation',
-   author, 'index', 'tweakwcs Documentation',
-   'Miscellaneous'),
+    ('index', 'tweakwcs.tex', u'tweakwcs Documentation',
+     author, 'index', 'tweakwcs Documentation',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
