@@ -19,7 +19,7 @@ import gwcs
 
 try:
     from jwst.transforms.tpcorr import TPCorr  # pylint: disable=W0611
-except:
+except ImportError:
     TPCorr = None
 
 # LOCAL
@@ -39,6 +39,7 @@ class TPWCS(ABC):
     and for managing tangent-plane corrections.
 
     """
+
     def __init__(self, wcs, meta=None):
         """
         Parameters
@@ -226,6 +227,7 @@ class JWSTgWCS(TPWCS):
     tangent-plane corrections.
 
     """
+
     def __init__(self, wcs, wcsinfo, meta=None):
         """
         Parameters
@@ -524,6 +526,7 @@ class FITSWCS(TPWCS):
         supported.
 
     """
+
     def __init__(self, wcs, meta=None):
         """
         Parameters

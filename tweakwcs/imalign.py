@@ -23,7 +23,7 @@ import astropy
 # DataModel.meta.wcs:
 try:
     from jwst.datamodels import DataModel
-except:
+except ImportError:
     DataModel = None
 
 # LOCAL
@@ -193,7 +193,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     try:
         # Attempt to set initial status to FAILED.
         tpwcs.meta['fit_info'] = {'status': 'FAILED: Unknown error'}
-    except:
+    except Exception:
         # Most likely the code will fail later with a more specific exception
         pass
 
@@ -260,7 +260,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         valid. Therefore, it is advisable verify that status is ``'SUCCESS'``
         before attempting to access other items, for example:
 
-        >>> fit_info = wcscat[0].meta.get('fit_info')
+        >>> fit_info = wcscat[0].meta.get('fit_info')  # noqa
         >>> if fit_info['status'] == 'SUCCESS':
         ...     print("shifts: [{}, {}]".format(*fit_info['shift']))
         ... else:

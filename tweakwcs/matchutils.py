@@ -26,6 +26,7 @@ log.setLevel(logging.DEBUG)
 
 class MatchCatalogs(ABC):
     """ A class that provides common interface for matching catalogs. """
+
     def __init__(self):
         """
         """
@@ -73,6 +74,7 @@ class TPMatch(MatchCatalogs):
         tangent plane.
 
     """
+
     def __init__(self, searchrad=3.0, separation=0.5, use2dhist=True,
                  xoffset=0.0, yoffset=0.0, tolerance=1.0):
         """
@@ -137,7 +139,7 @@ class TPMatch(MatchCatalogs):
         self._yoffset = float(yoffset)
 
     def __call__(self, refcat, imcat, tp_wcs=None):
-        """ Performs catalog matching.
+        r""" Performs catalog matching.
 
         Parameters
         ----------
@@ -408,7 +410,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         if i.size == 0:
             # no valid data:
             coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-            return coord, 'ERROR:NODATA', np.s_[0:ny-1, 0:nx-1]
+            return coord, 'ERROR:NODATA', np.s_[0:ny - 1, 0:nx - 1]
 
         ind = np.argmax(data[mask])
         imax = i[ind]
@@ -418,7 +420,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     if data[jmax, imax] < 1:
         # no valid data: we need some counts in the histogram bins
         coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-        return coord, 'ERROR:NODATA', np.s_[0:ny-1, 0:nx-1]
+        return coord, 'ERROR:NODATA', np.s_[0:ny - 1, 0:nx - 1]
 
     # choose a box around maxval pixel:
     x1 = max(0, imax - peak_fit_box // 2)
@@ -454,7 +456,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
-    v = np.vstack((np.ones_like(x), x, y, x*y, x*x, y*y)).T
+    v = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
     d = data[y1:y2, x1:x2].ravel()
     if mask is not None:
         m = mask[y1:y2, x1:x2].ravel()

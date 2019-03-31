@@ -54,6 +54,7 @@ class WCSImageCatalog(object):
         will be ignored without warning.
 
     """
+
     def __init__(self, catalog, tpwcs, name=None, group_id=None, meta={}):
         """
         Parameters
@@ -456,6 +457,7 @@ class WCSGroupCatalog(object):
     fitted together to a reference catalog.
 
     """
+
     def __init__(self, images, name=None):
         """
         Parameters
@@ -1211,6 +1213,7 @@ class RefCatalog(object):
     catalog manipulation and expansion.
 
     """
+
     def __init__(self, catalog, name=None, footprint_tol=1.0):
         """
         Parameters

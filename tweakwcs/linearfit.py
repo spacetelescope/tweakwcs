@@ -40,7 +40,7 @@ class NotEnoughPointsError(Exception):
 def iter_linear_fit(xy, uv, wxy=None, wuv=None,
                     fitgeom='general', center=None,
                     nclip=3, sigma=(3.0, 'rmse'), clip_accum=False):
-    """
+    r"""
     Compute linear transformation parameters that "best" (in the sense of
     minimizing residuals) transform ``uv`` source position to ``xy``
     sources iteratively using sigma-clipping.
