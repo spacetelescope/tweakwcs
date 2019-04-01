@@ -20,7 +20,7 @@ from spherical_geometry.polygon import SphericalPolygon
 
 # LOCAL
 from .wcsutils import (cartesian_to_spherical, spherical_to_cartesian,
-                       planar_rot_3D)
+                       planar_rot_3d)
 from .tpwcs import TPWCS
 from .linalg import inv
 from .linearfit import iter_linear_fit
@@ -1367,7 +1367,7 @@ class RefCatalog(object):
             y.mean(dtype=np.float64),
             z.mean(dtype=np.float64)
         )
-        rotm = [planar_rot_3D(np.deg2rad(alpha), 2 - axis)
+        rotm = [planar_rot_3d(np.deg2rad(alpha), 2 - axis)
                 for axis, alpha in enumerate([ra_ref, dec_ref])]
         euler_rot = np.linalg.multi_dot(rotm)
         inv_euler_rot = inv(euler_rot)
