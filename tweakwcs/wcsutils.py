@@ -17,23 +17,26 @@ import numpy as np
 from . import __version__, __version_date__  # noqa: F401
 
 
-__all__ = ['cartesian_to_spherical', 'spherical_to_cartesian', 'planar_rot_3D']
+__all__ = ['cartesian_to_spherical', 'spherical_to_cartesian', 'planar_rot_3d']
 
 __author__ = 'Mihai Cara'
 
 
-def planar_rot_3D(angle, axis):  # noqa: N802
+def planar_rot_3d(angle, axis):
     """
     Create a 3D rotation matrix that performs a rotation *in a plane*
     perpendicular to the specified ``axis``.
 
     """
+    if axis not in range(3):
+        raise ValueError("'axis' must be either 0, 1, or 2.")
+    axis = int(axis)
     cs = math.cos(angle)
     sn = math.sin(angle)
     axisv = np.array(axis * [0.0] + [1.0] + (2 - axis) * [0.0],
                      dtype=np.float)
-    mat2D = np.array([[cs, sn], [-sn, cs]], dtype=np.float)  # noqa: N806
-    return np.insert(np.insert(mat2D, axis, [0.0, 0.0], 1), axis, axisv, 0)
+    mat_2d = np.array([[cs, sn], [-sn, cs]], dtype=np.float)
+    return np.insert(np.insert(mat_2d, axis, [0.0, 0.0], 1), axis, axisv, 0)
 
 
 def cartesian_to_spherical(x, y, z):

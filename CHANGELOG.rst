@@ -10,6 +10,8 @@ Release Notes
 0.4.6 (unreleased)
 ==================
 
+- Renamed ``wcsutils.planar_rot_3D`` to ``wcsutils.planar_rot_3d``. [#75]
+
 - Renamed ``wcsutils.cartesian2spherical`` to
   ``wcsutils.cartesian_to_spherical`` and ``wcsutils.spherical2cartesian``
   to ``wcsutils.spherical_to_cartesian``. [#71]
