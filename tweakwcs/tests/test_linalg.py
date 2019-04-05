@@ -35,7 +35,7 @@ def test_inv_order2():
     linalg._USE_NUMPY_LINALG_INV = True
 
     try:
-        x = linalg.inv(m=a)
+        x = linalg.inv(a)
         r = np.identity(2) - np.dot(a, x)
 
         # Use Morris Newman's formula to asses the quality of the inversion
@@ -51,7 +51,7 @@ def test_inv_order2():
     linalg._USE_NUMPY_LINALG_INV = False
 
     try:
-        x = linalg.inv(m=a)
+        x = linalg.inv(a)
         r = np.identity(2) - np.dot(a, x)
 
         # Use Morris Newman's formula to asses the quality of the inversion
@@ -70,7 +70,7 @@ def test_inv_nonsquare(use_numpy_inv):
     linalg._USE_NUMPY_LINALG_INV = use_numpy_inv
     with pytest.raises(np.linalg.LinAlgError):
         try:
-            linalg.inv(m=np.empty((1, 2)))
+            linalg.inv(np.empty((1, 2)))
         finally:
             linalg._USE_NUMPY_LINALG_INV = use_numpy
 
@@ -79,9 +79,10 @@ def test_inv_nonsquare(use_numpy_inv):
 def test_inv_singular(use_numpy_inv):
     use_numpy = linalg._USE_NUMPY_LINALG_INV
     linalg._USE_NUMPY_LINALG_INV = use_numpy_inv
+    arr = np.array([[1.0, 1.0], [2.0, 2.0]])
     with pytest.raises(np.linalg.LinAlgError):
         try:
-            linalg.inv(m=np.array([[1.0, 1.0], [2.0, 2.0]]))
+            linalg.inv(arr)
         finally:
             linalg._USE_NUMPY_LINALG_INV = use_numpy
 
@@ -93,7 +94,7 @@ def test_inv_nan(use_numpy_inv):
     arr = np.array([[1.0, 1.0, -1.], [2.0, -2.1, 4.0], [-1.0, np.nan, 1.0]])
     with pytest.raises(np.linalg.LinAlgError):
         try:
-            linalg.inv(m=arr)
+            linalg.inv(arr)
         finally:
             linalg._USE_NUMPY_LINALG_INV = use_numpy
 
@@ -104,6 +105,6 @@ def test_inv_high_dim():
     arr = np.random.random((4, 4, 4))
     with pytest.raises(np.linalg.LinAlgError):
         try:
-            linalg.inv(m=arr)
+            linalg.inv(arr)
         finally:
             linalg._USE_NUMPY_LINALG_INV = use_numpy
