@@ -88,9 +88,6 @@ def ideal_large_data(request):
         proper = (np.prod(np.cos(rad)) + np.prod(np.sin(rad))) > 0
         transform = 'general'
 
-    else:
-        raise ValueError("Unknown fixture parametrization")
-
     shift = 200.0 * (np.random.random(2) - 0.5)  # -100 ... +100
     rmat = linearfit.build_fit_matrix(angle, scale)
     skew = angle[1] - angle[0]
@@ -357,23 +354,52 @@ def test_fit_general_too_few_points(fit_function, npts):
         fit_function(np.zeros((npts, 2)), np.zeros((npts, 2)))
 
 
-@pytest.mark.parametrize('clip_accum', [True, False])
-def test_iter_linear_fit_clip_style(ideal_large_data, clip_accum):
-    # old (TweakReg) clipping behavior
+@pytest.mark.parametrize(
+    'clip_accum, noise',
+    [v for v in product(*(2 * [[False, True]]))]
+)
+def test_iter_linear_fit_clip_style(ideal_large_data, weight_data,
+                                    clip_accum, noise):
+    """ Test clipping behavior. Test that weights exclude "bad" data. """
     uv, xy, angle, scale, shift, rmat, proper, skew, fitgeom = ideal_large_data
+    wxy, wuv, idx_xy, idx_uv, bd_xy, bd_uv = weight_data
 
-    ndata = xy.shape[0]
-    uv = uv + np.random.normal(0, 0.01, (ndata, 2))
-    wxy, wuv = 0.1 + 0.9 * np.random.random((2, ndata))
+    noise_sigma = 0.01
+    npts = xy.shape[0]
 
-    fit = linearfit.iter_linear_fit(xy.copy(), uv.copy(), wxy, wuv,
-                                    fitgeom=fitgeom, sigma=1,
-                                    clip_accum=clip_accum, nclip=5)
+    # add noise to data
+    if noise:
+        xy = xy + np.random.normal(0, noise_sigma, (npts, 2))
+        atol = 10 * noise_sigma
+        nclip = 3
+    else:
+        atol = _ATOL
+        nclip = 0
+
+    if wxy is not None:
+        xy[idx_xy] += bd_xy
+
+    if wuv is not None:
+        uv = uv.copy()
+        uv[idx_uv] += bd_uv
+
+    fit = linearfit.iter_linear_fit(
+        xy, uv, wxy=wxy, wuv=wuv, fitgeom=fitgeom, sigma=2,
+        clip_accum=clip_accum, nclip=nclip
+    )
 
     shift_with_center = np.dot(fit['center'], rmat) - fit['center'] + shift
 
-    assert np.allclose(fit['offset'], shift_with_center, rtol=0, atol=0.01)
-    assert np.allclose(fit['matrix'], rmat, rtol=0, atol=0.01)
-    assert np.allclose(fit['rmse'], 0, rtol=0, atol=0.02)
-    assert np.allclose(fit['mae'], 0, rtol=0, atol=0.02)
-    assert np.allclose(fit['std'], 0, rtol=0, atol=0.02)
+    assert np.allclose(fit['offset'], shift_with_center, rtol=0, atol=atol)
+    assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
+    assert np.allclose(fit['rmse'], 0, rtol=0, atol=atol)
+    assert np.allclose(fit['mae'], 0, rtol=0, atol=atol)
+    assert np.allclose(fit['std'], 0, rtol=0, atol=atol)
+    assert fit['proper'] == proper
+    if nclip:
+        assert fit['eff_nclip'] > 0
+        assert fit['fitmask'].sum(dtype=np.int) < npts
+    else:
+        assert fit['eff_nclip'] == 0
+        assert (fit['fitmask'].sum(dtype=np.int) == npts -
+                np.union1d(idx_xy[0], idx_uv[0]).size)
