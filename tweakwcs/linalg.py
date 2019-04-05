@@ -55,7 +55,7 @@ def _is_longdouble_lte_flt_type(flt_type=np.float64):
 
 
 _USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.float64)
-_MAX_LINALG_TYPE = np.array([1]).dtype.type
+_MAX_LINALG_TYPE = np.array([1.0]).dtype.type
 
 
 def inv(m):
