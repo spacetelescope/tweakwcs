@@ -55,6 +55,7 @@ def _is_longdouble_lte_flt_type(flt_type=np.float64):
 
 
 _USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.float64)
+_MAX_LINALG_TYPE = np.array([1]).dtype.type
 
 
 def inv(m):
@@ -79,7 +80,7 @@ def inv(m):
     """
     # check that matrix is square:
     if _USE_NUMPY_LINALG_INV:
-        invm = np.linalg.inv(m)
+        invm = np.linalg.inv(m.astype(dtype=_MAX_LINALG_TYPE))
         # detect singularity:
         if not np.all(np.isfinite(invm)):
             raise np.linalg.LinAlgError('Singular matrix.')
