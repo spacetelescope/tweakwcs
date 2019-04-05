@@ -358,17 +358,26 @@ def test_fit_general_too_few_points(fit_function, npts):
 
 
 @pytest.mark.parametrize('clip_accum', [True, False])
-def test_iter_linear_fit_clip_style(ideal_large_data, clip_accum):
-    # old (TweakReg) clipping behavior
+def test_iter_linear_fit_clip_style(ideal_large_data, clip_accum, weight_data):
+    """ Test clipping behavior. """
     uv, xy, angle, scale, shift, rmat, proper, skew, fitgeom = ideal_large_data
 
     ndata = xy.shape[0]
     uv = uv + np.random.normal(0, 0.01, (ndata, 2))
-    wxy, wuv = 0.1 + 0.9 * np.random.random((2, ndata))
+    wxy, wuv, idx_xy, idx_uv, bd_xy, bd_uv = weight_data
 
-    fit = linearfit.iter_linear_fit(xy.copy(), uv.copy(), wxy, wuv,
-                                    fitgeom=fitgeom, sigma=1,
-                                    clip_accum=clip_accum, nclip=5)
+    if wxy is not None:
+        xy = xy.copy()
+        xy[idx_xy] += bd_xy
+
+    if wuv is not None:
+        uv = uv.copy()
+        uv[idx_uv] += bd_uv
+
+    fit = linearfit.iter_linear_fit(
+        xy, uv, wxy=wxy, wuv=wuv, fitgeom=fitgeom, sigma=1,
+        clip_accum=clip_accum, nclip=5
+    )
 
     shift_with_center = np.dot(fit['center'], rmat) - fit['center'] + shift
 
@@ -377,3 +386,27 @@ def test_iter_linear_fit_clip_style(ideal_large_data, clip_accum):
     assert np.allclose(fit['rmse'], 0, rtol=0, atol=0.02)
     assert np.allclose(fit['mae'], 0, rtol=0, atol=0.02)
     assert np.allclose(fit['std'], 0, rtol=0, atol=0.02)
+
+
+def test_fit_full_sample_weights(ideal_large_data, weight_data):
+    """ Test that weights exclude "bad" data. """
+    (uv, xy, angle, scale, shift, rmat, proper,
+     skew, transform) = ideal_large_data
+    wxy, wuv, idx_xy, idx_uv, bd_xy, bd_uv = weight_data
+
+    if wxy is not None:
+        xy = xy.copy()
+        xy[idx_xy] += bd_xy
+
+    if wuv is not None:
+        uv = uv.copy()
+        uv[idx_uv] += bd_uv
+
+    fit = _TRANSFORM_SELECTOR[transform](xy, uv, wxy=wxy, wuv=wuv)
+
+    assert np.allclose(fit['offset'], shift, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['matrix'], rmat, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['rotxy'][:2], angle, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['scale'][1:], scale, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['skew'], skew, rtol=0, atol=_ATOL)
+    assert fit['proper'] == proper
