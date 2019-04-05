@@ -11,7 +11,7 @@ import numpy as np
 from tweakwcs import linearfit, linalg
 
 
-_ATOL = 1.0e4 * np.finfo(linalg._MAX_LINALG_TYPE).eps
+_ATOL = np.sqrt(np.finfo(linalg._MAX_LINALG_TYPE).eps)
 
 _LARGE_SAMPLE_SIZE = 1000
 
@@ -249,9 +249,9 @@ def test_iter_linear_fit_invalid_fitgeom(ideal_small_data):
 
 
 @pytest.mark.parametrize('nclip, sigma, clip_accum, weights, noise', [
-    (None, 3, True, False, False),
-    (None, 3, True, True, False),
-    (3, 0.05, False, True, True),
+    (None, 2, True, False, False),
+    (None, 2, True, True, False),
+    (2, 0.05, False, True, True),
 ])
 def test_iter_linear_fit_special_cases(ideal_large_data, nclip, sigma,
                                        clip_accum, weights, noise):
@@ -271,6 +271,14 @@ def test_iter_linear_fit_special_cases(ideal_large_data, nclip, sigma,
     fit = linearfit.iter_linear_fit(xy, uv, wxy, wuv, fitgeom=fitgeom,
                                     nclip=nclip, center=(0, 0),
                                     clip_accum=clip_accum)
+
+    print(fit['offset'])
+    print(np.array(fit['offset']).dtype)
+    print(shift)
+    print(np.array(shift).dtype)
+    print(atol)
+    print(linalg._USE_NUMPY_LINALG_INV )
+    print(linalg._MAX_LINALG_TYPE)
 
     assert np.allclose(fit['offset'], shift, rtol=0, atol=atol)
     assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
