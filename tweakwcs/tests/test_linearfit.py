@@ -8,10 +8,10 @@ from itertools import product
 import math
 import pytest
 import numpy as np
-from tweakwcs import linearfit
+from tweakwcs import linearfit, linalg
 
 
-_ATOL = 1.0e4 * np.finfo(np.float64).eps
+_ATOL = 1.0e4 * np.finfo(linalg._MAX_LINALG_TYPE).eps
 
 _LARGE_SAMPLE_SIZE = 1000
 
