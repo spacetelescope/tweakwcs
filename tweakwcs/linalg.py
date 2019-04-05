@@ -25,12 +25,12 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-def _is_longdouble_lte_flt64():
-    if np.longdouble is np.float64:
+def _is_longdouble_lte_flt_type(flt_type=np.float64):
+    if np.longdouble is flt_type:
         return True
 
     fi1 = np.finfo(np.longdouble)
-    fi2 = np.finfo(np.float64)
+    fi2 = np.finfo(flt_type)
 
     lte_flt = all(
         [
@@ -54,7 +54,7 @@ def _is_longdouble_lte_flt64():
     return lte_flt
 
 
-_USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt64()
+_USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.float64)
 
 
 def inv(m):
@@ -79,11 +79,15 @@ def inv(m):
     """
     # check that matrix is square:
     if _USE_NUMPY_LINALG_INV:
-        return np.linalg.inv(m)
+        invm = np.linalg.inv(m)
+        # detect singularity:
+        if not np.all(np.isfinite(invm)):
+            raise np.linalg.LinAlgError('Singular matrix.')
+        return invm
 
     m = np.array(m, dtype=np.longdouble)
     if len(m.shape) != 2 or m.shape[0] != m.shape[1]:
-        raise ValueError("Input matrix must be a square matrix.")
+        raise np.linalg.LinAlgError("Input matrix must be a square matrix.")
     order = m.shape[0]
 
     # create permutation matrices:
@@ -106,7 +110,7 @@ def inv(m):
 
         # detect singularity:
         if np.abs(pv) < eps:
-            raise ArithmeticError('Singular matrix.')
+            raise np.linalg.LinAlgError('Singular matrix.')
 
         if im != k or jm != k:
             # swap rows & columns:
@@ -150,7 +154,7 @@ def inv(m):
 
     # detect singularity:
     if not np.all(np.isfinite(invm)):
-        raise ArithmeticError('Singular matrix.')
+        raise np.linalg.LinAlgError('Singular matrix.')
 
     # undo permutations:
     invm = np.dot(qt, np.dot(invm, qt.T))

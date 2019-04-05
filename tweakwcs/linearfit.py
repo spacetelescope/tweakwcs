@@ -196,27 +196,47 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
 
     """
+    if fitgeom == 'general':
+        linear_fit = fit_general
+    elif fitgeom == 'rscale':
+        linear_fit = fit_rscale
+    elif fitgeom == 'shift':
+        linear_fit = fit_shifts
+    else:
+        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
+
     minobj_per_fitgeom = {'shift': 1, 'rscale': 2, 'general': 3}
     minobj = minobj_per_fitgeom[fitgeom]
 
-    xy = np.array(xy)
-    uv = np.array(uv)
+    xy = np.asarray(xy)
+    uv = np.asarray(uv)
+
+    if len(xy.shape) != 2 or xy.shape[1] != 2 or uv.shape != xy.shape:
+        raise ValueError("Input coordinate arrays 'xy' and 'uv' must be of "
+                         "shape (N, 2) where N is the number of coordinate "
+                         "points.")
 
     wmask = np.ones(len(xy), dtype=np.bool_)
 
     if wxy is not None:
         wxy = np.asarray(wxy)
+        if len(wxy.shape) != 1 or wxy.shape[0] != xy.shape[0]:
+            raise ValueError("Weights 'wxy' must be a 1-dimensional vector "
+                             "of lengths equal to the number of input points.")
         wmask *= wxy > 0.0
 
     if wuv is not None:
         wuv = np.asarray(wuv)
+        if len(wuv.shape) != 1 or wuv.shape[0] != xy.shape[0]:
+            raise ValueError("Weights 'wuv' must be a 1-dimensional vector "
+                             "of lengths equal to the number of input points.")
         wmask *= wuv > 0.0
 
     mask = wmask
 
     if sigma is None and nclip is not None and nclip > 0:
         raise ValueError("Argument 'sigma' cannot be None when 'nclip' is "
-                         "neither None nor zero.")
+                         "a positive number.")
 
     if isinstance(sigma, numbers.Number):
         sigstat = 'rmse'  # default value
@@ -247,19 +267,10 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         nclip = 0
 
     if center is None:
-        center = uv[mask].mean(axis=0, dtype=np.longdouble)
+        center = uv[mask].mean(axis=0, dtype=np.longdouble).astype(np.float64)
 
     xy[mask] -= center
     uv[mask] -= center
-
-    if fitgeom == 'general':
-        linear_fit = fit_general
-    elif fitgeom == 'rscale':
-        linear_fit = fit_rscale
-    elif fitgeom == 'shift':
-        linear_fit = fit_shifts
-    else:
-        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
 
     log.info("Performing '{:s}' fit".format(fitgeom))
 
@@ -369,7 +380,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
         if np.any(w < 0.0):
             raise ValueError("Invalid weights: weights must be non-negative.")
 
-        if np.sum(w > 0) < 1:
+        if not np.sum(w > 0, dtype=np.int):
             raise ValueError("Not enough valid data for 'shift' fit: "
                              "too many weights are zero!")
 
@@ -607,7 +618,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
 
     try:
         inv_m = inv(m)
-    except ArithmeticError:
+    except np.linalg.LinAlgError:
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
         )
