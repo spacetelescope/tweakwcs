@@ -48,7 +48,8 @@ jobs:
       displayName: build package
 
     - script: |
-        pytest -v --junitxml=junit/test-results.xml
+        pytest --cov=./ -v --junitxml=junit/test-results.xml
+        codecov
       displayName: run test
 
     - task: PublishTestResults@2

@@ -125,7 +125,9 @@ INSTALL_REQUIRES = [
     'spherical_geometry',
 ]
 TESTS_REQUIRE = [
-    'pytest'
+    'pytest',
+    'pytest-cov',
+    'codecov'
 ]
 DOCS_REQUIRE = [
     'numpydoc'
