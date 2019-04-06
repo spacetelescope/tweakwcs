@@ -49,8 +49,13 @@ jobs:
 
     - script: |
         pytest --cov=./ -v --junitxml=junit/test-results.xml
-        codecov
       displayName: run test
+
+    - script: |
+        codecov -t $codecov_token
+      env:
+        codecov_token: $(CODECOV_TOKEN)
+      displayName: upload to codecov
 
     - task: PublishTestResults@2
       condition: succeededOrFailed()
