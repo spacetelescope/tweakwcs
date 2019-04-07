@@ -2,6 +2,10 @@
     :target: https://dev.azure.com/spacetelescope/tweakwcs/_build/latest?definitionId=5&branchName=master
     :alt: Azure Pipelines build status
 
+.. image:: https://codecov.io/gh/spacetelescope/tweakwcs/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/spacetelescope/tweakwcs
+  :alt: Test coverage status
+
 .. image:: https://readthedocs.org/projects/tweakwcs/badge/?version=latest
     :target: https://tweakwcs.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
