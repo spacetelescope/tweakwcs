@@ -13,3 +13,4 @@ omit =
     conftest.py
     setup.py
     tests/*
+    tweakwcs/tests/*
