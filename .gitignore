@@ -46,6 +46,10 @@ distribute-*.tar.gz
 relic/
 RELIC-INFO
 
+# codecov
+.coverage
+*.coverage.*
+
 # Other
 *~
 .settings
