@@ -74,7 +74,6 @@ class TPMatch(MatchCatalogs):
         tangent plane.
 
     """
-
     def __init__(self, searchrad=3.0, separation=0.5, use2dhist=True,
                  xoffset=0.0, yoffset=0.0, tolerance=1.0):
         """
@@ -277,6 +276,7 @@ def _xy_2dhist(imgxy, refxy, r):
     dy = np.subtract.outer(imgxy[:, 1], refxy[:, 1]).ravel()
     idx = np.where((dx < r + 0.5) & (dx >= -r - 0.5) &
                    (dy < r + 0.5) & (dy >= -r - 0.5))
+    r = int(np.ceil(r))
     h = np.histogram2d(dx[idx], dy[idx], 2 * r + 1,
                        [[-r - 0.5, r + 0.5], [-r - 0.5, r + 0.5]])
     return h[0].T
@@ -312,7 +312,6 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
 
     (xp, yp), fit_status, fit_sl = _find_peak(zpmat, peak_fit_box=5,
                                               mask=zpmat > 0)
-
     if fit_status.startswith('ERROR'):
         log.warning("No valid shift found within a search radius of {:g} "
                     "pixels.".format(searchrad))
@@ -394,6 +393,8 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     """
     # check arguments:
+    if peak_fit_box < 1:
+        raise ValueError("peak_fit_box must be at least 1 pixel in size.")
     data = np.asarray(data, dtype=np.float64)
     ny, nx = data.shape
 
@@ -410,7 +411,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         if i.size == 0:
             # no valid data:
             coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-            return coord, 'ERROR:NODATA', np.s_[0:ny - 1, 0:nx - 1]
+            return coord, 'ERROR:NODATA', np.s_[0:ny, 0:nx]
 
         ind = np.argmax(data[mask])
         imax = i[ind]
@@ -420,7 +421,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     if data[jmax, imax] < 1:
         # no valid data: we need some counts in the histogram bins
         coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-        return coord, 'ERROR:NODATA', np.s_[0:ny - 1, 0:nx - 1]
+        return coord, 'ERROR:NODATA', np.s_[0:ny, 0:nx]
 
     # choose a box around maxval pixel:
     x1 = max(0, imax - peak_fit_box // 2)
@@ -429,7 +430,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     y2 = min(ny, y1 + peak_fit_box)
 
     # if peak is at the edge of the box, return integer indices of the max:
-    if imax == x1 or imax == x2 or jmax == y1 or jmax == y2:
+    if imax == x1 or imax == x2 - 1 or jmax == y1 or jmax == y2 - 1:
         return (float(imax), float(jmax)), 'WARNING:EDGE', np.s_[y1:y2, x1:x2]
 
     # expand the box if needed:
@@ -445,10 +446,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         if y2 == ny:
             y1 = max(0, y2 - peak_fit_box)
 
-    if x2 - x1 == 0 or y2 - y1 == 0:
-        # not enough data:
-        coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-        return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
+    assert x2 - x1 > 0 or y2 - y1 > 0
 
     # fit a 2D 2nd degree polynomial to data:
     xi = np.arange(x1, x2)
@@ -463,33 +461,41 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         v = v[m]
         d = d[m]
 
-    if d.size == 0 or np.max(d) <= 0:
-        coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-        return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
-
     if d.size < 6:
         # we need at least 6 points to fit a 2D quadratic polynomial
         # attempt center-of-mass instead:
+        m = np.logical_not(np.isfinite(d))
+        vx = v[:, 1].flatten()
+        vy = v[:, 2].flatten()
+        d[m] = 0
+        vx[m] = 0
+        vy[m] = 0
         dt = d.sum()
         if dt == 0.0:
             coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
             return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
-        xc = np.dot(v[:, 1], d) / dt
-        yc = np.dot(v[:, 2], d) / dt
+        xc = np.dot(vx, d) / dt
+        yc = np.dot(vy, d) / dt
         return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]
 
     try:
         c = np.linalg.lstsq(v, d, rcond=None)[0]
-    except np.linalg.LinAlgError:
-        print("WARNING: Least squares failed!\n{}".format(c))
+    except np.linalg.LinAlgError as e:
+        print("WARNING: Least squares failed!\n{}".format(e))
 
         # attempt center-of-mass instead:
+        m = np.logical_not(np.isfinite(d))
+        vx = v[:, 1].flatten()
+        vy = v[:, 2].flatten()
+        d[m] = 0
+        vx[m] = 0
+        vy[m] = 0
         dt = d.sum()
         if dt == 0.0:
             coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
             return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
-        xc = np.dot(v[:, 1], d) / dt
-        yc = np.dot(v[:, 2], d) / dt
+        xc = np.dot(vx, d) / dt
+        yc = np.dot(vy, d) / dt
         return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]
 
     # find maximum of the polynomial:

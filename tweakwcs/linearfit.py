@@ -628,7 +628,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
     if not (np.all(np.isfinite(p)) and np.all(np.isfinite(q))):
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
-        )
+        )  # pragma: no cover
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, 'general')

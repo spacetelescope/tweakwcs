@@ -71,8 +71,10 @@ def assign_jwst_tweakwcs_groups(images):
                 gid = group_ids[meta_ids]
             else:
                 gid = str(uuid.uuid4())
+                # next loop will almost never execute as UUIDs should be
+                # unique.
                 while gid in group_ids.values():
-                    gid = str(uuid.uuid4())
+                    gid = str(uuid.uuid4())  # pragma: no cover
                 group_ids[meta_ids] = gid
 
         except Exception as e:
