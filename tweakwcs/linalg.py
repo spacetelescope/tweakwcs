@@ -80,7 +80,7 @@ def inv(m):
     """
     # check that matrix is square:
     if _USE_NUMPY_LINALG_INV:
-        invm = np.linalg.inv(m.astype(dtype=_MAX_LINALG_TYPE))
+        invm = np.linalg.inv(np.array(m, dtype=_MAX_LINALG_TYPE))
         # detect singularity:
         if not np.all(np.isfinite(invm)):
             raise np.linalg.LinAlgError('Singular matrix.')
