@@ -154,7 +154,9 @@ def mock_fits_wcs():
     return w
 
 
-def test_jwst_wcs_corr_applied():
+@pytest.mark.parametrize('tpcorr', _TPCORRS)
+def test_jwst_wcs_corr_applied(tpcorr, mock_jwst_wcs):
+    tpwcs.TPCorr = tpcorr
     w = make_mock_jwst_wcs(
         v2ref=123.0, v3ref=500.0, roll=115.0, crpix=[512.0, 512.0],
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[82.0, 12.0]
