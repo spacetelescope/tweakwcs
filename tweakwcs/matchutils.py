@@ -480,6 +480,8 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     try:
         c = np.linalg.lstsq(v, d, rcond=None)[0]
+        if not np.all(np.isfinite(c)):
+            raise np.linalg.LinAlgError("Results of the fit are not finite.")
     except np.linalg.LinAlgError as e:
         print("WARNING: Least squares failed!\n{}".format(e))
 

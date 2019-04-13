@@ -110,8 +110,8 @@ def test_jwst_import_failed(monkeypatch):
     restore_modules = {}
     for k in list(sys.modules.keys()):
         if k.startswith(('jwst')):
-            restore_modules[k] = sys.modules[k]
-            sys.modules[k] = None
+            restore_modules[k] = sys.modules[k]  # pragma: no cover
+            sys.modules[k] = None  # pragma: no cover
         elif k.startswith('tweakwcs') or 'tpwcs' in k or 'TPCorr' in k:
             restore_modules[k] = sys.modules[k]
             del sys.modules[k]
@@ -126,8 +126,8 @@ def test_jwst_import_failed(monkeypatch):
 from tweakwcs import tpwcs
 _TPCORRS = [MockTPCorr]
 if tpwcs.TPCorr is not None:
-    from jwst.transforms.tpcorr import TPCorr as JWSTTPCorr
-    _TPCORRS.append(JWSTTPCorr)
+    from jwst.transforms.tpcorr import TPCorr as JWSTTPCorr  # pragma: no cover
+    _TPCORRS.append(JWSTTPCorr)  # pragma: no cover
 
 
 @pytest.fixture(scope='module')
