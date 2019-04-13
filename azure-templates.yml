@@ -48,6 +48,10 @@ jobs:
       displayName: build package
 
     - script: |
+        python -m pip freeze
+      displayName: freeze output
+
+    - script: |
         pytest --cov=./ -v --junitxml=junit/test-results.xml
       displayName: run test
 
