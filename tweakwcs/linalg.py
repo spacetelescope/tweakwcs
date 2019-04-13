@@ -54,8 +54,24 @@ def _is_longdouble_lte_flt_type(flt_type=np.float64):
     return lte_flt
 
 
+def _find_max_linalg_type():
+    max_type = None
+    for np_type in np.sctypes['float'][::-1]:
+        try:
+            r = np.linalg.inv(np.identity(2, dtype=np_type))
+            max_type = np_type
+            eps = 100 * np.finfo(max_type).eps
+            if np.max(np.abs(r - np.identity(2, dtype=np_type))) > eps:
+                log.warning('Loss of accuracy during matrix inversion.')
+            break
+        except TypeError:
+            continue
+
+
 _USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.float64)
-_MAX_LINALG_TYPE = np.linalg.inv([[1.0]]).dtype.type
+_MAX_LINALG_TYPE = _find_max_linalg_type()
+if _MAX_LINALG_TYPE is None:
+    _USE_NUMPY_LINALG_INV = False  # pragma: no cover
 
 
 def inv(m):
