@@ -10,6 +10,9 @@ Release Notes
 0.4.6 (unreleased)
 ==================
 
+- Implemented a more robust estimate of the maximum type supported by
+  ``numpy.linalg.inv``. [#82]
+
 - Renamed ``wcsutils.planar_rot_3D`` to ``wcsutils.planar_rot_3d``. [#75]
 
 - Renamed ``wcsutils.cartesian2spherical`` to

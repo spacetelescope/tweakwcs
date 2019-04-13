@@ -18,14 +18,6 @@ import collections
 import numpy as np
 import astropy
 
-# We need JWST DataModel so that we can detect this type and treat it
-# differently from astropy.nddata.NDData because JWST's WCS is stored in
-# DataModel.meta.wcs:
-try:
-    from jwst.datamodels import DataModel
-except ImportError:
-    DataModel = None
-
 # LOCAL
 from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
 from . tpwcs import TPWCS
