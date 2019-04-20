@@ -343,8 +343,8 @@ def test_wcsrefcat_init_check_catalog(mock_fits_wcs):
 
 
 def test_wcsrefcat_intersections(mock_fits_wcs, rect_imcat):
-    ra, dec = mock_fits_wcs.all_pix2world(rect_imcat.catalog['x'],
-                                          rect_imcat.catalog['y'], 0)
+    ra, dec = mock_fits_wcs.all_pix2world(10 * rect_imcat.catalog['x'],
+                                          10 * rect_imcat.catalog['y'], 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
     ref = RefCatalog(refcat)
     ref.calc_tanp_xy(rect_imcat.tpwcs)
@@ -359,7 +359,8 @@ def test_wcsrefcat_intersections(mock_fits_wcs, rect_imcat):
         assert any(np.allclose(pt1, pt2) for pt2 in pts2)
 
     assert np.allclose(
-        ref.intersection_area(ref), 2.9904967391303217e-12, atol=0.0
+        ref.intersection_area(ref), 2.9902125220360176e-10, atol=0.0,
+        rtol=0.005,
     )
 
 
