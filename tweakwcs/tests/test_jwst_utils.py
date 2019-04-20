@@ -95,4 +95,6 @@ def test_assign_jwst_tweakwcs_groups(data_model_list, monkeypatch):
     assign_jwst_tweakwcs_groups(list(models.keys()))
 
     gids = sorted([model.meta.tweakwcs_group_id for model in data_model_list])
+    print(gids)
     assert sorted([len(list(g)) for k, g in groupby(gids)]) == [1, 2, 3]
+    # assert False

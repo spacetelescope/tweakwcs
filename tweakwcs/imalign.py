@@ -186,8 +186,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
         # Attempt to set initial status to FAILED.
         tpwcs.meta['fit_info'] = {'status': 'FAILED: Unknown error'}
     except Exception:
-        # Most likely the code will fail later with a more specific exception
-        pass
+        raise AttributeError("Unable to set/modify tpwcs.meta attribute.")
 
     # check fitgeom:
     fitgeom = fitgeom.lower()
@@ -203,8 +202,8 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     succes = wgcat.align_to_ref(refcat=wrefcat, match=None, minobj=None,
                                 fitgeom=fitgeom, nclip=nclip, sigma=sigma)
 
-    if succes:
-        tpwcs.meta['fit_info'] = wimcat.fit_info
+    tpwcs.meta['fit_info'] = wimcat.fit_info
+    if not succes:
         log.warning("Failed to align catalog '{}'.".format(wgcat.name))
 
     # log running time:
@@ -435,10 +434,14 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
     # Check that type of `wcscat` is correct and set initial status to FAILED:
     if isinstance(wcscat, TPWCS):
         wcscat = [wcscat]
+        start = 1
+    else:
+        start = 0
 
-    if not all(isinstance(wcat, TPWCS) for wcat in wcscat[1:]):
-        raise TypeError("Input 'wcscat' must be a list of TPWCS-derived "
-                        "objects.")
+    if not (hasattr(wcscat, '__iter__') and all(isinstance(wcat, TPWCS)
+                                                for wcat in wcscat[start:])):
+        raise TypeError("Input 'wcscat' must be either a single TPWCS-derived "
+                        " object or a list of TPWCS-derived objects.")
 
     wcs_im_cats = []
     for wcat in wcscat:
@@ -462,7 +465,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         raise ValueError("Unsupported 'fitgeom'. Valid values are: "
                          "'shift', 'rscale', or 'general'")
 
-    if minobj is None:
+    if minobj is None:  # pragma: no branch
         if fitgeom == 'general':
             minobj = 3
         elif fitgeom == 'rscale':
@@ -479,15 +482,15 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
             rcat = refcat.meta['catalog'].copy()
 
-            if 'RA' not in rcat.colnames or 'DEC' not in rcat.colnames:
+            if not ('RA' in rcat.colnames and 'DEC' in rcat.colnames):  # pragma: no branch
                 # convert image x & y to world coordinates:
                 ra, dec = refcat.det_to_world(rcat['x'], rcat['y'])
                 rcat['RA'] = ra
                 rcat['DEC'] = dec
 
-            refcat_name = refcat.meta.get('name', None)
-            if refcat_name is None:
-                refcat_name = rcat.meta.get('name', 'Unnamed')
+            refcat_name = refcat.meta.get(
+                'name', rcat.meta.get('name', 'Unnamed')
+            )
 
             refcat = RefCatalog(rcat, name=refcat_name)
 
@@ -684,12 +687,12 @@ def max_overlap_pair(images, enforce_user_order):
     si = np.sum(m[i])
     sj = np.sum(m[:, j])
 
-    if si < sj:
+    if si < sj:  # pragma: no branch
         c = j
         j = i
         i = c
 
-    if i < j:
+    if i < j:  # pragma: no branch
         j -= 1
 
     im1 = images.pop(i)  # reference image
@@ -701,11 +704,11 @@ def max_overlap_pair(images, enforce_user_order):
     row = np.delete(row, i)
     row = np.delete(row, j)
     sorting_indices = np.argsort(row)[::-1]
-    images_arr = np.asarray(images)[sorting_indices]
+    sorted_images = [images[k] for k in sorting_indices]  # apply argsort
     while len(images) > 0:
         del images[0]
-    for k in range(images_arr.shape[0]):
-        images.append(images_arr[k])
+    for im in sorted_images:
+        images.append(im)
 
     return im1, im2
 

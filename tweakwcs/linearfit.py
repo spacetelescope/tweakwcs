@@ -262,7 +262,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     if np.count_nonzero(mask) == minobj:
         log.warning("The number of sources for the fit is smaller than the "
                     "minimum number of sources necessary for the requested "
-                    ".")
+                    "'fitgeom'.")
         log.warning("Resetting number of clipping iterations to 0.")
         nclip = 0
 

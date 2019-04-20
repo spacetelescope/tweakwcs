@@ -85,7 +85,7 @@ def assign_jwst_tweakwcs_groups(images):
                         "to None".format(model.meta['filename']))
 
         finally:
-            if "tweakwcs_group_id" not in model.meta:
+            if "tweakwcs_group_id" not in model.meta:  # pragma: no branch
                 twgid_schema = {
                     "type": "object",
                     "properties": {

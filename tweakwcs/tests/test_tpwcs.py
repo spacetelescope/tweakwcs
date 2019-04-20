@@ -71,37 +71,53 @@ def test_mock_jwst_gwcs():
 def test_mock_wcs_fails(crpix, cd):
     from astropy.modeling import InputParameterError
     with pytest.raises(InputParameterError):
-        make_mock_jwst_wcs(v2ref=123, v3ref=500, roll=115, crpix=crpix,
+        make_mock_jwst_wcs(v2ref=123, v3ref=500, roll=15, crpix=crpix,
                            cd=cd, crval=[82, 12])
     with pytest.raises(InputParameterError):
-        DetToV2V3(v2ref=123, v3ref=500, roll=115, crpix=crpix, cd=cd)
+        DetToV2V3(v2ref=123, v3ref=500, roll=15, crpix=crpix, cd=cd)
     with pytest.raises(InputParameterError):
-        V2V3ToDet(v2ref=123, v3ref=500, roll=115, crpix=crpix, cd=cd)
+        V2V3ToDet(v2ref=123, v3ref=500, roll=15, crpix=crpix, cd=cd)
 
 
 def test_v2v3todet_roundtrips():
     s = 1.0e-5
     crpix = np.random.random(2)
-    alpha = 2 * np.pi * np.random.random()
+    alpha = 0.25 * np.pi * np.random.random()
     x, y = 1024 * np.random.random(2)
     v2, v3 = 45 * np.random.random(2)
     cd = [[s * np.cos(alpha), -s * np.sin(alpha)],
           [s * np.sin(alpha), s * np.cos(alpha)]]
 
-    d2v = DetToV2V3(v2ref=123.0, v3ref=500.0, roll=115.0, crpix=crpix, cd=cd)
-    v2d = V2V3ToDet(v2ref=123.0, v3ref=500.0, roll=115.0, crpix=crpix, cd=cd)
+    d2v = DetToV2V3(v2ref=123.0, v3ref=500.0, roll=15.0, crpix=crpix, cd=cd)
+    v2d = V2V3ToDet(v2ref=123.0, v3ref=500.0, roll=15.0, crpix=crpix, cd=cd)
 
-    assert np.allclose(d2v.inverse(*d2v(x, y)), (x, y))
-    assert np.allclose(
-        V2V3ToDet.spherical2cartesian(*v2d.inverse(*v2d(v2, v3))),
-        V2V3ToDet.spherical2cartesian(v2, v3),
-        rtol=0, atol=10 * _ATOL
+    assert np.allclose(d2v.inverse(*d2v(x, y)), (x, y),
+                       rtol=100 * _ATOL, atol=100 * _ATOL)
+
+    assert (
+        np.allclose(
+            V2V3ToDet.spherical2cartesian(*v2d.inverse(*v2d(v2, v3))),
+            V2V3ToDet.spherical2cartesian(v2, v3),
+            rtol=100 * _ATOL, atol=_ATOL
+        ) or np.allclose(
+            -V2V3ToDet.spherical2cartesian(*v2d.inverse(*v2d(v2, v3))),
+            V2V3ToDet.spherical2cartesian(v2, v3),
+            rtol=100 * _ATOL, atol=_ATOL
+        )
     )
-    assert np.allclose(v2d(*d2v(x, y)), (x, y))
-    assert np.allclose(d2v(*v2d(v2, v3)), (v2, v3))
-    assert np.allclose(
-        V2V3ToDet.spherical2cartesian(*d2v(*v2d(v2, v3))),
-        V2V3ToDet.spherical2cartesian(v2, v3)
+    assert np.allclose(v2d(*d2v(x, y)), (x, y),
+                       rtol=100 * _ATOL, atol=100 * _ATOL)
+
+    assert (
+        np.allclose(
+            V2V3ToDet.spherical2cartesian(*d2v(*v2d(v2, v3))),
+            V2V3ToDet.spherical2cartesian(v2, v3),
+            rtol=100 * _ATOL, atol=100 * _ATOL
+        ) or np.allclose(
+            -V2V3ToDet.spherical2cartesian(*d2v(*v2d(v2, v3))),
+            V2V3ToDet.spherical2cartesian(v2, v3),
+            rtol=100 * _ATOL, atol=100 * _ATOL
+        )
     )
 
 
@@ -128,30 +144,6 @@ _TPCORRS = [MockTPCorr]
 if tpwcs.TPCorr is not None:
     from jwst.transforms.tpcorr import TPCorr as JWSTTPCorr  # pragma: no cover
     _TPCORRS.append(JWSTTPCorr)  # pragma: no cover
-
-
-@pytest.fixture(scope='module')
-def mock_jwst_wcs():
-    cd = build_fit_matrix((36, 47), 1e-5)
-    w = make_mock_jwst_wcs(
-        v2ref=123.0, v3ref=500.0, roll=115.0, crpix=[512.0, 512.0],
-        cd=cd, crval=[82.0, 12.0]
-    )
-    return w
-
-
-@pytest.fixture(scope='module')
-def mock_fits_wcs():
-    cd = build_fit_matrix((36, 47), 1e-5)
-    w = fitswcs.WCS(naxis=2)
-    w.wcs.cd = cd
-    w.wcs.crval = [82.0, 12.0]
-    w.wcs.crpix = [512.0, 512.0]
-    w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-    w.pixel_shape = [1024, 2048]
-    w.pixel_bounds = ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5))
-    w.wcs.set()
-    return w
 
 
 @pytest.mark.parametrize('tpcorr', _TPCORRS)
