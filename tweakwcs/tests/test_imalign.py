@@ -89,8 +89,8 @@ def test_fit_wcs_minsrc_img_ref(mock_fits_wcs, x, y, fitgeom):
 
     fi = tpwcs.meta['fit_info']
     assert fi['status'] == 'SUCCESS'
-    assert np.allclose(fi['shift'], (0, 0), rtol=0, atol=_ATOL)
-    assert np.max(np.abs(fi['matrix'] - np.identity(2))) < _ATOL
+    assert np.allclose(fi['shift'], (0, 0), rtol=0, atol=1e4 * _ATOL)
+    assert np.max(np.abs(fi['matrix'] - np.identity(2))) < 1e4 * _ATOL
 
 
 def test_fit_wcs_less_than_minsrc(mock_fits_wcs):
