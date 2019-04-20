@@ -4,11 +4,28 @@
 Release Notes
 =============
 
-.. 0.4.6 (unreleased)
+.. 0.5.1 (unreleased)
    ==================
 
-0.4.6 (unreleased)
+0.5.0 (unreleased)
 ==================
+
+- Fixed a bug due to which a warning log message "Failed to align catalog..."
+  would be issued for successful alignments. [#84]
+
+- Fixed a bug in creation of WCS image groups with empty catalogs. [#84]
+
+- Fixed a bug in ``match2ref`` when it was run in a non-matching mode
+  (``match=None``) dute to which it was impossible to detect the case
+  when reference catalog has a different length from a supposedly matched
+  WCS group catalog. [#84]
+
+- Fixed a bug in computation of the bounding polygon of a reference catalog
+  containing only two sources. [#84]
+
+- Fixed a bug in ``convex_hull()`` resulting in incorrect type being returned
+  in case of empty input coordinate lists or whne only one point
+  is provided. [#84]
 
 - Implemented a more robust estimate of the maximum type supported by
   ``numpy.linalg.inv``. [#82]

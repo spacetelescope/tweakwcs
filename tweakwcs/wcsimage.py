@@ -200,7 +200,7 @@ class WCSImageCatalog(object):
         self._catalog = table.Table(catalog.copy(), masked=True)
         self._catalog.meta['name'] = self._name
 
-        if 'id' not in self._catalog.colnames:
+        if 'id' not in self._catalog.colnames:  # pragma: no branch
             self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
 
         # create spherical polygon bounding the image
@@ -212,8 +212,6 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.det_to_world(x, y)
 
     def world_to_det(self, ra, dec):
@@ -222,8 +220,6 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.world_to_det(ra, dec)
 
     def det_to_tanp(self, x, y):
@@ -231,8 +227,6 @@ class WCSImageCatalog(object):
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.det_to_tanp(x, y)
 
     def tanp_to_det(self, x, y):
@@ -240,8 +234,6 @@ class WCSImageCatalog(object):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.tanp_to_det(x, y)
 
     def tanp_to_world(self, x, y):
@@ -249,8 +241,6 @@ class WCSImageCatalog(object):
         Convert tangent plane coordinates to world coordinates.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.tanp_to_world(x, y)
 
     def world_to_tanp(self, ra, dec):
@@ -258,8 +248,6 @@ class WCSImageCatalog(object):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        if self._tpwcs is None:
-            raise RuntimeError("WCS has not been set")
         return self._tpwcs.world_to_tanp(ra, dec)
 
     @property
@@ -306,8 +294,7 @@ class WCSImageCatalog(object):
         # """
         # return np.fabs(self.intersection(wcsim).area())
     def intersection_area(self, wcsim):
-        """ Calculate the area of the intersection polygon.
-        """
+        """ Calculate the area of the intersection polygon. """
         if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
             return np.fabs(self.intersection(wcsim).area())
 
@@ -408,7 +395,9 @@ class WCSImageCatalog(object):
 
         if len(x) == 0:
             # no points
-            raise RuntimeError("Unexpected error: Contact software developer")
+            raise RuntimeError(  # pragma: no cover
+                "Unexpected error: Contact software developer"
+            )
 
         elif len(x) > 2:
             ra, dec = convex_hull(x, y, wcs=self.det_to_world)
@@ -658,7 +647,7 @@ class WCSGroupCatalog(object):
                 catname = image.name
 
             col_catname = table.MaskedColumn([catname], name='cat_name')
-            del col_catname[0]
+            col_catname = col_catname[[False]]
             col_imcatidx = table.MaskedColumn([], dtype=np.int,
                                               name='_imcat_idx')
             col_id = table.MaskedColumn(image.catalog['id'])
@@ -760,7 +749,7 @@ class WCSGroupCatalog(object):
         catlen = len(self._catalog)
 
         if match is None:
-            if catlen != len(self._catalog):
+            if catlen != len(refcat.catalog):
                 raise ValueError("When matching is not requested, catalogs "
                                  "should have been matched previously and "
                                  "have equal lengths.")
@@ -963,7 +952,7 @@ class WCSGroupCatalog(object):
                      .format(fit['scale'][0], fit['scale'][1],
                              fit['scale'][2]))
         else:
-            raise ValueError("Unsupported fit geometry.")
+            raise ValueError("Unsupported fit geometry.")  # pragma: no cover
 
         log.info("")
         log.info("FIT RMSE: {:.6g}   FIT MAE: {:.6g}"
@@ -1236,6 +1225,7 @@ class RefCatalog(object):
         self._name = name
         self._catalog = None
         self._footprint_tol = footprint_tol
+        self._poly_area = None
 
         # make sure catalog has RA & DEC
         if catalog is not None:
@@ -1379,7 +1369,9 @@ class RefCatalog(object):
 
         if len(xv) == 0:
             # no points
-            raise RuntimeError("Unexpected error: Contact software developer")
+            raise RuntimeError(  # pragma: no cover
+                "Unexpected error: Contact software developer"
+            )
 
         elif len(xv) == 1:
             # one point. build a small box around it:
@@ -1389,7 +1381,7 @@ class RefCatalog(object):
             xv = [x[0] - tol, x[0] - tol, x[0] + tol, x[0] + tol, x[0] - tol]
             yv = [y[0] - tol, y[0] + tol, y[0] + tol, y[0] - tol, y[0] - tol]
 
-        elif len(xv) == 2:
+        elif len(xv) == 2 or len(xv) == 3:
             # two points. build a small box around them:
             x, y = convex_hull(x, y, wcs=None)
             tol = 0.5 * self._footprint_tol
@@ -1466,7 +1458,7 @@ class RefCatalog(object):
         cat = catalog.copy()
         if self._catalog is None:
             self._catalog = cat
-            if 'id' not in self._catalog.colnames:
+            if 'id' not in self._catalog.colnames:  # pragma: no branch
                 self._catalog['id'] = np.arange(1, len(self._catalog) + 1)
         else:
             maxid = self.catalog['id'].max()
@@ -1541,14 +1533,15 @@ Convex_hull/Monotone_chain>`_
     # possibly repeated multiple times.
     if len(points) == 0:
         if ndarray:
-            return ([], [])
-        else:
             return (np.array([]), np.array([]))
+        else:
+            return ([], [])
+
     elif len(points) == 1:
         if ndarray:
-            return ([points[0][0]], [points[0][1]])
-        else:
             return (np.array([points[0][0]]), np.array([points[0][1]]))
+        else:
+            return ([points[0][0]], [points[0][1]])
 
     # 2D cross product of OA and OB vectors, i.e. z-component of their
     # 3D cross product.

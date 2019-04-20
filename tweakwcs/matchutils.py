@@ -328,7 +328,7 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
     maxval = zpmat.max()
     zpmat_mask = (zpmat > 0) & (zpmat < maxval)
 
-    if np.any(zpmat_mask):
+    if np.any(zpmat_mask):  # pragma: no branch
         bkg = zpmat[zpmat_mask].mean()
         sig = maxval / np.sqrt(bkg)
 
@@ -434,16 +434,16 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         return (float(imax), float(jmax)), 'WARNING:EDGE', np.s_[y1:y2, x1:x2]
 
     # expand the box if needed:
-    if (x2 - x1) < peak_fit_box:
-        if x1 == 0:
+    if (x2 - x1) < peak_fit_box:  # pragma: no branch
+        if x1 == 0:  # pragma: no branch
             x2 = min(nx, x1 + peak_fit_box)
-        if x2 == nx:
+        if x2 == nx:  # pragma: no branch
             x1 = max(0, x2 - peak_fit_box)
 
-    if (y2 - y1) < peak_fit_box:
-        if y1 == 0:
+    if (y2 - y1) < peak_fit_box:  # pragma: no branch
+        if y1 == 0:  # pragma: no branch
             y2 = min(ny, y1 + peak_fit_box)
-        if y2 == ny:
+        if y2 == ny:  # pragma: no branch
             y1 = max(0, y2 - peak_fit_box)
 
     assert x2 - x1 > 0 or y2 - y1 > 0

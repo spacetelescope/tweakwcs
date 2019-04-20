@@ -503,9 +503,7 @@ class JWSTgWCS(TPWCS):
         the original WCS is defined.
 
         """
-        if self._owcs.pixel_bounds is not None:
-            return self._owcs.pixel_bounds
-        else:
+        if self._owcs.pixel_bounds is None:
             if self._owcs.pixel_shape is not None:
                 nx, ny = self._owcs.pixel_shape
             elif self._owcs.array_shape is not None:
@@ -513,7 +511,10 @@ class JWSTgWCS(TPWCS):
             else:
                 return None
 
-        return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
+            return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
+
+        else:
+            return self._owcs.pixel_bounds
 
 
 class FITSWCS(TPWCS):
@@ -588,7 +589,7 @@ class FITSWCS(TPWCS):
         # check that pix2foc includes no other distortions besides the ones
         # that we have turned off above:
         if not np.allclose(pts, wcs.pix2foc(pts, 1)):
-            False, "'pix2foc' contains unknow distortions"
+            False, "'pix2foc' contains unknown distortions"
 
         wcs.wcs.set()
 
@@ -731,9 +732,7 @@ class FITSWCS(TPWCS):
         the original WCS is defined.
 
         """
-        if self._owcs.pixel_bounds is not None:
-            return self._owcs.pixel_bounds
-        else:
+        if self._owcs.pixel_bounds is None:
             if self._owcs.pixel_shape is not None:
                 nx, ny = self._owcs.pixel_shape
             elif self._owcs.array_shape is not None:
@@ -741,7 +740,10 @@ class FITSWCS(TPWCS):
             else:
                 return None
 
-        return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
+            return ((-0.5, nx - 0.5), (-0.5, ny - 0.5))
+
+        else:
+            return self._owcs.pixel_bounds
 
 
 def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
