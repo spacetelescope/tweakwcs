@@ -154,12 +154,12 @@ class DetToV2V3(Model):
 
         # "unrotate" cartezian coordinates back to their original
         # v2ref, v3ref, and roll "positions":
-        zcr, xcr, ycr = np.dot(inv_euler_rot, (zt, xt, yt))
+        zcr, xcr, ycr = np.dot(inv_euler_rot, (zt.ravel(), xt.ravel(), yt.ravel()))
 
         # convert cartesian to spherical coordinates:
         v2, v3 = self.cartesian2spherical(zcr, xcr, ycr)
 
-        return v2, v3
+        return self.prepare_outputs(format_info, v2.reshape(x.shape), v3.reshape(y.shape))
 
     @property
     def inverse(self):
@@ -601,7 +601,8 @@ class TPCorr(Model):
 
         # convert cartesian to spherical coordinates:
         v2c, v3c = self.cartesian2spherical(zcr, xcr, ycr)
-        return v2c, v3c
+
+        return v2c.reshape(v2.shape), v3c.reshape(v3.shape)
 
     @property
     def inverse(self):
