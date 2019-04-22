@@ -594,10 +594,8 @@ class FITSWCS(TPWCS):
         wcs.wcs.set()
 
         # check that pix2foc contains all known distortions:
-        test2 = np.allclose(
-            wcs.all_world2pix(sky_all, 1), foc_all, atol=1e-3, rtol=0
-        )
-        if not test2:
+        if not np.allclose(wcs.all_world2pix(sky_all, 1), foc_all, atol=1e-3,
+                           rtol=0):
             return False, "'WCS.pix2foc()' does not include all distortions."
 
         return True, ''
