@@ -7,8 +7,8 @@ Release Notes
 .. 0.5.1 (unreleased)
    ==================
 
-0.5.0 (unreleased)
-==================
+0.5.0 (22-April-2019)
+=====================
 
 - Fixed a bug due to which a warning log message "Failed to align catalog..."
   would be issued for successful alignments. [#84]
