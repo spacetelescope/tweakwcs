@@ -142,7 +142,7 @@ class DetToV2V3(Model):
         inv_euler_rot = np.linalg.inv(euler_rot)
 
         # apply corrections:
-        # NOTE: order of transforms may need to be swapped depending on the
+        # NOTE: order of transforms may need to be swapped depending on
         #       how shifts are defined.
         x -= crpix[0][0]
         y -= crpix[0][1]
@@ -283,7 +283,7 @@ class V2V3ToDet(Model):
         yt = self.__class__.r0 * yr / zr
 
         # apply corrections:
-        # NOTE: order of transforms may need to be swapped depending on the
+        # NOTE: order of transforms may need to be swapped depending on
         #       how shifts are defined.
         x, y = np.dot(np.linalg.inv(cd[0]).T, (xt, yt))
         x += shift[0][0]
@@ -526,7 +526,7 @@ class TPCorr(Model):
         yt = self.__class__.r0 * yr / zr
 
         # apply corrections:
-        # NOTE: order of transforms may need to be swapped depending on the
+        # NOTE: order of transforms may need to be swapped depending on
         #       how shifts are defined.
         xt -= self.shift.value[0]
         yt -= self.shift.value[1]
@@ -589,7 +589,7 @@ class TPCorr(Model):
         zt = np.full_like(xt, self.__class__.r0)
 
         # apply corrections:
-        # NOTE: order of transforms may need to be swapped depending on the
+        # NOTE: order of transforms may need to be swapped depending on
         #       how shifts are defined.
         xt -= shift[0][0]
         yt -= shift[0][1]

@@ -134,18 +134,11 @@ def inv(m):
             q = np.eye(order, dtype=np.int)
 
             # swap rows in the m and invm matrix:
-            tmp_row = np.array(m[k, :])
-            m[k, :] = m[im, :]
-            m[im, :] = tmp_row
-
-            tmp_row = np.array(invm[k, :])
-            invm[k, :] = invm[im, :]
-            invm[im, :] = tmp_row
+            m[k, :], m[im, :] = m[im, :], m[k, :].copy()
+            invm[k, :], invm[im, :] = invm[im, :], invm[k, :].copy()
 
             # swap rows in the Q matrix:
-            tmp_row = np.array(q[k, :])
-            q[k, :] = q[jm, :]
-            q[jm, :] = tmp_row
+            q[k, :], q[jm, :] = q[jm, :], q[k, :].copy()
 
             # swap columns:
             m = np.dot(m, q)

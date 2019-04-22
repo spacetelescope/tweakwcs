@@ -185,7 +185,7 @@ class TPMatch(MatchCatalogs):
             raise TypeError("'refcat' must be an instance of "
                             "astropy.table.Table")
 
-        if len(refcat) < 1:
+        if not refcat:
             raise ValueError("Reference catalog must contain at least one "
                              "source.")
 
@@ -193,7 +193,7 @@ class TPMatch(MatchCatalogs):
             raise TypeError("'imcat' must be an instance of "
                             "astropy.table.Table")
 
-        if len(imcat) < 1:
+        if not imcat:
             raise ValueError("Image catalog must contain at least one "
                              "source.")
 
@@ -241,8 +241,6 @@ class TPMatch(MatchCatalogs):
                  "reference '{:s}' catalog."
                  .format(imcat_name, refcat_name))
 
-        tolerance = self._tolerance
-
         ps = 1.0 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale
 
         if self._use2dhist:
@@ -262,7 +260,7 @@ class TPMatch(MatchCatalogs):
             imxy,
             refxy,
             origin=xyoff,
-            tolerance=ps * tolerance,
+            tolerance=ps * self._tolerance,
             separation=ps * self._separation
         )
 

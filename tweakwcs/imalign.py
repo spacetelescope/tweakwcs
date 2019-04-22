@@ -688,9 +688,7 @@ def max_overlap_pair(images, enforce_user_order):
     sj = np.sum(m[:, j])
 
     if si < sj:  # pragma: no branch
-        c = j
-        j = i
-        i = c
+        i, j = j, i
 
     if i < j:  # pragma: no branch
         j -= 1
@@ -705,8 +703,7 @@ def max_overlap_pair(images, enforce_user_order):
     row = np.delete(row, j)
     sorting_indices = np.argsort(row)[::-1]
     sorted_images = [images[k] for k in sorting_indices]  # apply argsort
-    while len(images) > 0:
-        del images[0]
+    del images[:]
     for im in sorted_images:
         images.append(im)
 
@@ -742,13 +739,13 @@ def max_overlap_image(refimage, images, enforce_user_order):
         empty - `None` is returned.
 
     """
-    if len(images) < 1:
+    if not images:
         return None
 
     if enforce_user_order:
         # revert to old tweakreg behavior
         return images.pop(0)
 
-    area = [refimage.intersection_area(im) for im in images]
-    idx = np.argmax(area)
+    idx = np.argmax([refimage.intersection_area(im) for im in images])
+
     return images.pop(idx)

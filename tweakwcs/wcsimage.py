@@ -194,7 +194,7 @@ class WCSImageCatalog(object):
             raise ValueError("An image catalog must contain 'x' and 'y' "
                              "columns!")
 
-        if len(catalog) < 1:
+        if not catalog:
             raise ValueError("Image catalog must contain at least one entry.")
 
         self._catalog = table.Table(catalog.copy(), masked=True)
@@ -426,7 +426,7 @@ class WCSImageCatalog(object):
         self._calc_chip_bounding_polygon()
 
         # create smallest convex spherical polygon bounding all sources:
-        if self._catalog is not None and len(self.catalog) > 0:
+        if self.catalog:
             self._calc_cat_convex_hull()
 
     @property
@@ -545,19 +545,16 @@ class WCSGroupCatalog(object):
     def intersection_area(self, wcsim):
         """ Calculate the area of the intersection polygon.
         """
-        area = 0.0
-        for im in self._images:
-            area += im.intersection_area(wcsim)
-        return area
+        return sum(im.intersection_area(wcsim) for im in self._images)
 
     def update_bounding_polygon(self):
         """ Recompute bounding polygons of the member images.
         """
         polygons = [im.polygon for im in self._images]
-        if len(polygons) == 0:
-            self._polygon = SphericalPolygon([])
-        else:
+        if polygons:
             self._polygon = SphericalPolygon.multi_union(polygons)
+        else:
+            self._polygon = SphericalPolygon([])
 
     def __len__(self):
         return len(self._images)
@@ -771,24 +768,24 @@ class WCSGroupCatalog(object):
             nmatches = len(mref_idx)
 
         # matched_ref_id:
-        if 'matched_ref_id' not in colnames:
+        if 'matched_ref_id' in colnames:
+            self._catalog['matched_ref_id'].mask[:] = True
+        else:
             c = table.MaskedColumn(name='matched_ref_id', dtype=int,
                                    length=catlen, mask=True)
             self._catalog.add_column(c)
-        else:
-            self._catalog['matched_ref_id'].mask[:] = True
 
         self._catalog['matched_ref_id'].mask[minput_idx] = False
         self._catalog['matched_ref_id'][minput_idx] = refcat.catalog['id'][mref_idx]  # noqa: E501
 
         # this is needed to index reference catalog directly without using
         # astropy table indexing which, at this moment, is experimental:
-        if '_raw_matched_ref_idx' not in colnames:
+        if '_raw_matched_ref_idx' in colnames:
+            self._catalog['_raw_matched_ref_idx'].mask = True
+        else:
             c = table.MaskedColumn(name='_raw_matched_ref_idx',
                                    dtype=int, length=catlen, mask=True)
             self._catalog.add_column(c)
-        else:
-            self._catalog['_raw_matched_ref_idx'].mask = True
         self._catalog['_raw_matched_ref_idx'][minput_idx] = mref_idx
         self._catalog['_raw_matched_ref_idx'].mask[minput_idx] = False
 
@@ -1104,7 +1101,7 @@ class WCSGroupCatalog(object):
             smaller than ``minobj``, this function will return `False`.
 
         """
-        if len(self._images) == 0:
+        if not self._images:
             name = 'Unnamed' if self.name is None else self.name
             log.warning("WCSGroupCatalog '{:s}' is empty. Nothing to align."
                         .format(name))
@@ -1259,7 +1256,7 @@ class RefCatalog(object):
     def catalog(self, catalog):
         self._check_catalog(catalog)
 
-        if len(catalog) == 0:
+        if not catalog:
             raise ValueError("Reference catalog must contain at least one "
                              "source.")
 
