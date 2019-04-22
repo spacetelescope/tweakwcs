@@ -242,23 +242,67 @@ def test_jwstgwcs_ref_angles_preserved(tpcorr, mock_jwst_wcs):
     assert wc.ref_angles['v3_ref'] == 500.0
     assert wc.ref_angles['roll_ref'] == 115.0
 
+# Test inputs with different shapes
 
-@pytest.mark.parametrize('tpcorr', _TPCORRS)
-def test_jwstgwcs_coord_transforms(tpcorr):
-    tpwcs.TPCorr = tpcorr
-    w = make_mock_jwst_wcs(
-        v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
-        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
-    )
-    wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
-    wc.set_correction()
 
-    assert np.allclose(wc.det_to_world(500, 512), (12, 24), atol=_ATOL)
-    assert np.allclose(wc.world_to_det(12, 24), (500, 512), atol=_ATOL)
-    assert np.allclose(wc.det_to_tanp(500, 512), (0, 0), atol=_ATOL)
-    assert np.allclose(wc.tanp_to_det(0, 0), (500, 512), atol=_ATOL)
-    assert np.allclose(wc.world_to_tanp(12, 24), (0, 0), atol=_ATOL)
-    assert np.allclose(wc.tanp_to_world(0, 0), (12, 24), atol=_ATOL)
+@pytest.mark.parametrize('inputs', [[500, 512, 12, 24],
+                                    [[500, 500], [512, 512], [12, 12], [24, 24]],
+                                    [[[500, 500], [500, 500]],
+                                     [[512, 512], [512, 512]],
+                                     [[12, 12], [12, 12]], [[24, 24], [24, 24]]]
+                                    ])
+def test_jwstgwcs_detector_to_world(inputs):
+    for tpcorr in _TPCORRS:
+        tpwcs.TPCorr = tpcorr
+        w = make_mock_jwst_wcs(
+            v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
+            cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
+        )
+        wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        wc.set_correction()
+        x, y, ra, dec = inputs
+        assert np.allclose(wc.det_to_world(x, y), (ra, dec), atol=_ATOL)
+        assert np.allclose(wc.world_to_det(ra, dec), (x, y), atol=_ATOL)
+
+
+@pytest.mark.parametrize('inputs', [[0, 0, 12, 24],
+                                    [[0, 0], [0, 0], [12, 12], [24, 24]],
+                                    [[[0, 0], [0, 0]],
+                                     [[0, 0], [0, 0]],
+                                     [[12, 12], [12, 12]], [[24, 24], [24, 24]]]
+                                    ])
+def test_jwstgwcs_tangent_to_world(inputs):
+    for tpcorr in _TPCORRS:
+        tpwcs.TPCorr = tpcorr
+        w = make_mock_jwst_wcs(
+            v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
+            cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
+        )
+        wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        wc.set_correction()
+        tanp_x, tanp_y, ra, dec = inputs
+        assert np.allclose(wc.world_to_tanp(ra, dec), (tanp_x, tanp_y), atol=_ATOL)
+        assert np.allclose(wc.tanp_to_world(tanp_x, tanp_y), (ra, dec), atol=_ATOL)
+
+
+@pytest.mark.parametrize('inputs', [[500, 512, 0, 0],
+                                    [[500, 500], [512, 512], [0, 0], [0, 0]],
+                                    [[[500, 500], [500, 500]],
+                                     [[512, 512], [512, 512]],
+                                     [[0, 0], [0, 0]], [[0, 0], [0, 0]]]
+                                    ])
+def test_jwstgwcs_detector_to_tanp(inputs):
+    for tpcorr in _TPCORRS:
+        tpwcs.TPCorr = tpcorr
+        w = make_mock_jwst_wcs(
+            v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
+            cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
+        )
+        wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        wc.set_correction()
+        x, y, tanp_x, tanp_y = inputs
+        assert np.allclose(wc.det_to_tanp(x, y), (tanp_x, tanp_y), atol=_ATOL)
+        assert np.allclose(wc.tanp_to_det(tanp_x, tanp_y), (x, y), atol=_ATOL)
 
 
 @pytest.mark.parametrize('tpcorr', _TPCORRS)
