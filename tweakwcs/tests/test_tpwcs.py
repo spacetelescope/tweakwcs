@@ -244,6 +244,7 @@ def test_jwstgwcs_ref_angles_preserved(tpcorr, mock_jwst_wcs):
 
 # Test inputs with different shapes
 
+
 @pytest.mark.parametrize('inputs', [[500, 512, 12, 24],
                                     [[500, 500], [512, 512], [12, 12], [24, 24]],
                                     [[[500, 500], [500, 500]],
@@ -266,7 +267,7 @@ def test_jwstgwcs_detector_to_world(inputs):
 
 @pytest.mark.parametrize('inputs', [[0, 0, 12, 24],
                                     [[0, 0], [0, 0], [12, 12], [24, 24]],
-                                    [[[0, 0],[0, 0]],
+                                    [[[0, 0], [0, 0]],
                                      [[0, 0], [0, 0]],
                                      [[12, 12], [12, 12]], [[24, 24], [24, 24]]]
                                     ])
