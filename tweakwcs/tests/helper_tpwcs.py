@@ -152,7 +152,7 @@ class DetToV2V3(Model):
         yt = self.__class__.r0 * y  # / zr
         zt = np.full_like(x, self.__class__.r0)
 
-        # "unrotate" cartezian coordinates back to twc.heir original
+        # "unrotate" cartezian coordinates back to their original
         # v2ref, v3ref, and roll "positions":
         zcr, xcr, ycr = np.dot(inv_euler_rot, (zt, xt, yt))
 
