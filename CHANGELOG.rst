@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 0.5.1 (unreleased)
+.. 0.5.2 (unreleased)
    ==================
+
+0.5.1 (08-May-2019)
+===================
+
+- Fixed a bug in the "2dhist" algorithm resulting in a crash when 2D histogram
+  has multiple maxima of the same value and no other value larger than
+  one. [#90]
 
 0.5.0 (22-April-2019)
 =====================

@@ -218,6 +218,14 @@ def test_estimate_2dhist_shift_fit_failed(monkeypatch):
     assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (0.0, 0.0)
 
 
+def test_estimate_2dhist_shift_two_equal_maxima(caplog):
+    imgxy = np.array([[0, 1], [0, 1]])
+    refxy = np.array([[1, 0], [0, 2]])
+    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (-0.5, 0.0)
+    assert (caplog.record_tuples[-2][-1] == "Unable to estimate significance "
+            "of the detection of the initial shift.")
+
+
 @pytest.mark.parametrize('searchrad, separation, tolerance', [
     (0, 1, 1), (1, 0, 1), (1, 1, 0)
 ])
