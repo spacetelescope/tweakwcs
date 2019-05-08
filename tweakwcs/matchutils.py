@@ -322,18 +322,27 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
         log.info("Found peak in the 2D histogram lies at the edge of the "
                  "histogram. Try increasing 'searchrad' for improved results.")
 
+    flux = int(zpmat[fit_sl].sum())
+
     # Attempt to estimate "significance of detection":
     maxval = zpmat.max()
     zpmat_mask = (zpmat > 0) & (zpmat < maxval)
 
-    if np.any(zpmat_mask):  # pragma: no branch
+    bkg = zpmat[zpmat_mask].mean() if np.any(zpmat_mask) else -1.0
+
+    if bkg > 0:  # pragma: no branch
         bkg = zpmat[zpmat_mask].mean()
         sig = maxval / np.sqrt(bkg)
+        log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
+                 "with significance of {:.4g} and {:d} matches."
+                 .format(xp, yp, sig, flux))
 
-    flux = int(zpmat[fit_sl].sum())
-    log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
-             "with significance of {:.4g} and {:d} matches"
-             .format(xp, yp, sig, flux))
+    else:
+        log.warn("Unable to estimate significance of the detection of the "
+                 "initial shift.")
+        log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
+                 "with {:d} matches."
+                 .format(xp, yp, flux))
 
     return xp, yp
 
