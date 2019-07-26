@@ -677,7 +677,6 @@ class WCSGroupCatalog(object):
 
         return cat
 
-
     def get_unmatched_cat(self):
         """
         Retrieve only those sources from the catalog that have **not** been

@@ -10,8 +10,8 @@ Release Notes
 0.5.2 (26-July-2019)
 ====================
 
-- Fixed a deprecation issue in logging and added logic to compute image group
-  name using a common prefix (if exists) of the names of constituent
+- Fixed a deprecation issue in logging and added logic to compute image group's
+  catalog name using a common prefix (if exists) of the names of constituent
   images. [#92]
 
 0.5.1 (08-May-2019)
