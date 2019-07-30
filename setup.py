@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 import os
-import pkgutil
-import sys
 from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
-from subprocess import check_call, CalledProcessError
 
 try:
     from distutils.config import ConfigParser
@@ -31,39 +27,6 @@ LICENSE = metadata.get('license', 'BSD-3-Clause')
 this_dir = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(this_dir, LONG_DESCRIPTION), encoding='utf-8') as f:
     long_description = f.read()
-
-if not pkgutil.find_loader('relic'):
-    relic_local = os.path.exists('relic')
-    relic_submodule = (relic_local and
-                       os.path.exists('.gitmodules') and
-                       not os.listdir('relic'))
-    try:
-        if relic_submodule:
-            check_call(['git', 'submodule', 'update', '--init', '--recursive'])
-        elif not relic_local:
-            check_call(['git', 'clone', 'https://github.com/spacetelescope/relic.git'])
-
-        sys.path.insert(1, 'relic')
-    except CalledProcessError as e:
-        print(e)
-        exit(1)
-
-import relic.release
-
-version = relic.release.get_info()
-if not version.date:
-    default_version = metadata.get('version', '')
-    default_version_date = metadata.get('version-date', '')
-    version = relic.git.GitVersion(
-        pep386=default_version,
-        short=default_version,
-        long=default_version,
-        date=default_version_date,
-        dirty=True,
-        commit='',
-        post='-1'
-    )
-relic.release.write_template(version, os.path.join(*PACKAGENAME.split('.')))
 
 
 def get_transforms_data():
@@ -101,21 +64,6 @@ PACKAGE_DATA = {
     ],
     'tweakwcs': get_transforms_data()
 }
-
-
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = ['tweakwcs/tests']
-        self.test_suite = True
-
-    def run_tests(self):
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
-
-
 INSTALL_REQUIRES = [
     'numpy',
     'astropy>=3.1',
@@ -135,7 +83,8 @@ DOCS_REQUIRE = [
 
 setup(
     name=PACKAGENAME,
-    version=version.pep386,
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     description=DESCRIPTION,
@@ -156,13 +105,9 @@ setup(
     tests_require=TESTS_REQUIRE,
     packages=find_packages(),
     package_data=PACKAGE_DATA,
-    ext_modules=[],
     extras_require={
         'docs': DOCS_REQUIRE,
         'test': TESTS_REQUIRE,
-    },
-    cmdclass={
-        'test': PyTest,
     },
     project_urls={
         'Bug Reports': 'https://github.com/spacetelescope/tweakwcs/issues/',

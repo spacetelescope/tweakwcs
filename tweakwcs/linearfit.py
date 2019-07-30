@@ -13,7 +13,7 @@ import numbers
 import numpy as np
 
 from .linalg import inv
-from . import __version__, __version_date__  # noqa: F401
+from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara, Warren Hack'
 

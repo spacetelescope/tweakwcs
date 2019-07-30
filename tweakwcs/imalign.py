@@ -23,7 +23,7 @@ from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
 from . tpwcs import TPWCS
 from . matchutils import TPMatch
 
-from . import __version__, __version_date__
+from . import __version__
 
 __author__ = 'Mihai Cara'
 
@@ -179,7 +179,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     log.info(" ")
     log.info("***** {:s}.{:s}() started on {}"
              .format(__name__, function_name, runtime_begin))
-    log.info("      Version {} ({})".format(__version__, __version_date__))
+    log.info("      Version {}".format(__version__))
     log.info(" ")
 
     try:
@@ -428,7 +428,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
     log.info(" ")
     log.info("***** {:s}.{:s}() started on {}"
              .format(__name__, function_name, runtime_begin))
-    log.info("      Version {} ({})".format(__version__, __version_date__))
+    log.info("      Version {}".format(__version__))
     log.info(" ")
 
     # Check that type of `wcscat` is correct and set initial status to FAILED:

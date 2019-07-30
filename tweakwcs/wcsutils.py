@@ -14,7 +14,7 @@ A module that provides utility functions for WCS transformations.
 import math
 import numpy as np
 
-from . import __version__, __version_date__  # noqa: F401
+from . import __version__  # noqa: F401
 
 
 __all__ = ['cartesian_to_spherical', 'spherical_to_cartesian', 'planar_rot_3d']

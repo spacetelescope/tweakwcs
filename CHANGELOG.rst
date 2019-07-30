@@ -14,6 +14,9 @@ Release Notes
   catalog name using a common prefix (if exists) of the names of constituent
   images. [#92]
 
+- Package version is now handled by ``setuptools_scm``.
+  [#93]
+
 0.5.1 (08-May-2019)
 ===================
 

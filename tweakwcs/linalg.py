@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 # LOCAL
-from . import __version__, __version_date__  # noqa: F401
+from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
