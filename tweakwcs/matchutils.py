@@ -338,8 +338,8 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
                  .format(xp, yp, sig, flux))
 
     else:
-        log.warn("Unable to estimate significance of the detection of the "
-                 "initial shift.")
+        log.warning("Unable to estimate significance of the detection of the "
+                    "initial shift.")
         log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
                  "with {:d} matches."
                  .format(xp, yp, flux))

@@ -9,6 +9,7 @@ source catalogs.
 
 """
 # STDLIB
+import os
 import logging
 import numbers
 from copy import deepcopy
@@ -585,10 +586,17 @@ class WCSGroupCatalog(object):
         catalogs = []
         catno = 0
         has_weights = None
+        cat_names = []
         for image in self._images:
             catlen = len(image.catalog)
             if catlen == 0:
                 continue
+
+            cat_name = image.catalog.meta.get(
+                'name',
+                image.name if image.name else 'Unnamed'
+            )
+            cat_names.append(cat_name)
 
             if has_weights is None:
                 has_weights = 'weight' in image.catalog.colnames
@@ -634,7 +642,12 @@ class WCSGroupCatalog(object):
             catalogs.append(cat)
             catno += 1
 
-        if not catno:
+        catname = os.path.commonprefix(cat_names) if cat_names else None
+
+        if catno:
+            cat = table.vstack(catalogs, join_type='exact')
+
+        else:
             # no catalogs with sources. Create an empty table with required
             # columns and types:
             image = self._images[0]
@@ -659,9 +672,10 @@ class WCSGroupCatalog(object):
                 masked=True
             )
 
-            return cat
+        if catname:
+            cat.meta['name'] = catname
 
-        return table.vstack(catalogs, join_type='exact')
+        return cat
 
     def get_unmatched_cat(self):
         """
