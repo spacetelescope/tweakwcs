@@ -24,7 +24,7 @@ import logging
 import uuid
 
 # LOCAL
-from .. import __version__, __version_date__  # noqa: F401
+from .. import __version__  # noqa: F401
 
 
 log = logging.getLogger(__name__)

@@ -26,7 +26,7 @@ from .tpwcs import TPWCS
 from .linalg import inv
 from .linearfit import iter_linear_fit
 
-from . import __version__, __version_date__  # noqa: F401
+from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 

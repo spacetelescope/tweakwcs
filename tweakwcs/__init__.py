@@ -7,7 +7,13 @@ __docformat__ = 'restructuredtext'
 __taskname__ = 'tweakwcs'
 __author__ = 'Mihai Cara'
 
-from .version import __version__, __version_date__  # noqa: F401
+from pkg_resources import get_distribution, DistributionNotFound
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = 'UNKNOWN'
+
 from .tpwcs import TPWCS, JWSTgWCS, FITSWCS  # noqa: F401
 from .matchutils import MatchCatalogs, TPMatch  # noqa: F401
 from .imalign import fit_wcs, align_wcs  # noqa: F401

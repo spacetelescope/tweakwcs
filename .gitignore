@@ -43,8 +43,7 @@ sdist
 develop-eggs
 .installed.cfg
 distribute-*.tar.gz
-relic/
-RELIC-INFO
+pip-wheel-metadata
 
 # codecov
 .coverage

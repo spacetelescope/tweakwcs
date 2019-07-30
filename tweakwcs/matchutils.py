@@ -14,7 +14,7 @@ import astropy
 
 from stsci.stimage import xyxymatch
 
-from . import __version__, __version_date__  # noqa: F401
+from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
