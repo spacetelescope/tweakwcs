@@ -522,16 +522,27 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
                 )
 
         else:
-            wcs_gcat.append(
-                WCSGroupCatalog(
-                    wcatalogs,
-                    name='GROUP ID: {}'.format(group_id)
-                )
+            gcat = WCSGroupCatalog(
+                wcatalogs,
+                name='GROUP ID: {}'.format(group_id)
             )
+            if not len(gcat.catalog):
+                log.warning("Group with ID '{}' will not be aligned: empty "
+                            "source catalog".format(group_id))
+
+                for wcat in wcatalogs:
+                    wcat.tpwcs.meta['fit_info'] = {
+                        'status': 'FAILED: empty source catalog'
+                    }
+
+                continue
+
+            wcs_gcat.append(gcat)
 
     # check that we have enough input images:
     if (refcat is None and len(wcs_gcat) < 2) or len(wcs_gcat) == 0:
-        raise ValueError("Too few input images (or groups of images).")
+        raise ValueError("Too few input images (or groups of images) with "
+                         "non-empty catalogs.")
 
     # get the first image to be aligned and
     # create reference catalog if needed:

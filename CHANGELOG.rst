@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 0.5.3 (unreleased)
+.. 0.5.4 (unreleased)
    ==================
+
+0.5.3 (15-November-2019)
+========================
+
+- Added logic to allow some input catalogs to be empty and to allow the
+  alignment to proceed as long as there are at least two non-empty
+  (image or group) input catalogs. [#94]
 
 0.5.2 (26-July-2019)
 ====================

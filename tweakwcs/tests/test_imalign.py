@@ -21,10 +21,71 @@ _ATOL = 1000 * np.finfo(np.array([1.]).dtype).eps
 
 
 def test_fit_wcs_empty_cat(empty_refcat, empty_imcat, mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCS(
+        mock_fits_wcs,
+        meta={'catalog': Table([[], []], names=('x', 'y')), 'group_id': 1}
+    )
+
     with pytest.raises(ValueError) as e:
-        fit_wcs(empty_refcat, empty_imcat, tpwcs)
-    assert e.value.args[0] == "Image catalog must contain at least one entry."
+        align_wcs([tpwcs, tpwcs, tpwcs])
+    assert e.value.args[0] == ("Too few input images (or groups of images) "
+                               "with non-empty catalogs.")
+
+
+def test_fit_drop_empty(mock_fits_wcs):
+    t0 = Table([[], []], names=('x', 'y'))
+    t1 = Table([[1], [3]], names=('x', 'y'))
+    wcscats = [
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t0.copy(), 'group_id': 1}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t1.copy(), 'group_id': 2}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t0.copy(), 'group_id': 2}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t0.copy(), 'group_id': 3}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t0.copy(), 'group_id': 3}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t1.copy(), 'group_id': 4}
+        ),
+        FITSWCS(
+            copy.deepcopy(mock_fits_wcs),
+            meta={'catalog': t1.copy(), 'group_id': 4}
+        )
+    ]
+
+    align_wcs(wcscats, fitgeom='shift')
+
+    status = [w.meta.get('fit_info')['status'] for w in wcscats]
+
+    assert status[0] == 'FAILED: empty source catalog'
+    assert status[3] == 'FAILED: empty source catalog'
+    assert status[4] == 'FAILED: empty source catalog'
+
+    if status[1] == 'SUCCESS':
+        assert status[2] == 'SUCCESS'
+        assert status[5] == 'REFERENCE'
+        assert status[6] == 'REFERENCE'
+
+    elif status[1] == 'REFERENCE':
+        assert status[2] == 'REFERENCE'
+        assert status[5] == 'SUCCESS'
+        assert status[6] == 'SUCCESS'
+
+    else:
+        assert False
 
 
 def test_fit_wcs_missing_req_col_names(empty_refcat, mock_fits_wcs):
@@ -277,7 +338,7 @@ def test_align_wcs_refcat_from_imcat(mock_fits_wcs, enforce):
 
 def test_multi_image_set(mock_fits_wcs):
     np.random.seed(1)
-    v1 = 1e10 * np.finfo(1.0).eps
+    v1 = 1e10 * np.finfo(np.float).eps
     v2 = 1 - v1
     corners = np.array([[v1, v1], [v1, v2], [v2, v2], [v2, v1]])
     n = 1
@@ -388,4 +449,5 @@ def test_align_wcs_1im_no_ref(mock_fits_wcs):
 
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs, refcat=None, fitgeom='shift', match=None)
-    assert e.value.args[0] == "Too few input images (or groups of images)."
+    assert e.value.args[0] == ("Too few input images (or groups of images) "
+                               "with non-empty catalogs.")
