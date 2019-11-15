@@ -195,9 +195,6 @@ class WCSImageCatalog(object):
             raise ValueError("An image catalog must contain 'x' and 'y' "
                              "columns!")
 
-        if not catalog:
-            raise ValueError("Image catalog must contain at least one entry.")
-
         self._catalog = table.Table(catalog.copy(), masked=True)
         self._catalog.meta['name'] = self._name
 
@@ -381,6 +378,7 @@ class WCSImageCatalog(object):
 
         self.img_bounding_ra = ra
         self.img_bounding_dec = dec
+        self._bb_radec = (ra, dec)
         self._polygon = SphericalPolygon.from_radec(ra, dec)
 
     def _calc_cat_convex_hull(self):
