@@ -18,6 +18,10 @@ from copy import deepcopy
 import numpy as np
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
+try:
+    from scipy.spatial import distance
+except ImportError:
+    distance = None
 
 # LOCAL
 from .wcsutils import (cartesian_to_spherical, spherical_to_cartesian,
@@ -1472,6 +1476,9 @@ class RefCatalog(object):
         else:
             maxid = self.catalog['id'].max()
             oldlen = len(self.catalog)
+            # If activated, apply algorithm for removing duplicate entries (separation < some_limit)
+            # from new catalog before appending to original catalog.
+            # cat = self._remove_duplicates(cat)
             self._catalog = table.vstack([self.catalog, cat],
                                          join_type='outer')
             # assign ids to the newly added source positions in consecutive
@@ -1480,6 +1487,54 @@ class RefCatalog(object):
                                                      maxid + len(cat) + 1)
 
         self.calc_bounding_polygon()
+
+    def _remove_duplicates(self, catalog):
+        """
+        Removes sources which are within the tolerance range of current sources.
+
+        Only sources within the tolerance range of current sources which have
+        been added to the original catalog will be removed.  Tolerance distance
+        will be defined by the user upon creation of the original catalog.
+
+        .. note::
+            The separation limit is currently hard-coded, but should be based
+            on tolerance or separation parameter provided by user for xyxymatch.
+
+        Parameters
+        ----------
+        catalog : astropy.table.Table
+            A catalog of new sources to be added to the existing reference
+            catalog. `catalog` *must* contain *both* ``'RA'`` and ``'DEC'``
+            columns.
+        """
+        # If the scipy.distance package was not installed and imported, skip this method...
+        if distance is None:
+            return catalog
+
+        orig_xy = np.array([self._catalog['TPx'], self.catalog['TPy']]).T
+        new_xy = np.array([catalog['TPx'], catalog['TPy']]).T
+        n = len(orig_xy)
+        m = len(new_xy)
+
+        dist = distance.cdist(orig_xy, new_xy, 'euclidean')
+        # Set lower-triangle of distances to max value
+        # This will eliminate duplicate entries when looking for
+        # pairs with the smallest separation
+        dist[np.tril_indices(n, m=m)] = dist.max()
+        # Find pairs with distance less than tolerance - hard-coded to 2.0 pixels
+        duplicates = np.where(dist < 2 * np.sqrt(2))
+
+        if len(duplicates) > 0:
+            remove_mask = sorted(duplicates[1]).reverse()
+
+        full_m = np.arange(m).tolist()
+        if remove_mask and len(remove_mask) > 0:
+            for i in remove_mask: full_m.remove(i)
+
+        # Create new array without identified duplicates
+        catalog = catalog[full_m]
+
+        return catalog
 
     def calc_tanp_xy(self, tanplane_wcs):
         """
