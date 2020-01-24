@@ -8,20 +8,39 @@ source catalogs.
 :License: :doc:`../LICENSE`
 
 """
-# STDLIB
 import os
 import logging
 import numbers
 from copy import deepcopy
+from distutils.version import LooseVersion
 
-# THIRD-PARTY
 import numpy as np
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
 
-# LOCAL
-from .wcsutils import (cartesian_to_spherical, spherical_to_cartesian,
-                       planar_rot_3d)
+import gwcs
+if LooseVersion(gwcs.__version__) > '0.12.0':
+    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+    _S2C = SphericalToCartesian(name='s2c')
+    _C2S = CartesianToSpherical(name='c2s')
+
+else:
+    def _S2C(phi, theta):
+        phi = np.deg2rad(phi)
+        theta = np.deg2rad(theta)
+        cs = np.cos(theta)
+        x = cs * np.cos(phi)
+        y = cs * np.sin(phi)
+        z = np.sin(theta)
+        return x, y, z
+
+    def _C2S(x, y, z):
+        h = np.hypot(x, y)
+        phi = np.mod(np.rad2deg(np.arctan2(y, x)), 360.0)
+        theta = np.rad2deg(np.arctan2(z, h))
+        return phi, theta
+
+from .wcsutils import planar_rot_3d
 from .tpwcs import TPWCS
 from .linalg import inv
 from .linearfit import iter_linear_fit
@@ -32,6 +51,9 @@ __author__ = 'Mihai Cara'
 
 __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 
+
+# _S2C = SphericalToCartesian(name='s2c')
+# _C2S = CartesianToSpherical(name='c2s')
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -1358,14 +1380,13 @@ class RefCatalog(object):
         # Compute x, y coordinates in this tangent plane based on the
         # previously computed WCS and return the set of x, y coordinates and
         # "reference WCS".
-        x, y, z = spherical_to_cartesian(
-            self.catalog['RA'], self.catalog['DEC']
-        )
-        ra_ref, dec_ref = cartesian_to_spherical(
+        x, y, z = _S2C(self.catalog['RA'], self.catalog['DEC'])
+        ra_ref, dec_ref = _C2S(
             x.mean(dtype=np.float64),
             y.mean(dtype=np.float64),
             z.mean(dtype=np.float64)
         )
+
         rotm = [planar_rot_3d(np.deg2rad(alpha), 2 - axis)
                 for axis, alpha in enumerate([ra_ref, dec_ref])]
         euler_rot = np.linalg.multi_dot(rotm)
@@ -1421,7 +1442,7 @@ class RefCatalog(object):
         xt = np.ones_like(xv)
         xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.float64)
         # convert cartesian to spherical coordinates:
-        ra, dec = cartesian_to_spherical(xcr, ycr, zcr)
+        ra, dec = _C2S(xcr, ycr, zcr)
 
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
         #       dec[0] != dec[-1] (even though we close the polygon in the
@@ -1472,8 +1493,12 @@ class RefCatalog(object):
         else:
             maxid = self.catalog['id'].max()
             oldlen = len(self.catalog)
-            self._catalog = table.vstack([self.catalog, cat],
-                                         join_type='outer')
+            self._catalog = table.vstack(
+                [self.catalog, cat],
+                join_type='outer',
+                metadata_conflicts='silent'
+            )
+
             # assign ids to the newly added source positions in consecutive
             # order above the largest id in the already existing catalog:
             self._catalog['id'][oldlen:] = np.arange(maxid + 1,

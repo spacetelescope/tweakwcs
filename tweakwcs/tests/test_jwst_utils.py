@@ -5,22 +5,10 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 from itertools import groupby
-import sys
 
 import pytest
 
 from tweakwcs.utils.jwst_utils import assign_jwst_tweakwcs_groups
-
-
-def test_jwst_import_failed():
-    restore_modules = {}
-    with pytest.raises(ImportError):
-        for k in list(sys.modules.keys()):
-            if k.startswith(('jwst')):
-                restore_modules[k] = sys.modules[k]
-                sys.modules[k] = None
-        assign_jwst_tweakwcs_groups([])
-    sys.modules.update(restore_modules)
 
 
 @pytest.fixture(scope='function')
@@ -95,6 +83,4 @@ def test_assign_jwst_tweakwcs_groups(data_model_list, monkeypatch):
     assign_jwst_tweakwcs_groups(list(models.keys()))
 
     gids = sorted([model.meta.tweakwcs_group_id for model in data_model_list])
-    print(gids)
     assert sorted([len(list(g)) for k, g in groupby(gids)]) == [1, 2, 3]
-    # assert False

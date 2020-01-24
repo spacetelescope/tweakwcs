@@ -4,8 +4,17 @@
 Release Notes
 =============
 
-.. 0.5.4 (unreleased)
+.. 0.6.1 (unreleased)
    ==================
+
+
+0.6.0 (unreleased)
+==================
+
+- Re-designed the ``JWSTgWCS`` corrector class to rely exclusively on
+  basic models available in ``astropy`` and ``gwcs`` instead of the ``TPCorr``
+  class provided by the ``jwst`` pipeline. This eliminates the need to install
+  the ``jwst`` pipeline in order to align ``JWST`` images. [#96]
 
 0.5.3 (15-November-2019)
 ========================
