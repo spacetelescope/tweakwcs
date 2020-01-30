@@ -638,8 +638,8 @@ class JWSTgWCS(TPWCS):
 
     @staticmethod
     def _tpcorr_init(v2_ref, v3_ref, roll_ref):
-        s2c = SphericalToCartesian(name='s2c')
-        c2s = CartesianToSpherical(name='c2s')
+        s2c = SphericalToCartesian(name='s2c', wrap_phi_at=180)
+        c2s = CartesianToSpherical(name='c2s', wrap_phi_at=180)
 
         unit_conv = Scale(1.0 / 3600.0, name='arcsec_to_deg_1D')
         unit_conv = unit_conv & unit_conv
@@ -681,7 +681,12 @@ class JWSTgWCS(TPWCS):
         )
         inv_total_corr.name = 'inverse jwst tangent-plane linear correction. v1'
 
-        inv_total_corr.inverse = total_corr
+        # TODO
+        # re-enable circular inverse definitions once
+        # https://github.com/spacetelescope/asdf/issues/744 or
+        # https://github.com/spacetelescope/asdf/issues/745 are resolved.
+        #
+        # inv_total_corr.inverse = total_corr
         total_corr.inverse = inv_total_corr
 
         return total_corr
