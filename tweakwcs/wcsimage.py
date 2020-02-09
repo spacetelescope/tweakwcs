@@ -21,8 +21,8 @@ from spherical_geometry.polygon import SphericalPolygon
 import gwcs
 if LooseVersion(gwcs.__version__) > '0.12.0':
     from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-    _S2C = SphericalToCartesian(name='s2c')
-    _C2S = CartesianToSpherical(name='c2s')
+    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 else:
     def _S2C(phi, theta):
@@ -36,7 +36,7 @@ else:
 
     def _C2S(x, y, z):
         h = np.hypot(x, y)
-        phi = np.mod(np.rad2deg(np.arctan2(y, x)), 360.0)
+        phi = np.rad2deg(np.arctan2(y, x))
         theta = np.rad2deg(np.arctan2(z, h))
         return phi, theta
 
@@ -52,8 +52,8 @@ __author__ = 'Mihai Cara'
 __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 
 
-# _S2C = SphericalToCartesian(name='s2c')
-# _C2S = CartesianToSpherical(name='c2s')
+# _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+# _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

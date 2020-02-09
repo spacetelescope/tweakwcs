@@ -14,14 +14,14 @@ import gwcs
 if LooseVersion(gwcs.__version__) > '0.12.0':
     from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
     _NO_JWST_SUPPORT = False
-    _S2C = SphericalToCartesian(name='s2c')
-    _C2S = CartesianToSpherical(name='c2s')
+    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 else:
     _NO_JWST_SUPPORT = True
 
 
-# _S2C = SphericalToCartesian(name='s2c')
-# _C2S = CartesianToSpherical(name='c2s')
+# _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+# _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
@@ -54,9 +54,9 @@ def test_cartesian_spherical_cartesian_roundtrip_rand():
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_spherical_cartesian_spherical_roundtrip_ugrid():
     feps = 1000 * np.finfo(np.float64).eps
-    angles = np.linspace(0, 360, 13)
+    angles = np.linspace(-180, 180, 13)
     alpha0 = np.repeat(angles, angles.size)
-    delta0 = np.tile(angles / 2 - 90, angles.size)
+    delta0 = np.tile(angles / 2, angles.size)
     alpha, delta = _C2S(*_S2C(alpha0, delta0))
     assert np.allclose(alpha, alpha0, rtol=0, atol=feps)
     assert np.allclose(delta, delta0, rtol=0, atol=feps)

@@ -89,7 +89,7 @@ def test_mock_wcs_fails(crpix, cd):
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_v2v3todet_roundtrips():
-    s2c = (Scale(1.0 / 3600.0) & Scale(1.0 / 3600.0)) | SphericalToCartesian()
+    s2c = (Scale(1.0 / 3600.0) & Scale(1.0 / 3600.0)) | SphericalToCartesian(wrap_lon_at=180)
 
     s = 1.0e-5
     crpix = np.random.random(2)

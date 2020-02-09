@@ -16,8 +16,8 @@ import gwcs
 
 if LooseVersion(gwcs.__version__) > '0.12.0':
     from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-    _S2C = SphericalToCartesian(name='s2c')
-    _C2S = CartesianToSpherical(name='c2s')
+    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 from tweakwcs.tpwcs import TPWCS, JWSTgWCS
 

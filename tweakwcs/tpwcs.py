@@ -44,7 +44,7 @@ else:
     log.warning(
         "JWST support requires gwcs version > 12.1. "
         "To pip install minimal required version, do the following:\n"
-        "pip install git+https://github.com/spacetelescope/gwcs@ad951ec"
+        "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
     )
 
 
@@ -546,7 +546,7 @@ class JWSTgWCS(TPWCS):
             raise NotImplementedError(
                 "JWST support requires gwcs version > 12.1. "
                 "To pip install minimal required version, do the following:\n"
-                "pip install git+https://github.com/spacetelescope/gwcs@ad951ec"
+                "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
             )
 
         valid, message = self._check_wcs_structure(wcs)
@@ -638,8 +638,8 @@ class JWSTgWCS(TPWCS):
 
     @staticmethod
     def _tpcorr_init(v2_ref, v3_ref, roll_ref):
-        s2c = SphericalToCartesian(name='s2c', wrap_phi_at=180)
-        c2s = CartesianToSpherical(name='c2s', wrap_phi_at=180)
+        s2c = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+        c2s = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
         unit_conv = Scale(1.0 / 3600.0, name='arcsec_to_deg_1D')
         unit_conv = unit_conv & unit_conv
