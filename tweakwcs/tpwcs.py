@@ -111,7 +111,7 @@ class TPWCS(ABC):
 
         """
         # save linear transformation info to the meta attribute:
-        self._meta['matrix'] = np.array(matrix, dtype=np.float64)
+        self._meta['matrix'] = np.array(matrix, dtype=np.double)
         self._meta['shift'] = shift
         if meta is not None:
             self._meta.update(meta)
@@ -368,7 +368,7 @@ class FITSWCS(TPWCS):
         # compute new CRVAL for the image WCS:
         crpixinref = self._wcslin.wcs_world2pix(
             self._wcs.wcs_pix2world([self._wcs.wcs.crpix], 1), 1)
-        crpixinref = np.dot(crpixinref - shift, matrix.T).astype(np.float64)
+        crpixinref = np.dot(crpixinref - shift, matrix.T).astype(np.double)
         self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
         self._wcs.wcs.set()
 
@@ -376,7 +376,7 @@ class FITSWCS(TPWCS):
         (U, u) = _linearize(cwcs, self._wcs, self._wcslin, self._wcs.wcs.crpix,
                             matrix, shift, hx=hx, hy=hy)
         self._wcs.wcs.cd = np.dot(self._wcs.wcs.cd.astype(np.longdouble),
-                                  U).astype(np.float64)
+                                  U).astype(np.double)
         self._wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
@@ -476,7 +476,7 @@ def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
                     [x0, y0 - hy * 0.5],
                     [x0, y0 + hy * 0.5],
                     [x0, y0 + hy]],
-                   dtype=np.float64)
+                   dtype=np.double)
     # convert image coordinates to reference image coordinates:
     p = wcsref.wcs_world2pix(
         wcsim.wcs_pix2world(p, 1), 1
@@ -485,7 +485,7 @@ def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
     p = np.dot(f, (p - shift).T).T
     # convert back to image coordinate system:
     p = wcsima.wcs_world2pix(
-        wcsref.wcs_pix2world(p.astype(np.float64), 1), 1
+        wcsref.wcs_pix2world(p.astype(np.double), 1), 1
     ).astype(np.longdouble)
 
     # derivative with regard to x:

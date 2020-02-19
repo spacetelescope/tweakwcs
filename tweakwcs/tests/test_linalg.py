@@ -19,7 +19,7 @@ def test_longdouble_cmp(tp, expected):
 
 
 def test_inv_order2():
-    feps = 1000 * np.finfo(np.float64).eps
+    feps = 1000 * np.finfo(np.double).eps
 
     # Generate a 2D rotation/scale/skew matrix + some random noise.
     # The reason for this complicated approach is to avoid creating

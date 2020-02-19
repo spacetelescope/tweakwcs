@@ -34,14 +34,14 @@ else:
     (0, 0, -1),
 ])
 def test_cartesian_spherical_cartesian_roundtrip_special(x, y, z):
-    feps = 100 * np.finfo(np.float64).eps
+    feps = 100 * np.finfo(np.double).eps
     xyz = _S2C(*_C2S(x, y, z))
     assert np.allclose((x, y, z), xyz, rtol=0, atol=feps)
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_cartesian_spherical_cartesian_roundtrip_rand():
-    feps = 100 * np.finfo(np.float64).eps
+    feps = 100 * np.finfo(np.double).eps
     xyz = np.random.random((100, 3))
     xyz /= np.linalg.norm(xyz, axis=1)[:, np.newaxis]
     x, y, z = xyz.T
@@ -53,7 +53,7 @@ def test_cartesian_spherical_cartesian_roundtrip_rand():
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_spherical_cartesian_spherical_roundtrip_ugrid():
-    feps = 1000 * np.finfo(np.float64).eps
+    feps = 1000 * np.finfo(np.double).eps
     angles = np.linspace(-180, 180, 13)
     alpha0 = np.repeat(angles, angles.size)
     delta0 = np.tile(angles / 2, angles.size)
@@ -64,7 +64,7 @@ def test_spherical_cartesian_spherical_roundtrip_ugrid():
 
 @pytest.mark.parametrize('angle', np.linspace(-2 * np.pi, 2 * np.pi, 100))
 def test_planar_rot_3d(angle):
-    feps = 100 * np.finfo(np.float64).eps
+    feps = 100 * np.finfo(np.double).eps
     ref = ((angle - np.pi) % (2 * np.pi)) - np.pi
     for axis in (0, 1, 2, 1.0, 2.0, -0.0):
         mat_2d = np.delete(

@@ -402,7 +402,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     # check arguments:
     if peak_fit_box < 1:
         raise ValueError("peak_fit_box must be at least 1 pixel in size.")
-    data = np.asarray(data, dtype=np.float64)
+    data = np.asarray(data, dtype=np.double)
     ny, nx = data.shape
 
     # find index of the pixel having maximum value:

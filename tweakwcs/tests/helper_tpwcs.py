@@ -50,8 +50,8 @@ def rot_mat3d(angle, axis):
     cs = math.cos(angle)
     sn = math.sin(angle)
     axisv = np.array(axis * [0.0] + [1.0] + (2 - axis) * [0.0],
-                     dtype=np.float)
-    mat2d = np.array([[cs, sn], [-sn, cs]], dtype=np.float)
+                     dtype=np.double)
+    mat2d = np.array([[cs, sn], [-sn, cs]], dtype=np.double)
     return np.insert(np.insert(mat2d, axis, [0.0, 0.0], 1), axis, axisv, 0)
 
 

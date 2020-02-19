@@ -360,15 +360,15 @@ class WCSImageCatalog(object):
             nintx = max(2, int(np.ceil((hx - lx) / stepsize)))
             ninty = max(2, int(np.ceil((hy - ly) / stepsize)))
 
-        xs = np.linspace(lx, hx, nintx, dtype=np.float)
-        ys = np.linspace(ly, hy, ninty, dtype=np.float)[1:-1]
+        xs = np.linspace(lx, hx, nintx, dtype=np.double)
+        ys = np.linspace(ly, hy, ninty, dtype=np.double)[1:-1]
         nptx = xs.size
         npty = ys.size
 
         npts = 2 * (nptx + npty)
 
-        borderx = np.empty((npts + 1,), dtype=np.float)
-        bordery = np.empty((npts + 1,), dtype=np.float)
+        borderx = np.empty((npts + 1,), dtype=np.double)
+        bordery = np.empty((npts + 1,), dtype=np.double)
 
         # "bottom" points:
         borderx[:nptx] = xs
@@ -634,17 +634,17 @@ class WCSGroupCatalog(object):
             col_imcatidx = table.MaskedColumn(catlen * [catno],
                                               name='_imcat_idx')
             col_id = table.MaskedColumn(image.catalog['id'])
-            col_x = table.MaskedColumn(image.catalog['x'], dtype=np.float64)
-            col_y = table.MaskedColumn(image.catalog['y'], dtype=np.float64)
+            col_x = table.MaskedColumn(image.catalog['x'], dtype=np.double)
+            col_y = table.MaskedColumn(image.catalog['y'], dtype=np.double)
             ra, dec = image.det_to_world(
                 image.catalog['x'], image.catalog['y']
             )
-            col_ra = table.MaskedColumn(ra, dtype=np.float64, name='RA')
-            col_dec = table.MaskedColumn(dec, dtype=np.float64, name='DEC')
+            col_ra = table.MaskedColumn(ra, dtype=np.double, name='RA')
+            col_dec = table.MaskedColumn(dec, dtype=np.double, name='DEC')
 
             if has_weights:
                 col_wght = table.MaskedColumn(image.catalog['weight'],
-                                              dtype=np.float64)
+                                              dtype=np.double)
 
                 cat = table.Table(
                     [col_imcatidx, col_catname, col_id, col_x,
@@ -681,10 +681,10 @@ class WCSGroupCatalog(object):
             col_imcatidx = table.MaskedColumn([], dtype=np.int,
                                               name='_imcat_idx')
             col_id = table.MaskedColumn(image.catalog['id'])
-            col_x = table.MaskedColumn([], name='x', dtype=np.float64)
-            col_y = table.MaskedColumn([], name='y', dtype=np.float64)
-            col_ra = table.MaskedColumn([], name='RA', dtype=np.float64)
-            col_dec = table.MaskedColumn([], name='DEC', dtype=np.float64)
+            col_x = table.MaskedColumn([], name='x', dtype=np.double)
+            col_y = table.MaskedColumn([], name='y', dtype=np.double)
+            col_ra = table.MaskedColumn([], name='RA', dtype=np.double)
+            col_dec = table.MaskedColumn([], name='DEC', dtype=np.double)
 
             cat = table.Table(
                 [col_imcatidx, col_catname, col_id, col_x,
@@ -753,10 +753,10 @@ class WCSGroupCatalog(object):
         xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog['RA'],
                                               self.catalog['DEC'])
         self._catalog['TPx'] = table.MaskedColumn(
-            xtp, name='TPx', dtype=np.float64, mask=False
+            xtp, name='TPx', dtype=np.double, mask=False
         )
         self._catalog['TPy'] = table.MaskedColumn(
-            ytp, name='TPy', dtype=np.float64, mask=False
+            ytp, name='TPy', dtype=np.double, mask=False
         )
 
     def match2ref(self, refcat, match=None):
@@ -1003,13 +1003,13 @@ class WCSGroupCatalog(object):
             # alignment to the tangent plane of another image in the group:
             if imcat.tpwcs == tanplane_wcs:
                 m = matrix.copy()
-                s = np.array(shift, dtype=np.float64)
+                s = np.array(shift, dtype=np.double)
             else:
                 r1, t1 = _tp2tp(imcat.tpwcs, tanplane_wcs)
                 r2, t2 = _tp2tp(tanplane_wcs, imcat.tpwcs)
                 m = np.linalg.multi_dot([r2, matrix, r1])
                 s = (t1 + np.dot(inv(r1), shift) +
-                     np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.float64)
+                     np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.double)
 
             imcat.tpwcs.set_correction(m, s, meta=meta)
 
@@ -1215,12 +1215,12 @@ class WCSGroupCatalog(object):
 
 
 def _tp2tp(tpwcs1, tpwcs2):
-    x = np.array([0.0, 1.0, 0.0], dtype=np.float)
-    y = np.array([0.0, 0.0, 1.0], dtype=np.float)
+    x = np.array([0.0, 1.0, 0.0], dtype=np.double)
+    y = np.array([0.0, 0.0, 1.0], dtype=np.double)
     xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
 
     matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])])
-    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.float64)
+    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.double)
 
     return matrix, shift
 
@@ -1381,9 +1381,9 @@ class RefCatalog(object):
         # "reference WCS".
         x, y, z = _S2C(self.catalog['RA'], self.catalog['DEC'])
         ra_ref, dec_ref = _C2S(
-            x.mean(dtype=np.float64),
-            y.mean(dtype=np.float64),
-            z.mean(dtype=np.float64)
+            x.mean(dtype=np.double),
+            y.mean(dtype=np.double),
+            z.mean(dtype=np.double)
         )
 
         rotm = [planar_rot_3d(np.deg2rad(alpha), 2 - axis)
@@ -1439,7 +1439,7 @@ class RefCatalog(object):
         # "unrotate" cartezian coordinates back to their original
         # ra_ref and dec_ref "positions":
         xt = np.ones_like(xv)
-        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.float64)
+        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.double)
         # convert cartesian to spherical coordinates:
         ra, dec = _C2S(xcr, ycr, zcr)
 
@@ -1524,10 +1524,10 @@ class RefCatalog(object):
         xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog['RA'],
                                               self.catalog['DEC'])
         self._catalog['TPx'] = table.MaskedColumn(
-            xtp, name='TPx', dtype=np.float64, mask=False
+            xtp, name='TPx', dtype=np.double, mask=False
         )
         self._catalog['TPy'] = table.MaskedColumn(
-            ytp, name='TPy', dtype=np.float64, mask=False
+            ytp, name='TPy', dtype=np.double, mask=False
         )
 
 

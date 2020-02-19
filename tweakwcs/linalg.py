@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-def _is_longdouble_lte_flt_type(flt_type=np.float64):
+def _is_longdouble_lte_flt_type(flt_type=np.double):
     if np.longdouble is flt_type:
         return True
 
@@ -68,7 +68,7 @@ def _find_max_linalg_type():
             continue
 
 
-_USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.float64)
+_USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.double)
 _MAX_LINALG_TYPE = _find_max_linalg_type()
 if _MAX_LINALG_TYPE is None:
     _USE_NUMPY_LINALG_INV = False  # pragma: no cover
@@ -78,7 +78,7 @@ def inv(m):
     """ This function computes inverse matrix using Gauss-Jordan elimination
     with full pivoting. Computations are performed using ``numpy.longdouble``
     precision. On systems on which ``numpy.longdouble`` is equivalent to
-    ``numpy.float64`` this function reverts to `numpy.linalg.inv` for
+    ``numpy.double`` this function reverts to `numpy.linalg.inv` for
     performance reasons.
 
     Parameters
@@ -91,7 +91,7 @@ def inv(m):
     invm: numpy.ndarray
         Inverse matrix of the input matrix ``m``: a 2D *square* `numpy.ndarray`
         of type ``numpy.longdouble`` on systems on which it is more accurate
-        than ``numpy.float64``.
+        than ``numpy.double``.
 
     """
     # check that matrix is square:
@@ -110,7 +110,7 @@ def inv(m):
     # create permutation matrices:
     qt = np.eye(order, dtype=np.int)
 
-    eps = np.finfo(np.float64).tiny
+    eps = np.finfo(np.double).tiny
 
     # initial inverse matrix:
     invm = np.eye(order, dtype=np.longdouble)
