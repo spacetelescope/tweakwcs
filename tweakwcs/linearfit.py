@@ -706,9 +706,9 @@ def _build_fit(p, q, fitgeom):
         rot = np.mod(0.5 * (rotx + roty), 360.0)
         skew = np.mod(roty - rotx - 180.0, 360.0) - 180.0
 
-    return {'offset': np.array([p[2], q[2]], dtype=np.float),
+    return {'offset': np.array([p[2], q[2]], dtype=np.double),
             'offset_ld': np.array([p[2], q[2]], dtype=np.longdouble),
-            'matrix': np.array(fit_matrix, dtype=np.float),
+            'matrix': np.array(fit_matrix, dtype=np.double),
             'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
             'rot': float(prop_rot),
             'rotxy': tuple(map(float, (rotx, roty, rot, skew))),
