@@ -38,13 +38,13 @@ class MatchCatalogs(ABC):
         Parameters
         ----------
 
-        refcat : astropy.table.Table
+        refcat: astropy.table.Table
             A reference source catalog. Reference catalog must contain
             ``'TPx'`` and ``'TPy'`` columns that provide undistorted
             (distortion-correction applied) source coordinates coordinate
             system common (shared) with the image catalog ``imcat``.
 
-        imcat : astropy.table.Table
+        imcat: astropy.table.Table
             Source catalog associated with an image. Image catalog must contain
             ``'TPx'`` and ``'TPy'`` columns that provide undistorted
             (distortion-correction applied) source coordinates coordinate
@@ -52,7 +52,7 @@ class MatchCatalogs(ABC):
 
         Returns
         -------
-        (refcat_idx, imcat_idx) : tuple of numpy.ndarray
+        (refcat_idx, imcat_idx): tuple of numpy.ndarray
             A tuple of two 1D `numpy.ndarray` containing indices of matched
             sources in the ``refcat`` and ``imcat`` catalogs accordingly.
 
@@ -80,10 +80,10 @@ class TPMatch(MatchCatalogs):
         Parameters
         ----------
 
-        searchrad : float, optional
+        searchrad: float, optional
             The search radius for a match (in units of the tangent plane).
 
-        separation : float, optional
+        separation: float, optional
             The  minimum  separation in the tangent plane (in units of
             the tangent plane) for sources in the image and reference
             catalogs in order to be considered to be disctinct sources.
@@ -93,22 +93,22 @@ class TPMatch(MatchCatalogs):
             :py:func:`~stsci.stimage.xyxymatch` for use in matching the object
             lists from each image with the reference catalog's object list.
 
-        use2dhist : bool, optional
+        use2dhist: bool, optional
             Use 2D histogram to find initial offset?
 
-        xoffset : float, optional
+        xoffset: float, optional
             Initial estimate for the offset in X (in units of the tangent
             plane) between the sources in the image and the reference catalogs.
             This offset will be used for all input images provided.
             This parameter is ignored when ``use2dhist`` is `True`.
 
-        yoffset : float, optional
+        yoffset: float, optional
             Initial estimate for the offset in Y (in units of the tangent
             plane) between the sources in the image and the reference catalogs.
             This offset will be used for all input images provided.
             This parameter is ignored when ``use2dhist`` is `True`.
 
-        tolerance : float, optional
+        tolerance: float, optional
             The matching tolerance (in units of the tangent plane) after
             applying an initial solution derived from the 'triangles'
             algorithm.  This parameter gets passed directly to
@@ -143,7 +143,7 @@ class TPMatch(MatchCatalogs):
         Parameters
         ----------
 
-        refcat : astropy.table.Table
+        refcat: astropy.table.Table
             A reference source catalog. When a tangent-plane ``WCS`` is
             provided through ``tp_wcs``, the catalog must contain ``'RA'`` and
             ``'DEC'`` columns which indicate reference source world
@@ -153,7 +153,7 @@ class TPMatch(MatchCatalogs):
             coordinates in some *tangent plane*. In this case, the ``'RA'``
             and ``'DEC'`` columns in the ``refcat`` catalog will be ignored.
 
-        imcat : astropy.table.Table
+        imcat: astropy.table.Table
             Source catalog associated with an image. Must contain ``'x'`` and
             ``'y'`` columns which indicate source coordinates (in pixels) in
             the associated image. Alternatively, when ``tp_wcs`` is `None`,
@@ -163,7 +163,7 @@ class TPMatch(MatchCatalogs):
             ``refcat``'s tangent plane coordinates. In this case, the ``'x'``
             and ``'y'`` columns in the ``imcat`` catalog will be ignored.
 
-        tp_wcs : TPWCS, None, optional
+        tp_wcs: TPWCS, None, optional
             A ``WCS`` that defines a tangent plane onto which both
             reference and image catalog sources can be projected. For this
             reason, ``tp_wcs`` is associated with the image in which sources
@@ -175,7 +175,7 @@ class TPMatch(MatchCatalogs):
 
         Returns
         -------
-        (refcat_idx, imcat_idx) : tuple of numpy.ndarray
+        (refcat_idx, imcat_idx): tuple of numpy.ndarray
             A tuple of two 1D `numpy.ndarray` containing indices of matched
             sources in the ``refcat`` and ``imcat`` catalogs accordingly.
 
@@ -357,26 +357,26 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data: numpy.ndarray
         2D data.
 
-    peak_fit_box : int, optional
+    peak_fit_box: int, optional
         Size (in pixels) of the box around the initial estimate of the maximum
         to be used for quadratic fitting from which peak location is computed.
         It is assumed that fitting box is a square with sides of length
         given by ``peak_fit_box``.
 
-    mask : numpy.ndarray, optional
+    mask: numpy.ndarray, optional
         A boolean type `~numpy.ndarray` indicating "good" pixels in image data
         (`True`) and "bad" pixels (`False`). If not provided all pixels
         in `image_data` will be used for fitting.
 
     Returns
     -------
-    coord : tuple of float
+    coord: tuple of float
         A pair of coordinates of the peak.
 
-    fit_status : str
+    fit_status: str
         Status of the peak search. Currently the following values can be
         returned:
 
@@ -393,7 +393,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
           either due to too few points to perform a fit or due to a
           failure of the polynomial fit.
 
-    fit_box : a tuple of two tuples
+    fit_box: a tuple of two tuples
         A tuple of two tuples of the form ``((x1, x2), (y1, y2))`` that
         indicates pixel ranges used for fitting (these indices can be used
         directly for slicing input data)

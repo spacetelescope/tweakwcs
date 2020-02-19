@@ -36,7 +36,7 @@ def assign_jwst_tweakwcs_groups(images):
 
     Parameters
     ----------
-    images : list of str or jwst.datamodels.DataModel
+    images: list of str or jwst.datamodels.DataModel
         A list of string file names to ``JWST`` data or
         `jwst.datamodels.DataModel` objects. On return, these data models
         or files will contain ``tweakwcs_group_id`` attribute in their

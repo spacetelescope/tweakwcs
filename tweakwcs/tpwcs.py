@@ -58,10 +58,10 @@ class TPWCS(ABC):
         """
         Parameters
         ----------
-        wcs : ``WCS object``
+        wcs: ``WCS object``
             A `WCS` object supported by a child class.
 
-        meta : dict, None, optional
+        meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
@@ -95,18 +95,18 @@ class TPWCS(ABC):
 
         Parameters
         ----------
-        matrix : list, numpy.ndarray, optional
+        matrix: list, numpy.ndarray, optional
             A ``2x2`` array or list of lists coefficients representing scale,
             rotation, and/or skew transformations.
 
-        shift : list, numpy.ndarray, optional
+        shift: list, numpy.ndarray, optional
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
 
-        meta : dict, None, optional
+        meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
 
-        **kwargs : optional parameters
+        **kwargs: optional parameters
             Optional parameters for the WCS corrector.
 
         """
@@ -177,18 +177,18 @@ class TPWCS(ABC):
 
         Parameters
         ----------
-        x : int, float
+        x: int, float
             X-coordinate of the pixel in the detector's coordinate system
             near which pixel scale in the tangent plane needs to be estimated.
 
-        y : int, float
+        y: int, float
             Y-coordinate of the pixel in the detector's coordinate system
             near which pixel scale in the tangent plane needs to be estimated.
 
         Returns
         -------
 
-        pscale : float
+        pscale: float
             Pixel scale [in units used in the tangent plane coordinate system]
             in the tangent plane near a location specified by detector
             coordinates ``x`` and ``y``.
@@ -212,7 +212,7 @@ class TPWCS(ABC):
 
         Returns
         -------
-        pscale : float
+        pscale: float
             Pixel scale [in units used in the tangent plane coordinate system]
             in the tangent plane near a location in the detector's plane
             corresponding to the origin of the tangent plane.
@@ -252,7 +252,7 @@ class FITSWCS(TPWCS):
         Parameters
         ----------
 
-        wcs : astropy.wcs.WCS
+        wcs: astropy.wcs.WCS
             An `astropy.wcs.WCS` object.
 
         """
@@ -330,18 +330,18 @@ class FITSWCS(TPWCS):
 
         Parameters
         ----------
-        matrix : list, numpy.ndarray
+        matrix: list, numpy.ndarray
             A ``2x2`` array or list of lists coefficients representing scale,
             rotation, and/or skew transformations.
 
-        shift : list, numpy.ndarray
+        shift: list, numpy.ndarray
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
 
-        meta : dict, None, optional
+        meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
 
-        **kwargs : optional parameters
+        **kwargs: optional parameters
             Optional parameters for the WCS corrector. `FITSWCS` ignores these
             arguments (except for storing them in the ``meta`` attribute).
 
@@ -519,26 +519,26 @@ class JWSTgWCS(TPWCS):
         """
         Parameters
         ----------
-        wcs : GWCS
+        wcs: GWCS
             A `GWCS` object.
 
-        wcsinfo : dict
+        wcsinfo: dict
             A dictionary containing reference angles of ``JWST`` instrument
             provided in the ``wcsinfo`` property of ``JWST`` meta data.
 
             This dictionary **must contain** the following keys and values:
 
 
-            'v2_ref' : float
+            'v2_ref': float
                 V2 position of the reference point in arc seconds.
 
-            'v3_ref' : float
+            'v3_ref': float
                 V3 position of the reference point in arc seconds.
 
-            'roll_ref' : float
+            'roll_ref': float
                 Roll angle in degrees.
 
-        meta : dict, None, optional
+        meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
@@ -735,18 +735,18 @@ class JWSTgWCS(TPWCS):
 
         Parameters
         ----------
-        matrix : list, numpy.ndarray
+        matrix: list, numpy.ndarray
             A ``2x2`` array or list of lists coefficients representing scale,
             rotation, and/or skew transformations.
 
-        shift : list, numpy.ndarray
+        shift: list, numpy.ndarray
             A list of two coordinate shifts to be applied to coordinates
             *before* ``matrix`` transformations are applied.
 
-        meta : dict, None, optional
+        meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
 
-        **kwargs : optional parameters
+        **kwargs: optional parameters
             Optional parameters for the WCS corrector. `JWSTgWCS` ignores these
             arguments (except for storing them in the ``meta`` attribute).
 

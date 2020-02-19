@@ -83,12 +83,12 @@ def inv(m):
 
     Parameters
     ----------
-    m : numpy.ndarray
+    m: numpy.ndarray
         A 2D *square* matrix of type `numpy.ndarray`.
 
     Returns
     -------
-    invm : numpy.ndarray
+    invm: numpy.ndarray
         Inverse matrix of the input matrix ``m``: a 2D *square* `numpy.ndarray`
         of type ``numpy.longdouble`` on systems on which it is more accurate
         than ``numpy.float64``.
