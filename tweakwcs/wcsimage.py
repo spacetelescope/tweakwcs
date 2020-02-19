@@ -82,25 +82,25 @@ class WCSImageCatalog(object):
         """
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             Source catalog associated with an image. Must contain ``'x'`` and
             ``'y'`` columns which indicate source coordinates (in pixels) in
             the associated image.
 
-        tpwcs : TPWCS
+        tpwcs: TPWCS
             ``TPWCS``-derived tangent-plane WCS corrector object associated
             with the image from which the catalog was derived.
 
-        name : str, None, optional
+        name: str, None, optional
             Image catalog's name. This is used to identify catalog during
             logging. If ``name`` is `None`, the ``name`` of this
             ``WCSImageCatalog`` object will be set to ``'Unknown'``.
 
-        group_id : hashable, None, optional
+        group_id: hashable, None, optional
             Group ID that may be used for identifying catalogs that need
             to be aligned together. ``group_id`` must be hashable.
 
-        meta : dict, optional
+        meta: dict, optional
             Additional information about image, catalog, and/or WCS to be
             stored (for convenience) within `WCSImageCatalog` object.
 
@@ -134,7 +134,7 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        tpwcs : TPWCS
+        tpwcs: TPWCS
             ``TPWCS``-derived tangent-plane WCS corrector object associated
             with the image from which the catalog was extracted.
 
@@ -285,13 +285,13 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSImageCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSImageCatalog` and `wcsim`.
 
@@ -333,7 +333,7 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        stepsize : int, None, optional
+        stepsize: int, None, optional
             Indicates the maximum separation between two adjacent vertices
             of the bounding polygon along each side of the image. Corners
             of the image are included automatically. If `stepsize` is `None`,
@@ -472,10 +472,10 @@ class WCSGroupCatalog(object):
         """
         Parameters
         ----------
-        images : list of WCSImageCatalog
+        images: list of WCSImageCatalog
             A list of `WCSImageCatalog` image catalogs.
 
-        name : str, None, optional
+        name: str, None, optional
             Name of the group.
 
         """
@@ -535,13 +535,13 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSGroupCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSGroupCatalog` and `wcsim`.
 
@@ -599,7 +599,7 @@ class WCSGroupCatalog(object):
 
         Returns
         -------
-        group_catalog : astropy.table.Table
+        group_catalog: astropy.table.Table
             Combined group catalog.
 
         """
@@ -738,7 +738,7 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
@@ -765,11 +765,11 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources
             as well as a valid reference WCS.
 
-        match : MatchCatalogs, function, None, optional
+        match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
             image catalog. Both catalogs will have columns ``'TPx'`` and
             ``'TPy'`` that represent the source coordinates in some common
@@ -851,26 +851,26 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
-        fitgeom : {'shift', 'rscale', 'general'}, optional
+        fitgeom: {'shift', 'rscale', 'general'}, optional
             The fitting geometry to be used in fitting the matched object
             lists. This parameter is used in fitting the offsets, rotations
             and/or scale changes from the matched object lists. The 'general'
             fit geometry allows for independent scale and rotation for
             each axis.
 
-        nclip : int, None, optional
+        nclip: int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
             Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-        sigma : float, tuple of the form (float, str), optional
+        sigma: float, tuple of the form (float, str), optional
             When a tuple is provided, first value (a positive number)
             indicates the number of "fit error estimates" to use for clipping.
             The second value (a string) indicates the statistic to be
@@ -1079,15 +1079,15 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources
             as well as a valid reference WCS.
 
-        match : MatchCatalogs, function, None, optional
+        match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
             image catalog.
 
-        minobj : int, None, optional
+        minobj: int, None, optional
             Minimum number of identified objects from each input image to use
             in matching objects from other images. If the default `None` value
             is used then `align` will automatically deternmine the minimum
@@ -1097,20 +1097,20 @@ class WCSGroupCatalog(object):
             is smaller than the value of ``minobj`` in which case this
             method will return `False`.
 
-        fitgeom : {'shift', 'rscale', 'general'}, optional
+        fitgeom: {'shift', 'rscale', 'general'}, optional
             The fitting geometry to be used in fitting the matched object
             lists. This parameter is used in fitting the offsets, rotations
             and/or scale changes from the matched object lists. The 'general'
             fit geometry allows for independent scale and rotation for each
             axis. This parameter is ignored if ``match`` is `False`.
 
-        nclip : int, None, optional
+        nclip: int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
             Clipping will be turned off if ``nclip`` is either `None` or 0.
 
             This parameter is ignored if ``match`` is `False`.
 
-        sigma : float, tuple of the form (float, str), optional
+        sigma: float, tuple of the form (float, str), optional
             When a tuple is provided, first value (a positive number)
             indicates the number of "fit error estimates" to use for clipping.
             The second value (a string) indicates the statistic to be
@@ -1237,17 +1237,17 @@ class RefCatalog(object):
         """
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             Reference catalog.
 
             .. note::
                 Reference catalogs (:py:class:`~astropy.table.Table`)
                 *must* contain *both* ``'RA'`` and ``'DEC'`` columns.
 
-        name : str, None, optional
+        name: str, None, optional
             Name of the reference catalog.
 
-        footprint_tol : float, optional
+        footprint_tol: float, optional
             Matching tolerance in arcsec. This is used to estimate catalog's
             footprint when catalog contains only one or two sources.
 
@@ -1322,13 +1322,13 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, RefCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, RefCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSImageCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSImageCatalog` and `wcsim`.
 
@@ -1477,7 +1477,7 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             A catalog of new sources to be added to the existing reference
             catalog. `catalog` *must* contain *both* ``'RA'`` and ``'DEC'``
             columns.
@@ -1514,7 +1514,7 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
@@ -1544,12 +1544,12 @@ Convex_hull/Monotone_chain>`_
     Parameters
     ----------
 
-    points : list of tuples
+    points: list of tuples
         An iterable sequence of (x, y) pairs representing the points.
 
     Returns
     -------
-    Output : list
+    Output: list
         A list of vertices of the convex hull in counter-clockwise order,
         starting from the vertex with the lexicographically smallest
         coordinates.
