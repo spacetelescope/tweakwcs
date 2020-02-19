@@ -338,7 +338,7 @@ def test_align_wcs_refcat_from_imcat(mock_fits_wcs, enforce):
 
 def test_multi_image_set(mock_fits_wcs):
     np.random.seed(1)
-    v1 = 1e10 * np.finfo(np.float).eps
+    v1 = 1e10 * np.finfo(np.double).eps
     v2 = 1 - v1
     corners = np.array([[v1, v1], [v1, v2], [v2, v2], [v2, v1]])
     n = 1

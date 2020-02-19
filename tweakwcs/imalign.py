@@ -638,7 +638,7 @@ def overlap_matrix(images):
 
     """
     nimg = len(images)
-    m = np.zeros((nimg, nimg), dtype=np.float)
+    m = np.zeros((nimg, nimg), dtype=np.double)
     for i in range(nimg):
         for j in range(i + 1, nimg):
             area = images[i].intersection_area(images[j])
