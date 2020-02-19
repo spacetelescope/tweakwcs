@@ -268,7 +268,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     if center is None:
         center_ld = uv[mask].mean(axis=0, dtype=np.longdouble)
-        center = center_ld.astype(np.float64)
+        center = center_ld.astype(np.double)
     else:
         center_ld = np.longdouble(center)
 
@@ -398,7 +398,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
 
     fit = _build_fit(p, q, 'shift')
     resids = diff_pts - fit['offset']
-    fit['resids'] = resids.astype(np.float64)
+    fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
@@ -529,13 +529,13 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     xshift = xm - um * cthetax - sdet * vm * sthetax
     yshift = ym + sdet * um * sthetay - vm * cthetay
 
-    p = np.array([cthetax, sthetay, xshift], dtype=np.float64)
-    q = np.array([-sthetax, cthetay, yshift], dtype=np.float64)
+    p = np.array([cthetax, sthetay, xshift], dtype=np.longdouble)
+    q = np.array([-sthetax, cthetay, yshift], dtype=np.longdouble)
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, fitgeom='rscale')
     resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
-    fit['resids'] = resids.astype(np.float64)
+    fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
@@ -638,7 +638,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, 'general')
     resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
-    fit['resids'] = resids.astype(np.float64)
+    fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
