@@ -47,11 +47,11 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     More precisely, this functions attempts to find a ``2x2`` matrix ``F`` and
     a shift vector ``s`` that minimize the residuals between the *transformed*
-    ``uv`` source coordinates
+    reference source coordinates ``uv``
 
     .. math::
-        \mathbf{xy}'_k = \mathbf{F}^T\cdot(\mathbf{uv_k}-\mathbf{c})+\
-        \mathbf{s}+\mathbf{c}
+        \mathbf{xy}'_k = \mathbf{F}\cdot(\mathbf{uv}_k-\mathbf{c})+\
+        \mathbf{s} + \mathbf{c}
         :label: ilf1
 
     and the "observed" source positions ``xy``:
@@ -71,46 +71,46 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     Parameters
     ----------
-    xy : numpy.ndarray
+    xy: numpy.ndarray
         A ``(N, 2)``-shaped array of source positions (one 2-coordinate
         position per line).
 
-    uv : numpy.ndarray
+    uv: numpy.ndarray
         A ``(N, 2)``-shaped array of source positions (one 2-coordinate
         position per line). This array *must have* the same length (shape)
         as the ``xy`` array.
 
-    wxy : numpy.ndarray, None, optional
+    wxy: numpy.ndarray, None, optional
         A 1-dimensional array of weights of the same length (``N``)
         as ``xy`` array indicating how much a given coordinate should be
         weighted in the fit. If not provided or set to `None`, all positions
         will be contribute equally to the fit if ``wuv`` is also set to `None`.
         See ``Notes`` section for more details.
 
-    wuv : numpy.ndarray, None, optional
+    wuv: numpy.ndarray, None, optional
         A 1-dimensional array of weights of the same length (``N``)
         as ``xy`` array indicating how much a given coordinate should be
         weighted in the fit. If not provided or set to `None`, all positions
         will be contribute equally to the fit if ``wxy`` is also set to `None`.
         See ``Notes`` section for more details.
 
-    fitgeom : {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the offsets, rotations and/or scale
         changes from the matched object lists. The 'general' fit geometry
         allows for independent scale and rotation for each axis.
 
-    center : tuple, list, numpy.ndarray, None, optional
+    center: tuple, list, numpy.ndarray, None, optional
         A list-like container with two ``X``- and ``Y``-positions of the center
         (origin) of rotations in the ``uv`` and ``xy`` coordinate frames.
         If not provided, ``center`` is estimated as a (weighted) mean position
         in the ``uv`` frame.
 
-    nclip : int, None, optional
+    nclip: int, None, optional
         Number (a non-negative integer) of clipping iterations in fit.
         Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-    sigma : float, tuple of the form (float, str), optional
+    sigma: float, tuple of the form (float, str), optional
         When a tuple is provided, first value (a positive number)
         indicates the number of "fit error estimates" to use for clipping.
         The second value (a string) indicates the statistic to be
@@ -123,7 +123,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
         This parameter is ignored when ``nclip`` is either `None` or 0.
 
-    clip_accum : bool, optional
+    clip_accum: bool, optional
         Indicates whether or not to reset the list of "bad" (clipped out)
         sources after each clipping iteration. When set to `True` the list
         only grows with each iteration as "bad" positions never re-enter the
@@ -132,7 +132,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     Returns
     -------
-    fit : dict
+    fit: dict
         A dictionary containing the following items:
             - ``'offset'``: A tuple of two computed shifts
             - ``'matrix'``: Computed generalized ``2x2`` rotation matrix
@@ -208,8 +208,8 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     minobj_per_fitgeom = {'shift': 1, 'rscale': 2, 'general': 3}
     minobj = minobj_per_fitgeom[fitgeom]
 
-    xy = np.asarray(xy)
-    uv = np.asarray(uv)
+    xy = np.array(xy, dtype=np.longdouble)
+    uv = np.array(uv, dtype=np.longdouble)
 
     if len(xy.shape) != 2 or xy.shape[1] != 2 or uv.shape != xy.shape:
         raise ValueError("Input coordinate arrays 'xy' and 'uv' must be of "
@@ -267,10 +267,13 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         nclip = 0
 
     if center is None:
-        center = uv[mask].mean(axis=0, dtype=np.longdouble).astype(np.float64)
+        center_ld = uv[mask].mean(axis=0, dtype=np.longdouble)
+        center = center_ld.astype(np.float64)
+    else:
+        center_ld = np.longdouble(center)
 
-    xy[mask] -= center
-    uv[mask] -= center
+    xy[mask] -= center_ld
+    uv[mask] -= center_ld
 
     log.info("Performing '{:s}' fit".format(fitgeom))
 
@@ -303,6 +306,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         fit = linear_fit(xy[mask], uv[mask], wmxy, wmuv)
 
     fit['center'] = center
+    fit['center_ld'] = center_ld
     fit['fitmask'] = mask
     fit['eff_nclip'] = effective_nclip
     return fit
@@ -355,14 +359,14 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
             "At least one point is required to find shifts."
         )
 
-    diff_pts = xy - uv
+    diff_pts = np.subtract(xy, uv, dtype=np.longdouble)
 
     if wxy is None and wuv is None:
         # no weighting
         w = None
 
-        meanx = (diff_pts[:, 0].mean(dtype=np.longdouble)).astype(np.float64)
-        meany = (diff_pts[:, 1].mean(dtype=np.longdouble)).astype(np.float64)
+        meanx = diff_pts[:, 0].mean(dtype=np.longdouble)
+        meany = diff_pts[:, 1].mean(dtype=np.longdouble)
 
     else:
         if wxy is None:
@@ -386,15 +390,15 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
 
         w /= np.sum(w, dtype=np.longdouble)
 
-        meanx = np.dot(w, diff_pts[:, 0]).astype(np.float64)
-        meany = np.dot(w, diff_pts[:, 1]).astype(np.float64)
+        meanx = np.dot(w, diff_pts[:, 0])
+        meany = np.dot(w, diff_pts[:, 1])
 
-    p = np.array([1.0, 0.0, meanx])
-    q = np.array([0.0, 1.0, meany])
+    p = np.array([1.0, 0.0, meanx], dtype=np.longdouble)
+    q = np.array([0.0, 1.0, meany], dtype=np.longdouble)
 
     fit = _build_fit(p, q, 'shift')
     resids = diff_pts - fit['offset']
-    fit['resids'] = resids
+    fit['resids'] = resids.astype(np.float64)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
@@ -530,8 +534,8 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, fitgeom='rscale')
-    resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
-    fit['resids'] = resids
+    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
+    fit['resids'] = resids.astype(np.float64)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
@@ -612,9 +616,10 @@ def fit_general(xy, uv, wxy=None, wuv=None):
         svv = np.dot(w, v * v)
         suv = np.dot(w, u * v)
 
-    m = np.array([[su, sv, sw], [suu, suv, su], [suv, svv, sv]])
-    a = np.array([sx, sxu, sxv])
-    b = np.array([sy, syu, syv])
+    m = np.array([[su, sv, sw], [suu, suv, su], [suv, svv, sv]],
+                 dtype=np.longdouble)
+    a = np.array([sx, sxu, sxv], dtype=np.longdouble)
+    b = np.array([sy, syu, syv], dtype=np.longdouble)
 
     try:
         inv_m = inv(m)
@@ -623,8 +628,8 @@ def fit_general(xy, uv, wxy=None, wuv=None):
             "Singular matrix: suspected colinear points."
         )
 
-    p = np.dot(inv_m, a).astype(np.float64)
-    q = np.dot(inv_m, b).astype(np.float64)
+    p = np.dot(inv_m, a)
+    q = np.dot(inv_m, b)
     if not (np.all(np.isfinite(p)) and np.all(np.isfinite(q))):
         raise SingularMatrixError(
             "Singular matrix: suspected colinear points."
@@ -632,15 +637,15 @@ def fit_general(xy, uv, wxy=None, wuv=None):
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, 'general')
-    resids = xy - np.dot(uv, fit['matrix']) - fit['offset']
-    fit['resids'] = resids
+    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
+    fit['resids'] = resids.astype(np.float64)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
 
 
 def _build_fit(p, q, fitgeom):
     # Build fit matrix:
-    fit_matrix = np.dstack((p[:2], q[:2]))[0]
+    fit_matrix = np.vstack((p[:2], q[:2]))
 
     # determinant of the transformation
     det = p[0] * q[1] - p[1] * q[0]
@@ -651,12 +656,14 @@ def _build_fit(p, q, fitgeom):
     # parameters (scale, rotation angle, skew):
     wfit = fit_matrix.copy()
 
-    # Default skew:
+    # Skew is zero for all fitgeom except 'general':
     skew = 0.0
 
     if fitgeom == 'shift':
-        return {'offset': (p[2], q[2]),
-                'matrix': fit_matrix,
+        return {'offset': np.array([p[2], q[2]], dtype=np.double),
+                'offset_ld': np.array([p[2], q[2]], dtype=np.longdouble),
+                'matrix': np.array(fit_matrix, dtype=np.double),
+                'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
                 'rot': 0.0,
                 'rotxy': (0.0, 0.0, 0.0, skew),
                 'scale': (1.0, 1.0, 1.0),
@@ -674,54 +681,68 @@ def _build_fit(p, q, fitgeom):
         sy = s
 
     # Remove scale from the transformation matrix:
-    wfit[0, :] /= sx
-    wfit[1, :] /= sy
+    wfit[:, 0] /= sx
+    wfit[:, 1] /= sy
 
     # Compute rotation angle as if we have a proper rotation.
     # This will also act as *some sort* of "average rotation" even for
     # transformations with different rot_x and rot_y:
-    prop_rot = np.rad2deg(np.arctan2(wfit[1, 0] - sdet * wfit[0, 1],
-                                     wfit[0, 0] + sdet * wfit[1, 1])) % 360.0
+    prop_rot = np.mod(
+        np.rad2deg(
+            np.arctan2(wfit[0, 1] - sdet * wfit[1, 0],
+                       wfit[0, 0] + sdet * wfit[1, 1])
+        ),
+        360.0
+    )
 
     if proper and fitgeom == 'rscale':
         rotx = prop_rot
         roty = prop_rot
         rot = prop_rot
-        skew = 0.0
-    else:
-        rotx = np.rad2deg(np.arctan2(-wfit[0, 1], wfit[0, 0])) % 360.0
-        roty = np.rad2deg(np.arctan2(wfit[1, 0], wfit[1, 1])) % 360.0
-        rot = 0.5 * (rotx + roty)
-        skew = roty - rotx
 
-    return {'offset': (p[2], q[2]),
-            'matrix': fit_matrix,
-            'rot': prop_rot,
-            'rotxy': (rotx, roty, rot, skew),
-            'scale': (s, sx, sy),
-            'skew': skew,
+    else:
+        rotx = np.mod(np.rad2deg(np.arctan2(-wfit[1, 0], wfit[0, 0])), 360.0)
+        roty = np.mod(np.rad2deg(np.arctan2(wfit[0, 1], wfit[1, 1])), 360.0)
+        rot = np.mod(0.5 * (rotx + roty), 360.0)
+        skew = np.mod(roty - rotx - 180.0, 360.0) - 180.0
+
+    return {'offset': np.array([p[2], q[2]], dtype=np.float),
+            'offset_ld': np.array([p[2], q[2]], dtype=np.longdouble),
+            'matrix': np.array(fit_matrix, dtype=np.float),
+            'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
+            'rot': float(prop_rot),
+            'rotxy': tuple(map(float, (rotx, roty, rot, skew))),
+            'scale': tuple(map(float, (s, sx, sy))),
+            'skew': float(skew),
             'proper': proper,
             'fitgeom': fitgeom}
 
 
 def build_fit_matrix(rot, scale=1):
-    """
+    r"""
     Create an affine transformation matrix (2x2) from the provided rotation
-    and scale transformations.
+    angle(s) and scale(s):
+
+    .. math::
+
+        M = \begin{bmatrix}
+                s_x \cos(\theta_x) & s_y \sin(\theta_y) \\
+                -s_x \sin(\theta_x) & s_y \cos(\theta_y)
+            \end{bmatrix}
 
     Parameters
     ----------
-    rot : tuple, float, optional
+    rot: tuple, float, optional
         Rotation angle in degrees. Two values (one for each axis) can be
         provided as a tuple.
 
-    scale : tuple, float, optional
+    scale: tuple, float, optional
         Scale of the liniar transformation. Two values (one for each axis)
         can be provided as a tuple.
 
     Returns
     -------
-    matrix : numpy.ndarray
+    matrix: numpy.ndarray
        A 2x2 `numpy.ndarray` containing coefficients of a liniear
        transformation.
 
@@ -736,7 +757,7 @@ def build_fit_matrix(rot, scale=1):
     else:
         sx = sy = float(scale)
 
-    matrix = np.array([[sx * np.cos(rx), -sx * np.sin(rx)],
-                       [sy * np.sin(ry), sy * np.cos(ry)]])
+    matrix = np.array([[sx * np.cos(rx), sy * np.sin(ry)],
+                       [-sx * np.sin(rx), sy * np.cos(ry)]])
 
     return matrix

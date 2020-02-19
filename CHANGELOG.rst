@@ -4,17 +4,24 @@
 Release Notes
 =============
 
-.. 0.6.1 (unreleased)
+.. 0.7.0 (unreleased)
    ==================
 
 
 0.6.0 (unreleased)
 ==================
 
+- Linear fit functions now return the fit matrix ``F`` instead of its
+  transpose. [#100]
+
+- Linear fit functions (in the ``linearfit`` module) use ``longdouble``
+  for internal computations. [#100]
+
 - Re-designed the ``JWSTgWCS`` corrector class to rely exclusively on
   basic models available in ``astropy`` and ``gwcs`` instead of the ``TPCorr``
   class provided by the ``jwst`` pipeline. This eliminates the need to install
   the ``jwst`` pipeline in order to align ``JWST`` images. [#96, #98]
+
 
 0.5.3 (15-November-2019)
 ========================
@@ -22,6 +29,7 @@ Release Notes
 - Added logic to allow some input catalogs to be empty and to allow the
   alignment to proceed as long as there are at least two non-empty
   (image or group) input catalogs. [#94]
+
 
 0.5.2 (26-July-2019)
 ====================
@@ -33,12 +41,14 @@ Release Notes
 - Package version is now handled by ``setuptools_scm``.
   [#93]
 
+
 0.5.1 (08-May-2019)
 ===================
 
 - Fixed a bug in the "2dhist" algorithm resulting in a crash when 2D histogram
   has multiple maxima of the same value and no other value larger than
   one. [#90]
+
 
 0.5.0 (22-April-2019)
 =====================
@@ -75,20 +85,24 @@ Release Notes
 - Changed the default value of the ``searchrad`` parameter in
   ``matchutils.TPMatch`` to 3. [#69]
 
+
 0.4.5 (14-March-2019)
 =====================
 
 - Fixed incorrect pointer type introduced in previous release [#67].
+
 
 0.4.4 (13-March-2019)
 =====================
 
 - Fixed VS2017 compiler error, ``"void *": unknown size``. [#62, #63, #64]
 
+
 0.4.3 (13-March-2019)
 =====================
 
 - Package maintenance release.
+
 
 0.4.2 (21-February-2019)
 ========================
@@ -96,10 +110,12 @@ Release Notes
 - Fixed a bug due to which the fitting code would crash is ``wuv`` were
   provided but ``wxy`` were set to ``None``. [#60]
 
+
 0.4.1 (14-February-2019)
 ========================
 
 - Code cleanup: removed debug print statements. [#59]
+
 
 0.4.0 (08-February-2019)
 ========================

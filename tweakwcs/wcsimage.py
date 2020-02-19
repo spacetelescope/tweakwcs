@@ -996,7 +996,6 @@ class WCSGroupCatalog(object):
     def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS. """
         # compute the matrix for the scale and rotation correction
-        matrix = matrix.T
         shift = -np.dot(inv(matrix), shift)
 
         for imcat in self:
