@@ -11,6 +11,15 @@ Release Notes
 0.6.0 (unreleased)
 ==================
 
+- Significant re-organization of the ``fit_info`` dictionary. ``rot`` now
+  becomes ``proper_rot`` and ``rotxy`` now becomes ``rot`` containing only
+  ``rotx`` and ``roty``. Also, ``scale`` now is a tuple of only two scales
+  ``sx`` and ``sy``. The geometric mean scale is now a separate field
+  ``'<scale>'`` as well as the arithmetic mean of rotation angles
+  (``'<rot>'``). Finally, ``'offset'`` in the fit functions from the
+  ``linearfit`` module was renamed to ``'shift'`` in order to match the
+  same field returned by functions from the ``imalign`` module. [#105]
+
 - Linear fit functions now return the fit matrix ``F`` instead of its
   transpose. [#100]
 

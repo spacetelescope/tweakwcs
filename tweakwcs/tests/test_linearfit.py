@@ -271,7 +271,7 @@ def test_iter_linear_fit_special_cases(ideal_large_data, nclip, sigma,
                                     nclip=nclip, center=(0, 0), sigma=1,
                                     clip_accum=clip_accum)
 
-    assert np.allclose(fit['offset'], shift, rtol=0, atol=atol)
+    assert np.allclose(fit['shift'], shift, rtol=0, atol=atol)
     assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
 
 
@@ -287,7 +287,7 @@ def test_iter_linear_fit_1point(weights):
     fit = linearfit.iter_linear_fit(xy, xy + shifts, wxy=wxy, wuv=wuv,
                                     fitgeom='shift', nclip=0)
 
-    assert np.allclose(fit['offset'], -shifts, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['shift'], -shifts, rtol=0, atol=_ATOL)
     assert np.allclose(fit['matrix'], np.identity(2), rtol=0, atol=_ATOL)
 
 
@@ -390,7 +390,7 @@ def test_iter_linear_fit_clip_style(ideal_large_data, weight_data,
 
     shift_with_center = np.dot(rmat, fit['center']) - fit['center'] + shift
 
-    assert np.allclose(fit['offset'], shift_with_center, rtol=0, atol=atol)
+    assert np.allclose(fit['shift'], shift_with_center, rtol=0, atol=atol)
     assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
     assert np.allclose(fit['rmse'], 0, rtol=0, atol=atol)
     assert np.allclose(fit['mae'], 0, rtol=0, atol=atol)

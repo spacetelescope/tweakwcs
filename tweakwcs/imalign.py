@@ -142,29 +142,68 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     key value of the ``meta`` attribute of the returned ``TPWCS`` object.
     ``'fit_info'`` is a dictionary with the following items:
 
-        * **'fitgeom'**: the value of the ``fitgeom`` argument
-        * **'eff_minobj'**: effective value of the ``minobj`` parameter
-        * **'matrix'**: computed rotation matrix
-        * **'shift'**: offset along X- and Y-axis
-        * **'center'**: center of rotation in geometric transformations
-        * **'fitmask'**: boolean array indicating (with `True`) sources
-          **used** for fitting
-        * **'rot'**: rotation angle as if rotation is a proper rotation
-        * **'proper'**: Indicates whether the rotation is a proper rotation
-          (boolean)
-        * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
-          Y-axis, mean rotation, computed skew)
-        * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
-          Y-axis)
-        * **'skew'**: computed skew
+        * **'shift'**: A ``numpy.ndarray`` with two components of the
+          computed shift.
+
+        * **'matrix'**: A ``2x2`` ``numpy.ndarray`` with the computed
+          generalized rotation matrix.
+
+        * **'proper_rot'**: Rotation angle (degree) as if the rotation is
+          proper.
+
+        * **'rot'**: A tuple of ``(rotx, roty)`` - the rotation angles with
+          regard to the ``X`` and ``Y`` axes.
+
+        * **'<rot>'**: *Arithmetic mean* of the angles of rotation around
+          ``X`` and ``Y`` axes.
+
+        * **'scale'**: A tuple of ``(sx, sy)`` - scale change in the direction
+          of the ``X`` and ``Y`` axes.
+
+        * **'<scale>'**: *Geometric mean* of scales ``sx`` and ``sy``.
+
+        * **'skew'**: Computed skew.
+
+        * **'proper'**: a boolean indicating whether the rotation is proper.
+
+        * **'fitgeom'**: Fit geometry (allowed transformations) used for
+          fitting data (to minimize residuals). This is copy of the input
+          argument ``fitgeom``.
+
+        * **'center'**: Center of rotation in the *tangent plane* of the
+          computed linear transformations.
+
+        * **'fitmask'**: A boolean array indicating which source positions
+          where used for fitting (`True`) and which were clipped out
+          (`False`). **NOTE:** For weighted fits, positions with zero
+          weights are automatically excluded from the fits.
+
+        * **'eff_nclip'**: Effective number of clipping iterations
+
         * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+
         * **'mae'**: fit Mean Absolute Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+
         * **'std'**: Norm of the standard deviation of the residuals
           in *tangent plane* along each axis.
+
+        * **'resids'**: An array of residuals of the fit in the
+          *tangent plane*.
+
+          **NOTE:** Only the residuals for the "valid" points are reported
+          here. Therefore the length of this array may be smaller than the
+          length of input arrays of positions.
+
+        * **'fit_RA'**: first (corrected) world coordinate of input source
+          positions used in fitting.
+
+        * **'fit_DEC'**: second (corrected) world coordinate of input
+          source positions used in fitting.
+
         * **'status'**: Alignment status. Currently two possible status are
           possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
           When alignment failed, the reason for failure is provided after
@@ -221,7 +260,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
 def align_wcs(wcscat, refcat=None, enforce_user_order=True,
               expand_refcat=False, minobj=None, match=TPMatch(),
               fitgeom='general', nclip=3, sigma=(3.0, 'rmse')):
-    """
+    r"""
     Align (groups of) image catalogs by adjusting the parameters of their
     WCS based on fits between matched sources in these catalogs and a reference
     catalog which may be automatically created from one of the input ``wcscat``
@@ -364,7 +403,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
     Notes
     -----
-    **Weights:**
+    **1. Weights:**
 
     When fitting image sources to reference catalog sources, we can specify
     which sources have higher weights. This can be done by assigning a "weight"
@@ -402,7 +441,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         When image catalogs contain optional ``'weight'`` column, then
         all image catalogs in a group must contain this column.
 
-    **``'fit_info'``**
+    **2.** ``'fit_info'``:
 
     Upon completion, this function will add ``'fit_info'``
     item (itself a dictionary) to input object's ``meta`` dictionary.

@@ -228,9 +228,9 @@ def test_align_wcs_simple_ref_image_general(shift, rot, scale, fitgeom,
     assert tpwcs.meta['fit_info']['fitgeom'] == fitgeom
     assert np.allclose(tpwcs.meta['fit_info']['shift'], shift)
     assert np.allclose(tpwcs.meta['fit_info']['matrix'], m)
-    assert np.allclose(tpwcs.meta['fit_info']['rotxy'][:2], rot)
+    assert np.allclose(tpwcs.meta['fit_info']['rot'], rot)
     assert tpwcs.meta['fit_info']['proper']
-    assert np.allclose(tpwcs.meta['fit_info']['scale'][1:], scale)
+    assert np.allclose(tpwcs.meta['fit_info']['scale'], scale)
     assert tpwcs.meta['fit_info']['rmse'] < 1.0e-8
 
 
@@ -254,9 +254,9 @@ def test_align_wcs_simple_twpwcs_ref(mock_fits_wcs):
     assert tpwcs.meta['fit_info']['fitgeom'] == 'general'
     assert np.allclose(tpwcs.meta['fit_info']['shift'], shift)
     assert np.allclose(tpwcs.meta['fit_info']['matrix'], m)
-    assert np.allclose(tpwcs.meta['fit_info']['rotxy'][:2], rot)
+    assert np.allclose(tpwcs.meta['fit_info']['rot'], rot)
     assert tpwcs.meta['fit_info']['proper']
-    assert np.allclose(tpwcs.meta['fit_info']['scale'][1:], scale)
+    assert np.allclose(tpwcs.meta['fit_info']['scale'], scale)
     assert tpwcs.meta['fit_info']['rmse'] < 1.0e-8
 
 

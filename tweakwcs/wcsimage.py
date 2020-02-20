@@ -958,30 +958,28 @@ class WCSGroupCatalog(object):
             fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
         )
 
-        xy_fit = fit['offset'] + np.dot(im_xyref[fit['fitmask']],
-                                        fit['matrix'])
+        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']], fit['matrix'])
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
 
         log.info("Computed '{:s}' fit for {}:".format(fitgeom, self.name))
         if fitgeom == 'shift':
-            log.info("XSH: {:.6g}  YSH: {:.6g}"
-                     .format(fit['offset'][0], fit['offset'][1]))
+            log.info("XSH: {:.6g}  YSH: {:.6g}".format(*fit['shift']))
         elif fitgeom == 'rscale' and fit['proper']:
-            log.info("XSH: {:.6g}  YSH: {:.6g}    ROT: {:.6g}    SCALE: {:.6g}"
-                     .format(fit['offset'][0], fit['offset'][1],
-                             fit['rot'], fit['scale'][0]))
+            log.info(
+                "XSH: {:.6g}  YSH: {:.6g}    ROT: {:.6g}    SCALE: {:.6g}"
+                .format(*fit['shift'], fit['proper_rot'], fit['<scale>'])
+            )
         elif fitgeom == 'general' or (fitgeom == 'rscale' and not
                                       fit['proper']):
             log.info("XSH: {:.6g}  YSH: {:.6g}    PROPER ROT: {:.6g}    "
-                     .format(fit['offset'][0], fit['offset'][1], fit['rot']))
+                     .format(*fit['shift'], fit['proper_rot']))
             log.info("<ROT>: {:.6g}  SKEW: {:.6g}    ROT_X: {:.6g}  "
-                     "ROT_Y: {:.6g}".format(fit['rotxy'][2], fit['skew'],
-                                            fit['rotxy'][0], fit['rotxy'][1]))
+                     "ROT_Y: {:.6g}".format(fit['<rot>'], fit['skew'],
+                                            *fit['rot']))
             log.info("<SCALE>: {:.6g}  SCALE_X: {:.6g}  SCALE_Y: {:.6g}"
-                     .format(fit['scale'][0], fit['scale'][1],
-                             fit['scale'][2]))
+                     .format(fit['<scale>'], *fit['scale']))
         else:
             raise ValueError("Unsupported fit geometry.")  # pragma: no cover
 
@@ -1027,8 +1025,21 @@ class WCSGroupCatalog(object):
             * **'fitgeom'**: the value of the ``fitgeom`` argument
             * **'eff_minobj'**: effective value of the ``minobj`` parameter
             * **'matrix'**: computed rotation matrix
-            * **'shift'**: offset along X- and Y-axis
-            * **'center'**: center of rotation in geometric transformations
+            * **'shift'**: shift (offset) along X- and Y-axis
+            * **'rot'**: A tuple of ``(rotx, roty)`` - the rotation angles with
+              regard to the ``X`` and ``Y`` axes.
+            * **'<rot>'**: *Arithmetic mean* of the angles of rotation around
+              ``X`` and ``Y`` axes.
+            * **'proper_rot'**: rotation angle as if rotation is a proper
+              rotation.
+            * **'proper'**: Indicates whether the rotation is a proper rotation
+              (boolean)
+            * **'scale'**: A tuple of ``(sx, sy)`` - scale change in the
+              direction of the ``X`` and ``Y`` axes.
+            * **'<scale>'**: *Geometric mean* of scales ``sx`` and ``sy``.
+            * **'skew'**: Computed skew - an angle in the range [-180, 180).
+            * **'center'**: Center of rotation in the *tangent plane* of the
+              computed linear transformations.
             * **'fitmask'**: boolean array indicating (with `True`) sources
               **used** for fitting
             * **'nmatches'** [when ``match`` is not `None`]: number of matched
@@ -1046,14 +1057,6 @@ class WCSGroupCatalog(object):
               (image) catalog used for fitting (a subset of
               'matched_input_idx' indices, when ``match`` is not `None`,
               left after clipping iterations performed during fitting)
-            * **'rot'**: rotation angle as if rotation is a proper rotation
-            * **'proper'**: Indicates whether the rotation is a proper rotation
-              (boolean)
-            * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
-              Y-axis, mean rotation, computed skew)
-            * **'scale'**: a tuple of (mean scale, scale along X-axis, scale
-              along Y-axis)
-            * **'skew'**: computed skew
             * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
               coordinates of corrected image source positions from reference
               source positions.
@@ -1177,13 +1180,15 @@ class WCSGroupCatalog(object):
             'fitgeom': fitgeom,
             'eff_minobj': minobj,
             'matrix': fit['matrix'],
-            'shift': fit['offset'],
+            'shift': fit['shift'],
             'center': fit['center'],  # center of rotation in geom. transforms
             'fitmask': fit['fitmask'],  # sources was used for fitting
-            'rot': fit['rot'],  # proper rotation
+            'proper_rot': fit['proper_rot'],  # proper rotation
             'proper': fit['proper'],  # is a proper rotation? True/False
-            'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
-            'scale': fit['scale'],  # <s>, sx, sy
+            'rot': fit['rot'],  # rotx, roty
+            '<rot>': fit['<rot>'],  # Arithmetic mean of rotx and roty
+            'scale': fit['scale'],  # sx, sy
+            '<scale>': fit['<scale>'],  # Geometric mean of sx, sy
             'skew': fit['skew'],  # skew
             'rmse': fit['rmse'],  # fit RMSE in tangent plane coords
             'mae': fit['mae'],  # fit MAE in tangent plane coords
@@ -1202,7 +1207,7 @@ class WCSGroupCatalog(object):
         self.apply_affine_to_wcs(
             tanplane_wcs=tanplane_wcs,
             matrix=fit['matrix'],
-            shift=fit['offset'],
+            shift=fit['shift'],
             # meta=meta
         )
 

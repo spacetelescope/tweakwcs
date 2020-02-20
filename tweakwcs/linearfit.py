@@ -96,9 +96,9 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
 
     fitgeom: {'shift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
-        This parameter is used in fitting the offsets, rotations and/or scale
-        changes from the matched object lists. The 'general' fit geometry
-        allows for independent scale and rotation for each axis.
+        This parameter is used in fitting the shifts (offsets), rotations
+        and/or scale changes from the matched object lists. The 'general'
+        fit geometry allows for independent scale and rotation for each axis.
 
     center: tuple, list, numpy.ndarray, None, optional
         A list-like container with two ``X``- and ``Y``-positions of the center
@@ -133,33 +133,42 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     Returns
     -------
     fit: dict
-        A dictionary containing the following items:
-            - ``'offset'``: A tuple of two computed shifts
-            - ``'matrix'``: Computed generalized ``2x2`` rotation matrix
-            - ``'rot'``: Rotation angle (degree) as if the rotation is proper
-            - ``'rotxy'``: A tuple of ``(rotx, roty, rot, skew)``:
-              rotation angle with regard to the ``X`` and ``Y`` axes, proper
-              rotation, and skew.
-            - ``'scale'``: A tuple of ``(s, sx, sy)`` - "average" scale, and
-              two scales for each axis
-            - ``'skew'``: skew
-            - ``'proper'``: a boolean indicating whether the rotation is proper
-            - ``'fitgeom'``: Fit geometry (allowed transformations) used for
-              fitting data (to minimize residuals). This is copy of the input
-              argument ``fitgeom``.
-            - ``'center'``: Center of rotation
-            - ``'fitmask'``: A boolean array indicating which source positions
-              where used for fitting (`True`) and which were clipped out
-              (`False`). **NOTE** For weighted fits, positions with zero
-              weights are automatically excluded from the fits.
-            - ``'eff_nclip'``: Effective number of clipping iterations
-            - ``'rmse'``: Root-Mean-Square Error
-            - ``'mae'``: Mean Absolute Error
-            - ``'std'``: Standard Deviation of the residuals
-            - ``'resids'``: An array of residuals of the fit.
-              **NOTE:** Only the residuals for the "valid" points are reported
-              here. Therefore the length of this array may be smaller than the
-              length of input arrays of positions.
+        - ``'shift'``: A ``numpy.ndarray`` with two components of the
+          computed shift.
+        - ``'shift_ld'``: A ``numpy.ndarray`` with two components of the
+          computed shift of type ``numpy.longdouble``.
+        - ``'matrix'``: A ``2x2`` ``numpy.ndarray`` with the computed
+          generalized rotation matrix.
+        - ``'matrix_ld'``: A ``2x2`` ``numpy.ndarray`` with the computed
+          generalized rotation matrix of type ``numpy.longdouble``.
+        - ``'proper_rot'``: Rotation angle (degree) as if the rotation is
+          proper.
+        - ``'rot'``: A tuple of ``(rotx, roty)`` - the rotation angles with
+          regard to the ``X`` and ``Y`` axes.
+        - ``'<rot>'``: *Arithmetic mean* of the angles of rotation around
+          ``X`` and ``Y`` axes.
+        - ``'scale'``: A tuple of ``(sx, sy)`` - scale change in the direction
+          of the ``X`` and ``Y`` axes.
+        - ``'<scale>'``: *Geometric mean* of scales ``sx`` and ``sy``.
+        - ``'skew'``: Computed skew.
+        - ``'proper'``: a boolean indicating whether the rotation is proper.
+        - ``'fitgeom'``: Fit geometry (allowed transformations) used for
+          fitting data (to minimize residuals). This is copy of the input
+          argument ``fitgeom``.
+        - ``'center'``: Center of rotation
+        - ``'center_ld'``: Center of rotation as a ``numpy.longdouble``.
+        - ``'fitmask'``: A boolean array indicating which source positions
+          where used for fitting (`True`) and which were clipped out
+          (`False`). **NOTE** For weighted fits, positions with zero
+          weights are automatically excluded from the fits.
+        - ``'eff_nclip'``: Effective number of clipping iterations
+        - ``'rmse'``: Root-Mean-Square Error
+        - ``'mae'``: Mean Absolute Error
+        - ``'std'``: Standard Deviation of the residuals
+        - ``'resids'``: An array of residuals of the fit.
+          **NOTE:** Only the residuals for the "valid" points are reported
+          here. Therefore the length of this array may be smaller than the
+          length of input arrays of positions.
 
     Notes
     -----
@@ -397,7 +406,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
     q = np.array([0.0, 1.0, meany], dtype=np.longdouble)
 
     fit = _build_fit(p, q, 'shift')
-    resids = diff_pts - fit['offset']
+    resids = diff_pts - fit['shift']
     fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
@@ -534,7 +543,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, fitgeom='rscale')
-    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
+    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['shift_ld']
     fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
@@ -637,7 +646,7 @@ def fit_general(xy, uv, wxy=None, wuv=None):
 
     # Return the shift, rotation, and scale changes
     fit = _build_fit(p, q, 'general')
-    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['offset_ld']
+    resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['shift_ld']
     fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
@@ -660,16 +669,22 @@ def _build_fit(p, q, fitgeom):
     skew = 0.0
 
     if fitgeom == 'shift':
-        return {'offset': np.array([p[2], q[2]], dtype=np.double),
-                'offset_ld': np.array([p[2], q[2]], dtype=np.longdouble),
-                'matrix': np.array(fit_matrix, dtype=np.double),
-                'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
-                'rot': 0.0,
-                'rotxy': (0.0, 0.0, 0.0, skew),
-                'scale': (1.0, 1.0, 1.0),
-                'skew': skew,
-                'proper': proper,
-                'fitgeom': fitgeom}
+        fit = {
+            'shift': np.array([p[2], q[2]], dtype=np.double),
+            'shift_ld': np.array([p[2], q[2]], dtype=np.longdouble),
+            'matrix': np.array(fit_matrix, dtype=np.double),
+            'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
+            'proper_rot': 0.0,
+            'rot': (0.0, 0.0),
+            '<rot>': 0.0,
+            'scale': (1.0, 1.0),
+            '<scale>': 1.0,
+            'skew': 0.0,
+            'proper': proper,
+            'fitgeom': 'shift'
+        }
+
+        return fit
 
     # Compute average scale:
     s = np.sqrt(np.abs(det))
@@ -706,16 +721,22 @@ def _build_fit(p, q, fitgeom):
         rot = np.mod(0.5 * (rotx + roty), 360.0)
         skew = np.mod(roty - rotx - 180.0, 360.0) - 180.0
 
-    return {'offset': np.array([p[2], q[2]], dtype=np.double),
-            'offset_ld': np.array([p[2], q[2]], dtype=np.longdouble),
-            'matrix': np.array(fit_matrix, dtype=np.double),
-            'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
-            'rot': float(prop_rot),
-            'rotxy': tuple(map(float, (rotx, roty, rot, skew))),
-            'scale': tuple(map(float, (s, sx, sy))),
-            'skew': float(skew),
-            'proper': proper,
-            'fitgeom': fitgeom}
+    fit = {
+        'shift': np.array([p[2], q[2]], dtype=np.double),
+        'shift_ld': np.array([p[2], q[2]], dtype=np.longdouble),
+        'matrix': np.array(fit_matrix, dtype=np.double),
+        'matrix_ld': np.array(fit_matrix, dtype=np.longdouble),
+        'proper_rot': float(prop_rot),
+        'rot': (float(rotx), float(roty)),
+        '<rot>': float(rot),
+        'scale': (float(sx), float(sy)),
+        '<scale>': float(s),
+        'skew': float(skew),
+        'proper': proper,
+        'fitgeom': fitgeom
+    }
+
+    return fit
 
 
 def build_fit_matrix(rot, scale=1):
