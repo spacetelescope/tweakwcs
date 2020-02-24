@@ -202,7 +202,6 @@ def test_align_wcs_tpwcs_type(mock_fits_wcs):
 ])
 def test_align_wcs_simple_ref_image_general(shift, rot, scale, fitgeom,
                                             weighted, mock_fits_wcs):
-    crpix = mock_fits_wcs.wcs.crpix - 1
     xy = 1024 * np.random.random((100, 2))
     if weighted:
         w = np.ones((100, 1))
@@ -211,7 +210,7 @@ def test_align_wcs_simple_ref_image_general(shift, rot, scale, fitgeom,
     else:
         names = ('x', 'y')
     m = build_fit_matrix(rot, scale)
-    xyr = np.dot(xy[:, :2] - crpix, m.T) + crpix + shift
+    xyr = np.dot(xy[:, :2], m.T) + shift
     imcat = Table(xy, names=names)
     radec = mock_fits_wcs.wcs_pix2world(xyr, 0)
     if weighted:
@@ -239,10 +238,9 @@ def test_align_wcs_simple_twpwcs_ref(mock_fits_wcs):
     rot = (15, 17)
     scale = (1.0123, 0.9876)
 
-    crpix = mock_fits_wcs.wcs.crpix - 1
     xy = 1024 * np.random.random((100, 2))
     m = build_fit_matrix(rot, scale)
-    xyr = np.dot(xy - crpix, m.T) + crpix + shift
+    xyr = np.dot(xy, m.T) + shift
     imcat = Table(xy, names=('x', 'y'))
     refcat = Table(xyr, names=('x', 'y'))
     tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})

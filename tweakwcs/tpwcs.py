@@ -48,6 +48,29 @@ else:
     )
 
 
+def _tp2tp(tpwcs1, tpwcs2, s=None):
+    x = np.array([0.0, 1.0, 0.0], dtype=np.double)
+    y = np.array([0.0, 0.0, 1.0], dtype=np.double)
+
+    if s is None:
+        xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(x, y))
+        m = np.array([(xt[1:] - xt[0]), (yt[1:] - yt[0])])
+        s = np.sqrt(np.fabs(np.linalg.det(m)))
+
+    x *= s
+    y *= s
+
+    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
+
+    xrp = np.array(xrp, np.longdouble)
+    yrp = np.array(yrp, np.longdouble)
+
+    matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])]) / s
+    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]])
+
+    return matrix, shift
+
+
 class TPWCS(ABC):
     """ A class that provides common interface for manipulating WCS information
     and for managing tangent-plane corrections.
@@ -84,8 +107,8 @@ class TPWCS(ABC):
         return deepcopy(self)
 
     @abstractmethod
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
-                       **kwargs):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
+                       ref_tpwcs=None, meta=None, **kwargs):
         """
         Sets a tangent-plane correction of the WCS object according to
         the provided liniar parameters. In addition, this function updates
@@ -101,7 +124,14 @@ class TPWCS(ABC):
 
         shift: list, numpy.ndarray, optional
             A list of two coordinate shifts to be applied to coordinates
-            *before* ``matrix`` transformations are applied.
+            *after* ``matrix`` transformations are applied.
+
+        ref_tpwcs: TPWCS, None, optional
+            A reference WCS of the type ``TPWCS`` that provides the tangent
+            plane in which corrections (``matrix`` and ``shift``) were defined.
+            When not provided (i.e., set to `None`), it is assumed that the
+            transformations are being applied directly to *this* image WCS'
+            tangent plane.
 
         meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
@@ -246,7 +276,6 @@ class FITSWCS(TPWCS):
         supported.
 
     """
-
     def __init__(self, wcs, meta=None):
         """
         Parameters
@@ -319,8 +348,8 @@ class FITSWCS(TPWCS):
 
         return True, ''
 
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
-                       **kwargs):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
+                       ref_tpwcs=None, meta=None, **kwargs):
         """
         Computes a corrected (aligned) wcs based on the provided linear
         transformation. In addition, this function updates the ``meta``
@@ -336,7 +365,14 @@ class FITSWCS(TPWCS):
 
         shift: list, numpy.ndarray
             A list of two coordinate shifts to be applied to coordinates
-            *before* ``matrix`` transformations are applied.
+            *after* ``matrix`` transformations are applied.
+
+        ref_tpwcs: TPWCS, None, optional
+            A reference WCS of the type ``TPWCS`` that provides the tangent
+            plane in which corrections (``matrix`` and ``shift``) were defined.
+            When not provided (i.e., set to `None`), it is assumed that the
+            transformations are being applied directly to *this* image WCS'
+            tangent plane.
 
         meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
@@ -346,38 +382,42 @@ class FITSWCS(TPWCS):
             arguments (except for storing them in the ``meta`` attribute).
 
         """
-        # compute the matrix for the scale and rotation correction
-        shift = (np.asarray(shift) - np.dot(self._wcslin.wcs.crpix, matrix) +
-                 self._wcslin.wcs.crpix)
+        wcs = self._wcs
+        orig_wcs = wcs.deepcopy()
+        if ref_tpwcs is None:
+            ref_tpwcs = FITSWCS(wcs.deepcopy())
 
-        matrix = inv(matrix).T
+        naxis1, naxis2 = wcs.pixel_shape
 
-        cwcs = self._wcs.deepcopy()
+        shift = -np.dot(inv(matrix), shift)
 
         # estimate step for numerical differentiation. We need a step
         # large enough to avoid rounding errors and small enough to get a
         # better precision for numerical differentiation.
         # TODO: The logic below should be revised at a later time so that it
         # better takes into account the two competing requirements.
-        crpix1, crpix2 = self._wcs.wcs.crpix
-        hx = max(1.0, min(20.0, (crpix1 - 1.0) / 100.0,
-                          (self._wcs.pixel_shape[0] - crpix1) / 100.0))
-        hy = max(1.0, min(20.0, (crpix2 - 1.0) / 100.0,
-                          (self._wcs.pixel_shape[1] - crpix2) / 100.0))
+        hx = max(1.0, min(10, (wcs.wcs.crpix[0] - 1.0) / 100.0,
+                          (naxis1 - wcs.wcs.crpix[0]) / 100.0))
+        hy = max(1.0, min(10, (wcs.wcs.crpix[1] - 1.0) / 100.0,
+                          (naxis2 - wcs.wcs.crpix[1]) / 100.0))
 
         # compute new CRVAL for the image WCS:
-        crpixinref = self._wcslin.wcs_world2pix(
-            self._wcs.wcs_pix2world([self._wcs.wcs.crpix], 1), 1)
-        crpixinref = np.dot(crpixinref - shift, matrix.T).astype(np.double)
-        self._wcs.wcs.crval = self._wcslin.wcs_pix2world(crpixinref, 1)[0]
-        self._wcs.wcs.set()
+        crpix2d = np.atleast_2d(wcs.wcs.crpix)
+        crval = wcs.wcs_pix2world(crpix2d, 1).ravel()
+        crpixinref = ref_tpwcs.world_to_tanp(*crval)
 
-        # approximation for CD matrix of the image WCS:
-        (U, u) = _linearize(cwcs, self._wcs, self._wcslin, self._wcs.wcs.crpix,
-                            matrix, shift, hx=hx, hy=hy)
-        self._wcs.wcs.cd = np.dot(self._wcs.wcs.cd.astype(np.longdouble),
-                                  U).astype(np.double)
-        self._wcs.wcs.set()
+        crpixinref = np.dot(
+            np.subtract(crpixinref, shift),
+            np.transpose(matrix)
+        ).astype(np.double)
+        wcs.wcs.crval = ref_tpwcs.tanp_to_world(crpixinref[0], crpixinref[1])
+        wcs.wcs.set()
+
+        # initial approximation for CD matrix of the image WCS:
+        (U, u) = self._linearize(orig_wcs, ref_tpwcs, wcs.wcs.crpix,
+                                 matrix, shift, hx=hx, hy=hy)
+        wcs.wcs.cd = np.dot(wcs.wcs.cd, U).astype(np.double)
+        wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
         super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
@@ -397,7 +437,7 @@ class FITSWCS(TPWCS):
         (i.e., including distortions) transformations.
 
         """
-        x, y = self._wcs.all_world2pix(ra, dec, 0)
+        x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
         return x, y
 
     def det_to_tanp(self, x, y):
@@ -405,10 +445,7 @@ class FITSWCS(TPWCS):
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
         """
-        crpix1, crpix2 = self._wcs.wcs.crpix - 1
         x, y = self._wcs.pix2foc(x, y, 0)
-        x -= crpix1
-        y -= crpix2
         return x, y
 
     def tanp_to_det(self, x, y):
@@ -416,11 +453,8 @@ class FITSWCS(TPWCS):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        crpix1, crpix2 = self._wcs.wcs.crpix
-        x = x + crpix1
-        y = y + crpix2
-        ra, dec = self._wcslin.all_pix2world(x, y, 1)
-        x, y = self._wcslin.all_world2pix(ra, dec, 0)
+        ra, dec = self._wcs.wcs_pix2world(x, y, 0)
+        x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
         return x, y
 
     def world_to_tanp(self, ra, dec):
@@ -428,18 +462,12 @@ class FITSWCS(TPWCS):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        crpix1, crpix2 = self._wcs.wcs.crpix
-        x, y = self._wcslin.all_world2pix(ra, dec, 1)
-        x -= crpix1
-        y -= crpix2
+        x, y = self._wcs.wcs_world2pix(ra, dec, 0)
         return x, y
 
     def tanp_to_world(self, x, y):
         """ Convert tangent plane coordinates to world coordinates. """
-        crpix1, crpix2 = self._wcs.wcs.crpix
-        x = x + crpix1
-        y = y + crpix2
-        ra, dec = self._wcslin.all_pix2world(x, y, 1)
+        ra, dec = self._wcs.wcs_pix2world(x, y, 0)
         return ra, dec
 
     @property
@@ -462,38 +490,32 @@ class FITSWCS(TPWCS):
         else:
             return self._owcs.pixel_bounds
 
+    def _linearize(self, wcsima, ref_tpwcs, imcrpix, f, shift, hx=1.0, hy=1.0):
+        """ linearization using 5-point formula for first order derivative. """
+        x0 = imcrpix[0] - 1
+        y0 = imcrpix[1] - 1
 
-def _linearize(wcsim, wcsima, wcsref, imcrpix, f, shift, hx=1.0, hy=1.0):
-    """ linearization using 5-point formula for first order derivative. """
-    x0 = imcrpix[0]
-    y0 = imcrpix[1]
-    p = np.asarray([[x0, y0],
-                    [x0 - hx, y0],
-                    [x0 - hx * 0.5, y0],
-                    [x0 + hx * 0.5, y0],
-                    [x0 + hx, y0],
-                    [x0, y0 - hy],
-                    [x0, y0 - hy * 0.5],
-                    [x0, y0 + hy * 0.5],
-                    [x0, y0 + hy]],
-                   dtype=np.double)
-    # convert image coordinates to reference image coordinates:
-    p = wcsref.wcs_world2pix(
-        wcsim.wcs_pix2world(p, 1), 1
-    ).astype(np.longdouble)
-    # apply linear fit transformation:
-    p = np.dot(f, (p - shift).T).T
-    # convert back to image coordinate system:
-    p = wcsima.wcs_world2pix(
-        wcsref.wcs_pix2world(p.astype(np.double), 1), 1
-    ).astype(np.longdouble)
+        px = np.asarray([x0, x0 - hx, x0 - hx * 0.5, x0 + hx * 0.5,
+                         x0 + hx, x0, x0, x0, x0], dtype=np.double)
+        py = np.asarray([y0, y0, y0, y0, y0, y0 - hy, y0 - hy * 0.5,
+                         y0 + hy * 0.5, y0 + hy], dtype=np.double)
 
-    # derivative with regard to x:
-    u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6 * hx)
-    # derivative with regard to y:
-    u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6 * hy)
+        # convert image coordinates to reference image coordinates:
+        ra, dec = wcsima.wcs_pix2world(px, py, 0)
+        px, py = np.array(ref_tpwcs.world_to_tanp(ra, dec))
 
-    return (np.asarray([u1, u2]).T, p[0])
+        # apply linear fit transformation:
+        px, py = np.dot(f, [px - shift[0], py - shift[1]]).astype(np.double)
+        # convert back to image coordinate system:
+        p = np.array(self.wcs.wcs_world2pix(*ref_tpwcs.tanp_to_world(px, py), 0),
+                     dtype=np.longdouble).T
+
+        # derivative with regard to x:
+        u1 = ((p[1] - p[4]) + 8 * (p[3] - p[2])) / (6 * hx)
+        # derivative with regard to y:
+        u2 = ((p[5] - p[8]) + 8 * (p[7] - p[6])) / (6 * hy)
+
+        return (np.asarray([u1, u2]).T, p[0])
 
 
 def _get_submodel(model, name):
@@ -724,8 +746,8 @@ class JWSTgWCS(TPWCS):
         """ Return a ``wcsinfo``-like dictionary of main WCS parameters. """
         return {k: v for k, v in self._wcsinfo.items()}
 
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
-                       **kwargs):
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
+                       ref_tpwcs=None, meta=None, **kwargs):
         """
         Sets a tangent-plane correction of the GWCS object according to
         the provided liniar parameters. In addition, this function updates
@@ -741,7 +763,14 @@ class JWSTgWCS(TPWCS):
 
         shift: list, numpy.ndarray
             A list of two coordinate shifts to be applied to coordinates
-            *before* ``matrix`` transformations are applied.
+            *after* ``matrix`` transformations are applied.
+
+        ref_tpwcs: TPWCS, None, optional
+            A reference WCS of the type ``TPWCS`` that provides the tangent
+            plane in which corrections (``matrix`` and ``shift``) were defined.
+            When not provided (i.e., set to `None`), it is assumed that the
+            transformations are being applied directly to *this* image WCS'
+            tangent plane.
 
         meta: dict, None, optional
             Dictionary that will be merged to the object's ``meta`` fields.
@@ -752,6 +781,16 @@ class JWSTgWCS(TPWCS):
 
         """
         frms = self._wcs.available_frames
+
+        if ref_tpwcs is None:
+            matrix = np.array(matrix, dtype=np.double)
+            shift = np.array(shift, dtype=np.double)
+        else:
+            # compute linear transformation from the tangent plane used for
+            # alignment to the tangent plane of this wcs:
+            r, t = _tp2tp(ref_tpwcs, self)
+            shift = np.dot(r, shift + np.dot(matrix, t) - t).astype(np.double)
+            matrix = np.linalg.multi_dot([r, matrix, inv(r)]).astype(np.double)
 
         # if original WCS did not have tangent-plane corrections, create
         # new correction and add it to the WCs pipeline:
@@ -765,7 +804,7 @@ class JWSTgWCS(TPWCS):
             JWSTgWCS._tpcorr_combine_affines(
                 self._tpcorr,
                 matrix,
-                -_ARCSEC2RAD * np.dot(matrix, shift)
+                _ARCSEC2RAD * np.asarray(shift)
             )
 
             self._partial_tpcorr = JWSTgWCS._v2v3_to_tpcorr_from_full(self._tpcorr)
@@ -794,7 +833,7 @@ class JWSTgWCS(TPWCS):
             JWSTgWCS._tpcorr_combine_affines(
                 tpcorr2,
                 matrix,
-                -_ARCSEC2RAD * np.dot(matrix, shift)
+                _ARCSEC2RAD * np.asarray(shift)
             )
 
             JWSTgWCS._tpcorr_combine_affines(

@@ -955,10 +955,14 @@ class WCSGroupCatalog(object):
 
         fit = iter_linear_fit(
             refxy, im_xyref, ref_weight, im_weight,
-            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
+            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=None
         )
 
-        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']], fit['matrix'])
+        # re-compute shifts for the center at (0, 0):
+        fit['shift_ld'] += fit['center_ld'] - np.dot(fit['center_ld'], fit['matrix_ld'].T)
+        fit['shift'] = fit['shift_ld'].astype(np.double)
+
+        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']], fit['matrix'].T)
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
@@ -993,23 +997,8 @@ class WCSGroupCatalog(object):
 
     def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS. """
-        # compute the matrix for the scale and rotation correction
-        shift = -np.dot(inv(matrix), shift)
-
         for imcat in self:
-            # compute linear transformation from the tangent plane used for
-            # alignment to the tangent plane of another image in the group:
-            if imcat.tpwcs == tanplane_wcs:
-                m = matrix.copy()
-                s = np.array(shift, dtype=np.double)
-            else:
-                r1, t1 = _tp2tp(imcat.tpwcs, tanplane_wcs)
-                r2, t2 = _tp2tp(tanplane_wcs, imcat.tpwcs)
-                m = np.linalg.multi_dot([r2, matrix, r1])
-                s = (t1 + np.dot(inv(r1), shift) +
-                     np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.double)
-
-            imcat.tpwcs.set_correction(m, s, meta=meta)
+            imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=tanplane_wcs, meta=meta)
 
     def align_to_ref(self, refcat, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
@@ -1217,17 +1206,6 @@ class WCSGroupCatalog(object):
         self.recalc_catalog_radec()
 
         return True
-
-
-def _tp2tp(tpwcs1, tpwcs2):
-    x = np.array([0.0, 1.0, 0.0], dtype=np.double)
-    y = np.array([0.0, 0.0, 1.0], dtype=np.double)
-    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
-
-    matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])])
-    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.double)
-
-    return matrix, shift
 
 
 class RefCatalog(object):

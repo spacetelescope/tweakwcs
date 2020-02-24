@@ -162,7 +162,7 @@ def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
     assert 'v2v3corr' in wc.wcs.available_frames
 
     matrix2 = np.linalg.inv(matrix1)
-    shift2 = -np.dot(matrix1, shift1)
+    shift2 = -np.dot(matrix2, shift1)
     wc = tpwcs.JWSTgWCS(
         wc.wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0}
     )
@@ -417,10 +417,10 @@ def test_fitswcs_coord_transforms(mock_fits_wcs):
 
     assert np.allclose(wc.det_to_world(499, 511), (12, 24), atol=_ATOL)
     assert np.allclose(wc.world_to_det(12, 24), (499, 511), atol=_ATOL)
-    assert np.allclose(wc.det_to_tanp(499, 511), (0, 0), atol=_ATOL)
-    assert np.allclose(wc.tanp_to_det(0, 0), (499, 511), atol=_ATOL)
-    assert np.allclose(wc.world_to_tanp(12, 24), (0, 0), atol=1e-8)
-    assert np.allclose(wc.tanp_to_world(0, 0), (12, 24), atol=_ATOL)
+    assert np.allclose(wc.det_to_tanp(499, 511), (499, 511), atol=_ATOL)
+    assert np.allclose(wc.tanp_to_det(499, 511), (499, 511), atol=_ATOL)
+    assert np.allclose(wc.world_to_tanp(12, 24), (499, 511), atol=1e-8)
+    assert np.allclose(wc.tanp_to_world(499, 511), (12, 24), atol=_ATOL)
 
 
 def test_fitswcs_bbox(mock_fits_wcs):

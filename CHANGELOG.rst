@@ -11,6 +11,10 @@ Release Notes
 0.6.0 (unreleased)
 ==================
 
+- Bug fix for alignment of multi-chip FITS images: correction of how
+  transformations from the reference tangent plane are converted to
+  individual images' tangent planes. [#106]
+
 - Significant re-organization of the ``fit_info`` dictionary. ``rot`` now
   becomes ``proper_rot`` and ``rotxy`` now becomes ``rot`` containing only
   ``rotx`` and ``roty``. Also, ``scale`` now is a tuple of only two scales
