@@ -17,7 +17,7 @@ import numpy as np
 from . import __version__  # noqa: F401
 
 
-__all__ = ['cartesian_to_spherical', 'spherical_to_cartesian', 'planar_rot_3d']
+__all__ = ['planar_rot_3d']
 
 __author__ = 'Mihai Cara'
 
@@ -34,24 +34,6 @@ def planar_rot_3d(angle, axis):
     cs = math.cos(angle)
     sn = math.sin(angle)
     axisv = np.array(axis * [0.0] + [1.0] + (2 - axis) * [0.0],
-                     dtype=np.float)
-    mat_2d = np.array([[cs, sn], [-sn, cs]], dtype=np.float)
+                     dtype=np.double)
+    mat_2d = np.array([[cs, sn], [-sn, cs]], dtype=np.double)
     return np.insert(np.insert(mat_2d, axis, [0.0, 0.0], 1), axis, axisv, 0)
-
-
-def cartesian_to_spherical(x, y, z):
-    """ Convert cartesian coordinates to spherical coordinates (in deg). """
-    h = np.hypot(x, y)
-    alpha = np.rad2deg(np.arctan2(y, x))
-    delta = np.rad2deg(np.arctan2(z, h))
-    return alpha, delta
-
-
-def spherical_to_cartesian(alpha, delta):
-    """ Convert spherical coordinates (in deg) to cartesian. """
-    alpha = np.deg2rad(alpha)
-    delta = np.deg2rad(delta)
-    x = np.cos(alpha) * np.cos(delta)
-    y = np.cos(delta) * np.sin(alpha)
-    z = np.sin(delta)
-    return x, y, z

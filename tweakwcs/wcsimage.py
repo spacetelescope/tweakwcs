@@ -8,13 +8,12 @@ source catalogs.
 :License: :doc:`../LICENSE`
 
 """
-# STDLIB
 import os
 import logging
 import numbers
 from copy import deepcopy
+from distutils.version import LooseVersion
 
-# THIRD-PARTY
 import numpy as np
 from astropy import table
 from spherical_geometry.polygon import SphericalPolygon
@@ -23,9 +22,29 @@ try:
 except ImportError:
     distance = None
 
-# LOCAL
-from .wcsutils import (cartesian_to_spherical, spherical_to_cartesian,
-                       planar_rot_3d)
+import gwcs
+if LooseVersion(gwcs.__version__) > '0.12.0':
+    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
+
+else:
+    def _S2C(phi, theta):
+        phi = np.deg2rad(phi)
+        theta = np.deg2rad(theta)
+        cs = np.cos(theta)
+        x = cs * np.cos(phi)
+        y = cs * np.sin(phi)
+        z = np.sin(theta)
+        return x, y, z
+
+    def _C2S(x, y, z):
+        h = np.hypot(x, y)
+        phi = np.rad2deg(np.arctan2(y, x))
+        theta = np.rad2deg(np.arctan2(z, h))
+        return phi, theta
+
+from .wcsutils import planar_rot_3d
 from .tpwcs import TPWCS
 from .linalg import inv
 from .linearfit import iter_linear_fit
@@ -36,6 +55,9 @@ __author__ = 'Mihai Cara'
 
 __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 
+
+# _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+# _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -64,25 +86,25 @@ class WCSImageCatalog(object):
         """
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             Source catalog associated with an image. Must contain ``'x'`` and
             ``'y'`` columns which indicate source coordinates (in pixels) in
             the associated image.
 
-        tpwcs : TPWCS
+        tpwcs: TPWCS
             ``TPWCS``-derived tangent-plane WCS corrector object associated
             with the image from which the catalog was derived.
 
-        name : str, None, optional
+        name: str, None, optional
             Image catalog's name. This is used to identify catalog during
             logging. If ``name`` is `None`, the ``name`` of this
             ``WCSImageCatalog`` object will be set to ``'Unknown'``.
 
-        group_id : hashable, None, optional
+        group_id: hashable, None, optional
             Group ID that may be used for identifying catalogs that need
             to be aligned together. ``group_id`` must be hashable.
 
-        meta : dict, optional
+        meta: dict, optional
             Additional information about image, catalog, and/or WCS to be
             stored (for convenience) within `WCSImageCatalog` object.
 
@@ -116,7 +138,7 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        tpwcs : TPWCS
+        tpwcs: TPWCS
             ``TPWCS``-derived tangent-plane WCS corrector object associated
             with the image from which the catalog was extracted.
 
@@ -267,13 +289,13 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSImageCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSImageCatalog` and `wcsim`.
 
@@ -315,7 +337,7 @@ class WCSImageCatalog(object):
 
         Parameters
         ----------
-        stepsize : int, None, optional
+        stepsize: int, None, optional
             Indicates the maximum separation between two adjacent vertices
             of the bounding polygon along each side of the image. Corners
             of the image are included automatically. If `stepsize` is `None`,
@@ -342,15 +364,15 @@ class WCSImageCatalog(object):
             nintx = max(2, int(np.ceil((hx - lx) / stepsize)))
             ninty = max(2, int(np.ceil((hy - ly) / stepsize)))
 
-        xs = np.linspace(lx, hx, nintx, dtype=np.float)
-        ys = np.linspace(ly, hy, ninty, dtype=np.float)[1:-1]
+        xs = np.linspace(lx, hx, nintx, dtype=np.double)
+        ys = np.linspace(ly, hy, ninty, dtype=np.double)[1:-1]
         nptx = xs.size
         npty = ys.size
 
         npts = 2 * (nptx + npty)
 
-        borderx = np.empty((npts + 1,), dtype=np.float)
-        bordery = np.empty((npts + 1,), dtype=np.float)
+        borderx = np.empty((npts + 1,), dtype=np.double)
+        bordery = np.empty((npts + 1,), dtype=np.double)
 
         # "bottom" points:
         borderx[:nptx] = xs
@@ -454,10 +476,10 @@ class WCSGroupCatalog(object):
         """
         Parameters
         ----------
-        images : list of WCSImageCatalog
+        images: list of WCSImageCatalog
             A list of `WCSImageCatalog` image catalogs.
 
-        name : str, None, optional
+        name: str, None, optional
             Name of the group.
 
         """
@@ -517,13 +539,13 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSGroupCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSGroupCatalog` and `wcsim`.
 
@@ -581,7 +603,7 @@ class WCSGroupCatalog(object):
 
         Returns
         -------
-        group_catalog : astropy.table.Table
+        group_catalog: astropy.table.Table
             Combined group catalog.
 
         """
@@ -616,17 +638,17 @@ class WCSGroupCatalog(object):
             col_imcatidx = table.MaskedColumn(catlen * [catno],
                                               name='_imcat_idx')
             col_id = table.MaskedColumn(image.catalog['id'])
-            col_x = table.MaskedColumn(image.catalog['x'], dtype=np.float64)
-            col_y = table.MaskedColumn(image.catalog['y'], dtype=np.float64)
+            col_x = table.MaskedColumn(image.catalog['x'], dtype=np.double)
+            col_y = table.MaskedColumn(image.catalog['y'], dtype=np.double)
             ra, dec = image.det_to_world(
                 image.catalog['x'], image.catalog['y']
             )
-            col_ra = table.MaskedColumn(ra, dtype=np.float64, name='RA')
-            col_dec = table.MaskedColumn(dec, dtype=np.float64, name='DEC')
+            col_ra = table.MaskedColumn(ra, dtype=np.double, name='RA')
+            col_dec = table.MaskedColumn(dec, dtype=np.double, name='DEC')
 
             if has_weights:
                 col_wght = table.MaskedColumn(image.catalog['weight'],
-                                              dtype=np.float64)
+                                              dtype=np.double)
 
                 cat = table.Table(
                     [col_imcatidx, col_catname, col_id, col_x,
@@ -663,10 +685,10 @@ class WCSGroupCatalog(object):
             col_imcatidx = table.MaskedColumn([], dtype=np.int,
                                               name='_imcat_idx')
             col_id = table.MaskedColumn(image.catalog['id'])
-            col_x = table.MaskedColumn([], name='x', dtype=np.float64)
-            col_y = table.MaskedColumn([], name='y', dtype=np.float64)
-            col_ra = table.MaskedColumn([], name='RA', dtype=np.float64)
-            col_dec = table.MaskedColumn([], name='DEC', dtype=np.float64)
+            col_x = table.MaskedColumn([], name='x', dtype=np.double)
+            col_y = table.MaskedColumn([], name='y', dtype=np.double)
+            col_ra = table.MaskedColumn([], name='RA', dtype=np.double)
+            col_dec = table.MaskedColumn([], name='DEC', dtype=np.double)
 
             cat = table.Table(
                 [col_imcatidx, col_catname, col_id, col_x,
@@ -720,7 +742,7 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
@@ -735,10 +757,10 @@ class WCSGroupCatalog(object):
         xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog['RA'],
                                               self.catalog['DEC'])
         self._catalog['TPx'] = table.MaskedColumn(
-            xtp, name='TPx', dtype=np.float64, mask=False
+            xtp, name='TPx', dtype=np.double, mask=False
         )
         self._catalog['TPy'] = table.MaskedColumn(
-            ytp, name='TPy', dtype=np.float64, mask=False
+            ytp, name='TPy', dtype=np.double, mask=False
         )
 
     def match2ref(self, refcat, match=None):
@@ -747,11 +769,11 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources
             as well as a valid reference WCS.
 
-        match : MatchCatalogs, function, None, optional
+        match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
             image catalog. Both catalogs will have columns ``'TPx'`` and
             ``'TPy'`` that represent the source coordinates in some common
@@ -833,26 +855,26 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
-        fitgeom : {'shift', 'rscale', 'general'}, optional
+        fitgeom: {'shift', 'rscale', 'general'}, optional
             The fitting geometry to be used in fitting the matched object
             lists. This parameter is used in fitting the offsets, rotations
             and/or scale changes from the matched object lists. The 'general'
             fit geometry allows for independent scale and rotation for
             each axis.
 
-        nclip : int, None, optional
+        nclip: int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
             Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-        sigma : float, tuple of the form (float, str), optional
+        sigma: float, tuple of the form (float, str), optional
             When a tuple is provided, first value (a positive number)
             indicates the number of "fit error estimates" to use for clipping.
             The second value (a string) indicates the statistic to be
@@ -937,33 +959,35 @@ class WCSGroupCatalog(object):
 
         fit = iter_linear_fit(
             refxy, im_xyref, ref_weight, im_weight,
-            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=(0, 0)
+            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=None
         )
 
-        xy_fit = fit['offset'] + np.dot(im_xyref[fit['fitmask']],
-                                        fit['matrix'])
+        # re-compute shifts for the center at (0, 0):
+        fit['shift_ld'] += fit['center_ld'] - np.dot(fit['center_ld'], fit['matrix_ld'].T)
+        fit['shift'] = fit['shift_ld'].astype(np.double)
+
+        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']], fit['matrix'].T)
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
 
         log.info("Computed '{:s}' fit for {}:".format(fitgeom, self.name))
         if fitgeom == 'shift':
-            log.info("XSH: {:.6g}  YSH: {:.6g}"
-                     .format(fit['offset'][0], fit['offset'][1]))
+            log.info("XSH: {:.6g}  YSH: {:.6g}".format(*fit['shift']))
         elif fitgeom == 'rscale' and fit['proper']:
-            log.info("XSH: {:.6g}  YSH: {:.6g}    ROT: {:.6g}    SCALE: {:.6g}"
-                     .format(fit['offset'][0], fit['offset'][1],
-                             fit['rot'], fit['scale'][0]))
+            log.info(
+                "XSH: {:.6g}  YSH: {:.6g}    ROT: {:.6g}    SCALE: {:.6g}"
+                .format(*fit['shift'], fit['proper_rot'], fit['<scale>'])
+            )
         elif fitgeom == 'general' or (fitgeom == 'rscale' and not
                                       fit['proper']):
             log.info("XSH: {:.6g}  YSH: {:.6g}    PROPER ROT: {:.6g}    "
-                     .format(fit['offset'][0], fit['offset'][1], fit['rot']))
+                     .format(*fit['shift'], fit['proper_rot']))
             log.info("<ROT>: {:.6g}  SKEW: {:.6g}    ROT_X: {:.6g}  "
-                     "ROT_Y: {:.6g}".format(fit['rotxy'][2], fit['skew'],
-                                            fit['rotxy'][0], fit['rotxy'][1]))
+                     "ROT_Y: {:.6g}".format(fit['<rot>'], fit['skew'],
+                                            *fit['rot']))
             log.info("<SCALE>: {:.6g}  SCALE_X: {:.6g}  SCALE_Y: {:.6g}"
-                     .format(fit['scale'][0], fit['scale'][1],
-                             fit['scale'][2]))
+                     .format(fit['<scale>'], *fit['scale']))
         else:
             raise ValueError("Unsupported fit geometry.")  # pragma: no cover
 
@@ -977,24 +1001,8 @@ class WCSGroupCatalog(object):
 
     def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS. """
-        # compute the matrix for the scale and rotation correction
-        matrix = matrix.T
-        shift = -np.dot(inv(matrix), shift)
-
         for imcat in self:
-            # compute linear transformation from the tangent plane used for
-            # alignment to the tangent plane of another image in the group:
-            if imcat.tpwcs == tanplane_wcs:
-                m = matrix.copy()
-                s = np.array(shift, dtype=np.float64)
-            else:
-                r1, t1 = _tp2tp(imcat.tpwcs, tanplane_wcs)
-                r2, t2 = _tp2tp(tanplane_wcs, imcat.tpwcs)
-                m = np.linalg.multi_dot([r2, matrix, r1])
-                s = (t1 + np.dot(inv(r1), shift) +
-                     np.dot(inv(np.dot(matrix, r1)), t2)).astype(np.float64)
-
-            imcat.tpwcs.set_correction(m, s, meta=meta)
+            imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=tanplane_wcs, meta=meta)
 
     def align_to_ref(self, refcat, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
@@ -1010,8 +1018,21 @@ class WCSGroupCatalog(object):
             * **'fitgeom'**: the value of the ``fitgeom`` argument
             * **'eff_minobj'**: effective value of the ``minobj`` parameter
             * **'matrix'**: computed rotation matrix
-            * **'shift'**: offset along X- and Y-axis
-            * **'center'**: center of rotation in geometric transformations
+            * **'shift'**: shift (offset) along X- and Y-axis
+            * **'rot'**: A tuple of ``(rotx, roty)`` - the rotation angles with
+              regard to the ``X`` and ``Y`` axes.
+            * **'<rot>'**: *Arithmetic mean* of the angles of rotation around
+              ``X`` and ``Y`` axes.
+            * **'proper_rot'**: rotation angle as if rotation is a proper
+              rotation.
+            * **'proper'**: Indicates whether the rotation is a proper rotation
+              (boolean)
+            * **'scale'**: A tuple of ``(sx, sy)`` - scale change in the
+              direction of the ``X`` and ``Y`` axes.
+            * **'<scale>'**: *Geometric mean* of scales ``sx`` and ``sy``.
+            * **'skew'**: Computed skew - an angle in the range [-180, 180).
+            * **'center'**: Center of rotation in the *tangent plane* of the
+              computed linear transformations.
             * **'fitmask'**: boolean array indicating (with `True`) sources
               **used** for fitting
             * **'nmatches'** [when ``match`` is not `None`]: number of matched
@@ -1029,14 +1050,6 @@ class WCSGroupCatalog(object):
               (image) catalog used for fitting (a subset of
               'matched_input_idx' indices, when ``match`` is not `None`,
               left after clipping iterations performed during fitting)
-            * **'rot'**: rotation angle as if rotation is a proper rotation
-            * **'proper'**: Indicates whether the rotation is a proper rotation
-              (boolean)
-            * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
-              Y-axis, mean rotation, computed skew)
-            * **'scale'**: a tuple of (mean scale, scale along X-axis, scale
-              along Y-axis)
-            * **'skew'**: computed skew
             * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
               coordinates of corrected image source positions from reference
               source positions.
@@ -1062,15 +1075,15 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        refcat : RefCatalog
+        refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources
             as well as a valid reference WCS.
 
-        match : MatchCatalogs, function, None, optional
+        match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
             image catalog.
 
-        minobj : int, None, optional
+        minobj: int, None, optional
             Minimum number of identified objects from each input image to use
             in matching objects from other images. If the default `None` value
             is used then `align` will automatically deternmine the minimum
@@ -1080,20 +1093,20 @@ class WCSGroupCatalog(object):
             is smaller than the value of ``minobj`` in which case this
             method will return `False`.
 
-        fitgeom : {'shift', 'rscale', 'general'}, optional
+        fitgeom: {'shift', 'rscale', 'general'}, optional
             The fitting geometry to be used in fitting the matched object
             lists. This parameter is used in fitting the offsets, rotations
             and/or scale changes from the matched object lists. The 'general'
             fit geometry allows for independent scale and rotation for each
             axis. This parameter is ignored if ``match`` is `False`.
 
-        nclip : int, None, optional
+        nclip: int, None, optional
             Number (a non-negative integer) of clipping iterations in fit.
             Clipping will be turned off if ``nclip`` is either `None` or 0.
 
             This parameter is ignored if ``match`` is `False`.
 
-        sigma : float, tuple of the form (float, str), optional
+        sigma: float, tuple of the form (float, str), optional
             When a tuple is provided, first value (a positive number)
             indicates the number of "fit error estimates" to use for clipping.
             The second value (a string) indicates the statistic to be
@@ -1160,13 +1173,15 @@ class WCSGroupCatalog(object):
             'fitgeom': fitgeom,
             'eff_minobj': minobj,
             'matrix': fit['matrix'],
-            'shift': fit['offset'],
+            'shift': fit['shift'],
             'center': fit['center'],  # center of rotation in geom. transforms
             'fitmask': fit['fitmask'],  # sources was used for fitting
-            'rot': fit['rot'],  # proper rotation
+            'proper_rot': fit['proper_rot'],  # proper rotation
             'proper': fit['proper'],  # is a proper rotation? True/False
-            'rotxy': fit['rotxy'],  # rotx, roty, <rot>, skew
-            'scale': fit['scale'],  # <s>, sx, sy
+            'rot': fit['rot'],  # rotx, roty
+            '<rot>': fit['<rot>'],  # Arithmetic mean of rotx and roty
+            'scale': fit['scale'],  # sx, sy
+            '<scale>': fit['<scale>'],  # Geometric mean of sx, sy
             'skew': fit['skew'],  # skew
             'rmse': fit['rmse'],  # fit RMSE in tangent plane coords
             'mae': fit['mae'],  # fit MAE in tangent plane coords
@@ -1185,7 +1200,7 @@ class WCSGroupCatalog(object):
         self.apply_affine_to_wcs(
             tanplane_wcs=tanplane_wcs,
             matrix=fit['matrix'],
-            shift=fit['offset'],
+            shift=fit['shift'],
             # meta=meta
         )
 
@@ -1195,17 +1210,6 @@ class WCSGroupCatalog(object):
         self.recalc_catalog_radec()
 
         return True
-
-
-def _tp2tp(tpwcs1, tpwcs2):
-    x = np.array([0.0, 1.0, 0.0], dtype=np.float)
-    y = np.array([0.0, 0.0, 1.0], dtype=np.float)
-    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
-
-    matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])])
-    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]]).astype(np.float64)
-
-    return matrix, shift
 
 
 class RefCatalog(object):
@@ -1220,17 +1224,17 @@ class RefCatalog(object):
         """
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             Reference catalog.
 
             .. note::
                 Reference catalogs (:py:class:`~astropy.table.Table`)
                 *must* contain *both* ``'RA'`` and ``'DEC'`` columns.
 
-        name : str, None, optional
+        name: str, None, optional
             Name of the reference catalog.
 
-        footprint_tol : float, optional
+        footprint_tol: float, optional
             Matching tolerance in arcsec. This is used to estimate catalog's
             footprint when catalog contains only one or two sources.
 
@@ -1305,13 +1309,13 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        wcsim : WCSImageCatalog, WCSGroupCatalog, RefCatalog, SphericalPolygon
+        wcsim: WCSImageCatalog, WCSGroupCatalog, RefCatalog, SphericalPolygon
             Another object that should be intersected with this
             `WCSImageCatalog`.
 
         Returns
         -------
-        polygon : SphericalPolygon
+        polygon: SphericalPolygon
             A :py:class:`~spherical_geometry.polygon.SphericalPolygon` that is
             the intersection of this `WCSImageCatalog` and `wcsim`.
 
@@ -1362,14 +1366,13 @@ class RefCatalog(object):
         # Compute x, y coordinates in this tangent plane based on the
         # previously computed WCS and return the set of x, y coordinates and
         # "reference WCS".
-        x, y, z = spherical_to_cartesian(
-            self.catalog['RA'], self.catalog['DEC']
+        x, y, z = _S2C(self.catalog['RA'], self.catalog['DEC'])
+        ra_ref, dec_ref = _C2S(
+            x.mean(dtype=np.double),
+            y.mean(dtype=np.double),
+            z.mean(dtype=np.double)
         )
-        ra_ref, dec_ref = cartesian_to_spherical(
-            x.mean(dtype=np.float64),
-            y.mean(dtype=np.float64),
-            z.mean(dtype=np.float64)
-        )
+
         rotm = [planar_rot_3d(np.deg2rad(alpha), 2 - axis)
                 for axis, alpha in enumerate([ra_ref, dec_ref])]
         euler_rot = np.linalg.multi_dot(rotm)
@@ -1423,9 +1426,9 @@ class RefCatalog(object):
         # "unrotate" cartezian coordinates back to their original
         # ra_ref and dec_ref "positions":
         xt = np.ones_like(xv)
-        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.float64)
+        xcr, ycr, zcr = np.dot(inv_euler_rot, (xt, xv, yv)).astype(np.double)
         # convert cartesian to spherical coordinates:
-        ra, dec = cartesian_to_spherical(xcr, ycr, zcr)
+        ra, dec = _C2S(xcr, ycr, zcr)
 
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
         #       dec[0] != dec[-1] (even though we close the polygon in the
@@ -1461,7 +1464,7 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        catalog : astropy.table.Table
+        catalog: astropy.table.Table
             A catalog of new sources to be added to the existing reference
             catalog. `catalog` *must* contain *both* ``'RA'`` and ``'DEC'``
             columns.
@@ -1545,7 +1548,7 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs : ImageGWCS
+        tanplane_wcs: ImageGWCS
             A `ImageGWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
@@ -1555,10 +1558,10 @@ class RefCatalog(object):
         xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog['RA'],
                                               self.catalog['DEC'])
         self._catalog['TPx'] = table.MaskedColumn(
-            xtp, name='TPx', dtype=np.float64, mask=False
+            xtp, name='TPx', dtype=np.double, mask=False
         )
         self._catalog['TPy'] = table.MaskedColumn(
-            ytp, name='TPy', dtype=np.float64, mask=False
+            ytp, name='TPy', dtype=np.double, mask=False
         )
 
 
@@ -1575,12 +1578,12 @@ Convex_hull/Monotone_chain>`_
     Parameters
     ----------
 
-    points : list of tuples
+    points: list of tuples
         An iterable sequence of (x, y) pairs representing the points.
 
     Returns
     -------
-    Output : list
+    Output: list
         A list of vertices of the convex hull in counter-clockwise order,
         starting from the vertex with the lexicographically smallest
         coordinates.

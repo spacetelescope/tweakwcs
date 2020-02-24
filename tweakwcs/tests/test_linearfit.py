@@ -93,7 +93,7 @@ def ideal_large_data(request):
     skew = angle[1] - angle[0]
 
     # apply rscale
-    xy = np.dot(uv, rmat) + shift
+    xy = np.dot(uv, rmat.T) + shift
 
     return uv, xy, angle, scale, shift, rmat, proper, skew, transform
 
@@ -202,7 +202,7 @@ def test_build_fit_matrix_generalized(rot, scale):
     m = linearfit.build_fit_matrix(rot, scale)
 
     # check scale:
-    assert np.allclose(np.sqrt(np.sum(m**2, axis=1)), scale,
+    assert np.allclose(np.sqrt(np.sum(m**2, axis=0)), scale,
                        rtol=0, atol=_ATOL)
     ms = np.diag(scale)
 
@@ -212,7 +212,7 @@ def test_build_fit_matrix_generalized(rot, scale):
     assert np.allclose(np.linalg.det(mr) * i, np.dot(mr, mrinv),
                        rtol=0, atol=_ATOL)
 
-    assert np.allclose(m, np.dot(ms, mr), rtol=0, atol=_ATOL)
+    assert np.allclose(m, np.dot(mr, ms), rtol=0, atol=_ATOL)
 
 
 @pytest.mark.parametrize('uv, xy, wuv, wxy', [
@@ -271,7 +271,7 @@ def test_iter_linear_fit_special_cases(ideal_large_data, nclip, sigma,
                                     nclip=nclip, center=(0, 0), sigma=1,
                                     clip_accum=clip_accum)
 
-    assert np.allclose(fit['offset'], shift, rtol=0, atol=atol)
+    assert np.allclose(fit['shift'], shift, rtol=0, atol=atol)
     assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
 
 
@@ -287,7 +287,7 @@ def test_iter_linear_fit_1point(weights):
     fit = linearfit.iter_linear_fit(xy, xy + shifts, wxy=wxy, wuv=wuv,
                                     fitgeom='shift', nclip=0)
 
-    assert np.allclose(fit['offset'], -shifts, rtol=0, atol=_ATOL)
+    assert np.allclose(fit['shift'], -shifts, rtol=0, atol=_ATOL)
     assert np.allclose(fit['matrix'], np.identity(2), rtol=0, atol=_ATOL)
 
 
@@ -388,9 +388,9 @@ def test_iter_linear_fit_clip_style(ideal_large_data, weight_data,
         clip_accum=clip_accum, nclip=nclip
     )
 
-    shift_with_center = np.dot(fit['center'], rmat) - fit['center'] + shift
+    shift_with_center = np.dot(rmat, fit['center']) - fit['center'] + shift
 
-    assert np.allclose(fit['offset'], shift_with_center, rtol=0, atol=atol)
+    assert np.allclose(fit['shift'], shift_with_center, rtol=0, atol=atol)
     assert np.allclose(fit['matrix'], rmat, rtol=0, atol=atol)
     assert np.allclose(fit['rmse'], 0, rtol=0, atol=atol)
     assert np.allclose(fit['mae'], 0, rtol=0, atol=atol)

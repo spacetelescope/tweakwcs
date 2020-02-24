@@ -94,7 +94,7 @@ def test_wcsimcat_intersections(mock_fits_wcs, rect_imcat):
 
     assert np.allclose(
         rect_imcat.intersection_area(rect_imcat), 2.9904967391303217e-12,
-        atol=0.0
+        atol=0.0, rtol=5.0e-4
     )
 
 
@@ -193,7 +193,7 @@ def test_wcsgroupcat_intersections(mock_fits_wcs, rect_imcat):
         assert any(np.allclose(pt1, pt2) for pt2 in pts2)
 
     assert np.allclose(
-        g.intersection_area(g), 2.9904967391303217e-12, atol=0.0
+        g.intersection_area(g), 2.9904967391303217e-12, atol=0.0, rtol=5.0e-4
     )
 
 

@@ -52,14 +52,14 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
 
     Parameters
     ----------
-    refcat : astropy.table.Table
+    refcat: astropy.table.Table
         A reference source catalog. The catalog must contain ``'RA'`` and
         ``'DEC'`` columns which indicate reference source world
         coordinates (in degrees). An optional column in the catalog is
         the ``'weight'`` column, which when present, will be used in fitting.
         See ``Notes`` section for further details.
 
-    imcat : astropy.table.Table
+    imcat: astropy.table.Table
         Source catalog associated with an image whose WCS needs to be aligned
         by fitting a linear transformation to ``imcat`` source positions so as
         to align them to the same sources from the ``refcat`` catalog.
@@ -68,23 +68,23 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
         the catalog is the ``'weight'`` column, which when present, will be
         used in fitting. See ``Notes`` section for further details.
 
-    tpwcs : TPWCS
+    tpwcs: TPWCS
         A ``WCS`` associated with the image from which the catalog was derived.
         This ``TPWCS``-subclassed WCS corrector object must also define
         a tangent plane that will be used for fitting the two catalogs'
         sources and in which WCS corrections will be applied.
 
-    fitgeom : {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the offsets, rotations and/or scale
         changes from the matched object lists. The 'general' fit geometry
         allows for independent scale and rotation for each axis.
 
-    nclip : int, None, optional
+    nclip: int, None, optional
         Number (a non-negative integer) of clipping iterations in fit.
         Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-    sigma : float, tuple of the form (float, str), optional
+    sigma: float, tuple of the form (float, str), optional
         When a tuple is provided, first value (a positive number)
         indicates the number of "fit error estimates" to use for clipping.
         The second value (a string) indicates the statistic to be
@@ -99,7 +99,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
 
     Returns
     -------
-    twwcs : TPWCS
+    twwcs: TPWCS
         "Tweaked" (aligned) ``WCS`` that contains tangent-plane corrections
         so that reference and image catalog sources better align in the tangent
         plane and therefore on the sky as well.
@@ -142,29 +142,68 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     key value of the ``meta`` attribute of the returned ``TPWCS`` object.
     ``'fit_info'`` is a dictionary with the following items:
 
-        * **'fitgeom'**: the value of the ``fitgeom`` argument
-        * **'eff_minobj'**: effective value of the ``minobj`` parameter
-        * **'matrix'**: computed rotation matrix
-        * **'shift'**: offset along X- and Y-axis
-        * **'center'**: center of rotation in geometric transformations
-        * **'fitmask'**: boolean array indicating (with `True`) sources
-          **used** for fitting
-        * **'rot'**: rotation angle as if rotation is a proper rotation
-        * **'proper'**: Indicates whether the rotation is a proper rotation
-          (boolean)
-        * **'rotxy'**: a tuple of (rotation of the X-axis, rotation of the
-          Y-axis, mean rotation, computed skew)
-        * **'scale'**: a tuple of (mean scale, scale along X-axis, scale along
-          Y-axis)
-        * **'skew'**: computed skew
+        * **'shift'**: A ``numpy.ndarray`` with two components of the
+          computed shift.
+
+        * **'matrix'**: A ``2x2`` ``numpy.ndarray`` with the computed
+          generalized rotation matrix.
+
+        * **'proper_rot'**: Rotation angle (degree) as if the rotation is
+          proper.
+
+        * **'rot'**: A tuple of ``(rotx, roty)`` - the rotation angles with
+          regard to the ``X`` and ``Y`` axes.
+
+        * **'<rot>'**: *Arithmetic mean* of the angles of rotation around
+          ``X`` and ``Y`` axes.
+
+        * **'scale'**: A tuple of ``(sx, sy)`` - scale change in the direction
+          of the ``X`` and ``Y`` axes.
+
+        * **'<scale>'**: *Geometric mean* of scales ``sx`` and ``sy``.
+
+        * **'skew'**: Computed skew.
+
+        * **'proper'**: a boolean indicating whether the rotation is proper.
+
+        * **'fitgeom'**: Fit geometry (allowed transformations) used for
+          fitting data (to minimize residuals). This is copy of the input
+          argument ``fitgeom``.
+
+        * **'center'**: Center of rotation in the *tangent plane* of the
+          computed linear transformations.
+
+        * **'fitmask'**: A boolean array indicating which source positions
+          where used for fitting (`True`) and which were clipped out
+          (`False`). **NOTE:** For weighted fits, positions with zero
+          weights are automatically excluded from the fits.
+
+        * **'eff_nclip'**: Effective number of clipping iterations
+
         * **'rmse'**: fit Root-Mean-Square Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+
         * **'mae'**: fit Mean Absolute Error in *tangent plane*
           coordinates of corrected image source positions from reference
           source positions.
+
         * **'std'**: Norm of the standard deviation of the residuals
           in *tangent plane* along each axis.
+
+        * **'resids'**: An array of residuals of the fit in the
+          *tangent plane*.
+
+          **NOTE:** Only the residuals for the "valid" points are reported
+          here. Therefore the length of this array may be smaller than the
+          length of input arrays of positions.
+
+        * **'fit_RA'**: first (corrected) world coordinate of input source
+          positions used in fitting.
+
+        * **'fit_DEC'**: second (corrected) world coordinate of input
+          source positions used in fitting.
+
         * **'status'**: Alignment status. Currently two possible status are
           possible ``'SUCCESS'`` or ``'FAILED: reason for failure'``.
           When alignment failed, the reason for failure is provided after
@@ -221,7 +260,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
 def align_wcs(wcscat, refcat=None, enforce_user_order=True,
               expand_refcat=False, minobj=None, match=TPMatch(),
               fitgeom='general', nclip=3, sigma=(3.0, 'rmse')):
-    """
+    r"""
     Align (groups of) image catalogs by adjusting the parameters of their
     WCS based on fits between matched sources in these catalogs and a reference
     catalog which may be automatically created from one of the input ``wcscat``
@@ -259,7 +298,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
     Parameters
     ----------
-    wcscat : tweakwcs.tpwcs.TPWCS, list of tweakwcs.tpwcs.TPWCS
+    wcscat: tweakwcs.tpwcs.TPWCS, list of tweakwcs.tpwcs.TPWCS
         A list of all `~tweakwcs.tpwcs.TPWCS`-derived WCS correctors whose
         ``meta`` dictionary **must** contain ``'catalog'``
         item with a non-empty table value of type `astropy.table.Table`.
@@ -286,14 +325,14 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
             This function modifies the WCS of ``TPWCS`` objects by calling
             their :py:meth:`~tweakwcs.tpwcs.TPWCS.set_correction` method.
 
-    refcat : astropy.table.Table, optional
+    refcat: astropy.table.Table, optional
         A reference source catalog. The catalog must contain ``'RA'`` and
         ``'DEC'`` columns which indicate reference source world
         coordinates (in degrees). An optional column in the catalog is
         the ``'weight'`` column, which when present, will be used in fitting.
         See ``Notes`` section for further details.
 
-    enforce_user_order : bool, optional
+    enforce_user_order: bool, optional
         Specifies whether images should be aligned in the order specified in
         the `file` input parameter or `align` should optimize the order
         of alignment by intersection area of the images. Default value (`True`)
@@ -302,7 +341,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         alignment order. Alignment order optimization is available *only*
         when ``expand_refcat`` is `True`.
 
-    expand_refcat : bool, optional
+    expand_refcat: bool, optional
         Specifies whether to add new sources from just matched images to
         the reference catalog to allow next image to be matched against an
         expanded reference catalog. By delault, the reference catalog is not
@@ -317,29 +356,29 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         IDs to all sources in all input catalogs **and** in the reference
         catalog in a separate column such as ``'uuid'``.
 
-    minobj : int, None, optional
+    minobj: int, None, optional
         Minimum number of identified objects from each input image to use
         in matching objects from other images. If the default `None` value is
         used then `align` will automatically deternmine the minimum number
         of sources from the value of the ``fitgeom`` parameter.
 
-    match : MatchCatalogs, function, None, optional
+    match: MatchCatalogs, function, None, optional
         A callable that takes two arguments: a reference catalog and an
         image catalog. Both catalogs will have columns ``'TPx'`` and
         ``'TPy'`` that represent the source coordinates in some common
         (to both catalogs) coordinate system.
 
-    fitgeom : {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the offsets, rotations and/or scale
         changes from the matched object lists. The 'general' fit geometry
         allows for independent scale and rotation for each axis.
 
-    nclip : int, None, optional
+    nclip: int, None, optional
         Number (a non-negative integer) of clipping iterations in fit.
         Clipping will be turned off if ``nclip`` is either `None` or 0.
 
-    sigma : float, tuple of the form (float, str), optional
+    sigma: float, tuple of the form (float, str), optional
         When a tuple is provided, first value (a positive number)
         indicates the number of "fit error estimates" to use for clipping.
         The second value (a string) indicates the statistic to be
@@ -354,7 +393,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
     Returns
     -------
-    eff_refcat : astropy.table.Table
+    eff_refcat: astropy.table.Table
         Effective reference catalog used for aligning all images. Depending
         on the values of the input parameters ``refcat``,
         ``enforce_user_order``, and ``expand_refcat``, effective
@@ -364,7 +403,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
     Notes
     -----
-    **Weights:**
+    **1. Weights:**
 
     When fitting image sources to reference catalog sources, we can specify
     which sources have higher weights. This can be done by assigning a "weight"
@@ -402,7 +441,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         When image catalogs contain optional ``'weight'`` column, then
         all image catalogs in a group must contain this column.
 
-    **``'fit_info'``**
+    **2.** ``'fit_info'``:
 
     Upon completion, this function will add ``'fit_info'``
     item (itself a dictionary) to input object's ``meta`` dictionary.
@@ -625,12 +664,12 @@ def overlap_matrix(images):
     Parameters
     ----------
 
-    images : list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
+    images: list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
         A list of catalogs that implement :py:meth:`intersection_area` method.
 
     Returns
     -------
-    m : numpy.ndarray
+    m: numpy.ndarray
         A `numpy.ndarray` of shape ``NxN`` where ``N`` is equal to the
         number of input images. Each non-diagonal element (i,j) of this matrix
         is the absolute value of the area of overlap on the sky between i-th
@@ -638,7 +677,7 @@ def overlap_matrix(images):
 
     """
     nimg = len(images)
-    m = np.zeros((nimg, nimg), dtype=np.float)
+    m = np.zeros((nimg, nimg), dtype=np.double)
     for i in range(nimg):
         for j in range(i + 1, nimg):
             area = images[i].intersection_area(images[j])
@@ -659,10 +698,10 @@ def max_overlap_pair(images, enforce_user_order):
     Parameters
     ----------
 
-    images : list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
+    images: list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
         A list of catalogs that implement :py:meth:`intersection_area` method.
 
-    enforce_user_order : bool
+    enforce_user_order: bool
         When ``enforce_user_order`` is `True`, a pair of images will be
         returned **in the same order** as they were arranged in the ``images``
         input list. That is, image overlaps will be ignored.
@@ -733,13 +772,13 @@ def max_overlap_image(refimage, images, enforce_user_order):
 
     Parameters
     ----------
-    refimage : RefCatalog
+    refimage: RefCatalog
         Reference catalog.
 
-    images : list of WCSImageCatalog, or WCSGroupCatalog
+    images: list of WCSImageCatalog, or WCSGroupCatalog
         A list of catalogs that implement :py:meth:`intersection_area` method.
 
-    enforce_user_order : bool
+    enforce_user_order: bool
         When ``enforce_user_order`` is `True`, returned image is the first
         image from the ``images`` input list regardless ofimage overlaps.
 
