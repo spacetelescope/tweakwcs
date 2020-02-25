@@ -11,8 +11,10 @@ Release Notes
 0.6.0 (unreleased)
 ==================
 
+- Modified the angle at which the reported rotation angles are reported.
+  Now rotation angles have the range ``[-180, 180]`` degrees. [#109]
 
-- Support FITS WCS that use ``PC`` matrix instead of the ``CD`` matrix
+- Added support FITS WCS that use ``PC`` matrix instead of the ``CD`` matrix
   used in HSTs WCS. [#108]
 
 - Bug fix for alignment of multi-chip FITS images: correction of how
