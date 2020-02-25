@@ -10,18 +10,20 @@ from distutils.version import LooseVersion
 import numpy as np
 
 from tweakwcs import wcsutils
-import gwcs
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
-    _NO_JWST_SUPPORT = False
-    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-else:
-    _NO_JWST_SUPPORT = True
 
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
+        _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+        _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+except ImportError:
+    _GWCS_VER_GT_0P12 = False
 
-# _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-# _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
+_NO_JWST_SUPPORT = not _GWCS_VER_GT_0P12
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")

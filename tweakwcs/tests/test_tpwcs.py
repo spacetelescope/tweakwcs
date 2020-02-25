@@ -9,18 +9,25 @@ import pytest
 from distutils.version import LooseVersion
 
 import numpy as np
-
-import gwcs
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import SphericalToCartesian
-    _NO_JWST_SUPPORT = False
-else:
-    _NO_JWST_SUPPORT = True
-
-from astropy import wcs as fitswcs
-from astropy.modeling import CompoundModel
 from astropy.modeling.models import Scale, Identity
+from astropy import wcs as fitswcs
 
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import SphericalToCartesian
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+except ImportError:
+    _GWCS_VER_GT_0P12 = False
+
+import astropy
+if LooseVersion(astropy.__version__) >= '4.0':
+    _ASTROPY_VER_GE_4 = True
+    from astropy.modeling import CompoundModel
+else:
+    _ASTROPY_VER_GE_4 = False
 
 from tweakwcs.linearfit import build_fit_matrix
 from tweakwcs import tpwcs
@@ -30,6 +37,7 @@ from .helper_tpwcs import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
 
 
 _ATOL = 1e3 * np.finfo(np.array([1.]).dtype).eps
+_NO_JWST_SUPPORT = not (_ASTROPY_VER_GE_4 and _GWCS_VER_GT_0P12)
 
 
 def test_tpwcs():

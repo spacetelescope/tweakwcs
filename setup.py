@@ -67,7 +67,6 @@ PACKAGE_DATA = {
 INSTALL_REQUIRES = [
     'numpy',
     'astropy>=3.1',
-    'gwcs',
     'stsci.stimage',
     'stsci.imagestats',
     'spherical_geometry',

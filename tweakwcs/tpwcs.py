@@ -14,13 +14,27 @@ from abc import ABC, abstractmethod
 from distutils.version import LooseVersion
 
 import numpy as np
-import gwcs
+import astropy
 
-from astropy.modeling import CompoundModel
-from astropy.modeling.models import (
-    AffineTransformation2D, Scale, Identity, Mapping, Const1D,
-    RotationSequence3D
-)
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+except ImportError:
+    _GWCS_VER_GT_0P12 = False
+
+if LooseVersion(astropy.__version__) >= '4.0':
+    _ASTROPY_VER_GE_4 = True
+    from astropy.modeling import CompoundModel
+    from astropy.modeling.models import (
+        AffineTransformation2D, Scale, Identity, Mapping, Const1D,
+        RotationSequence3D
+    )
+else:
+    _ASTROPY_VER_GE_4 = False
 
 from .linalg import inv
 from . import __version__  # noqa: F401
@@ -34,18 +48,6 @@ log.setLevel(logging.DEBUG)
 
 _RAD2ARCSEC = 3600.0 * np.rad2deg(1.0)
 _ARCSEC2RAD = 1.0 / _RAD2ARCSEC
-
-
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-    _JWST_SUPPORT = True
-else:
-    _JWST_SUPPORT = False
-    log.warning(
-        "JWST support requires gwcs version > 12.1. "
-        "To pip install minimal required version, do the following:\n"
-        "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
-    )
 
 
 def _tp2tp(tpwcs1, tpwcs2, s=None):
@@ -564,11 +566,17 @@ class JWSTgWCS(TPWCS):
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
-        if not _JWST_SUPPORT:
+        if not _ASTROPY_VER_GE_4:
             raise NotImplementedError(
-                "JWST support requires gwcs version > 12.1. "
+                "JWST support requires astropy version >= 4.0"
+            )
+
+        if not _GWCS_VER_GT_0P12:
+            raise NotImplementedError(
+                "JWST support requires gwcs version > 0.12.0 "
                 "To pip install minimal required version, do the following:\n"
-                "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
+                "pip install git+https://github.com/spacetelescope/gwcs@"
+                "1c1cb3bb35caddef80fb760ea68bc71e189d32de"
             )
 
         valid, message = self._check_wcs_structure(wcs)
