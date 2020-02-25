@@ -418,7 +418,10 @@ class FITSWCS(TPWCS):
         # initial approximation for CD matrix of the image WCS:
         (U, u) = self._linearize(orig_wcs, ref_tpwcs, wcs.wcs.crpix,
                                  matrix, shift, hx=hx, hy=hy)
-        wcs.wcs.cd = np.dot(wcs.wcs.cd, U).astype(np.double)
+        if hasattr(wcs.wcs, 'pc'):
+            wcs.wcs.pc = np.dot(wcs.wcs.pc, U).astype(np.double)
+        else:
+            wcs.wcs.cd = np.dot(wcs.wcs.cd, U).astype(np.double)
         wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
