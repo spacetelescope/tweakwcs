@@ -12,12 +12,37 @@ from astropy.modeling import Model, Parameter
 from astropy.modeling.models import AffineTransformation2D
 from astropy import coordinates as coord
 from astropy import units as u
-import gwcs
 
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+except (ImportError, ModuleNotFoundError):
+    _GWCS_VER_GT_0P12 = False
+
+if _GWCS_VER_GT_0P12:
     _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
     _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
+
+else:
+    def _S2C(phi, theta):
+        phi = np.deg2rad(phi)
+        theta = np.deg2rad(theta)
+        cs = np.cos(theta)
+        x = cs * np.cos(phi)
+        y = cs * np.sin(phi)
+        z = np.sin(theta)
+        return x, y, z
+
+    def _C2S(x, y, z):
+        h = np.hypot(x, y)
+        phi = np.rad2deg(np.arctan2(y, x))
+        theta = np.rad2deg(np.arctan2(z, h))
+        return phi, theta
+
 
 from tweakwcs.tpwcs import TPWCS, JWSTgWCS
 
