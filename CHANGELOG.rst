@@ -11,6 +11,10 @@ Release Notes
 0.6.0 (unreleased)
 ==================
 
+
+- Support FITS WCS that use ``PC`` matrix instead of the ``CD`` matrix
+  used in HSTs WCS. [#108]
+
 - Bug fix for alignment of multi-chip FITS images: correction of how
   transformations from the reference tangent plane are converted to
   individual images' tangent planes. [#106]
