@@ -11,6 +11,9 @@ Release Notes
 0.6.0 (unreleased)
 ==================
 
+- Fix a possible crash when aligning FITS WCS images due to an unusual way
+  ``stwcs.wcsutil.all_world2pix`` handles (or not) scalar arguments. [#110]
+
 - Modified the angle at which the reported rotation angles are reported.
   Now rotation angles have the range ``[-180, 180]`` degrees. [#109]
 
