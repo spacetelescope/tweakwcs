@@ -8,8 +8,8 @@ Release Notes
    ==================
 
 
-0.6.0 (unreleased)
-==================
+0.6.0 (25-February-2020)
+========================
 
 - Fix a possible crash when aligning FITS WCS images due to an unusual way
   ``stwcs.wcsutil.all_world2pix`` handles (or not) scalar arguments. [#110]
