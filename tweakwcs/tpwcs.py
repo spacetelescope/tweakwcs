@@ -250,6 +250,10 @@ class TPWCS(ABC):
             corresponding to the origin of the tangent plane.
 
         """
+        pscale = self._get_tanp_center_pixel_scale()
+        return pscale
+
+    def _get_tanp_center_pixel_scale(self):
         x, y = self.tanp_to_det(0.0, 0.0)
         pscale = self.tanp_pixel_scale(x, y)
         return pscale
@@ -349,6 +353,10 @@ class FITSWCS(TPWCS):
             return False, "'WCS.pix2foc()' does not include all distortions."
 
         return True, ''
+
+    def _get_tanp_center_pixel_scale(self):
+        pscale = self.tanp_pixel_scale(*self._wcs.wcs.crpix)
+        return pscale
 
     def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
                        ref_tpwcs=None, meta=None, **kwargs):
@@ -458,8 +466,16 @@ class FITSWCS(TPWCS):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
+        ndim = np.ndim(x)
         ra, dec = self._wcs.wcs_pix2world(x, y, 0)
+        if not ndim:
+            # deal with a bug/feature in stwcs' all_world2pix v.1.5.3
+            ra = np.atleast_1d(ra)
+            dec = np.atleast_1d(dec)
         x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
+        if not ndim:
+            x = float(x)
+            y = float(y)
         return x, y
 
     def world_to_tanp(self, ra, dec):
