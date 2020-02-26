@@ -702,12 +702,9 @@ def _build_fit(p, q, fitgeom):
     # Compute rotation angle as if we have a proper rotation.
     # This will also act as *some sort* of "average rotation" even for
     # transformations with different rot_x and rot_y:
-    prop_rot = np.mod(
-        np.rad2deg(
-            np.arctan2(wfit[0, 1] - sdet * wfit[1, 0],
-                       wfit[0, 0] + sdet * wfit[1, 1])
-        ),
-        360.0
+    prop_rot = np.rad2deg(
+        np.arctan2(wfit[0, 1] - sdet * wfit[1, 0],
+                   wfit[0, 0] + sdet * wfit[1, 1])
     )
 
     if proper and fitgeom == 'rscale':
@@ -716,9 +713,9 @@ def _build_fit(p, q, fitgeom):
         rot = prop_rot
 
     else:
-        rotx = np.mod(np.rad2deg(np.arctan2(-wfit[1, 0], wfit[0, 0])), 360.0)
-        roty = np.mod(np.rad2deg(np.arctan2(wfit[0, 1], wfit[1, 1])), 360.0)
-        rot = np.mod(0.5 * (rotx + roty), 360.0)
+        rotx = np.rad2deg(np.arctan2(-wfit[1, 0], wfit[0, 0]))
+        roty = np.rad2deg(np.arctan2(wfit[0, 1], wfit[1, 1]))
+        rot = 0.5 * (rotx + roty)
         skew = np.mod(roty - rotx - 180.0, 360.0) - 180.0
 
     fit = {

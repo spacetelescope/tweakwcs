@@ -8,8 +8,17 @@ Release Notes
    ==================
 
 
-0.6.0 (unreleased)
-==================
+0.6.0 (25-February-2020)
+========================
+
+- Fix a possible crash when aligning FITS WCS images due to an unusual way
+  ``stwcs.wcsutil.all_world2pix`` handles (or not) scalar arguments. [#110]
+
+- Modified the angle at which the reported rotation angles are reported.
+  Now rotation angles have the range ``[-180, 180]`` degrees. [#109]
+
+- Added support FITS WCS that use ``PC`` matrix instead of the ``CD`` matrix
+  used in HSTs WCS. [#108]
 
 - Bug fix for alignment of multi-chip FITS images: correction of how
   transformations from the reference tangent plane are converted to

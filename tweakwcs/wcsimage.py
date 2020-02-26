@@ -22,9 +22,19 @@ try:
 except ImportError:
     distance = None
 
-import gwcs
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+
+except ImportError:
+    _GWCS_VER_GT_0P12 = False
+
+
+if _GWCS_VER_GT_0P12:
     _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
     _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 

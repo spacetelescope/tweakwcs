@@ -14,13 +14,27 @@ from abc import ABC, abstractmethod
 from distutils.version import LooseVersion
 
 import numpy as np
-import gwcs
+import astropy
 
-from astropy.modeling import CompoundModel
-from astropy.modeling.models import (
-    AffineTransformation2D, Scale, Identity, Mapping, Const1D,
-    RotationSequence3D
-)
+try:
+    import gwcs
+    if LooseVersion(gwcs.__version__) > '0.12.0':
+        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
+        _GWCS_VER_GT_0P12 = True
+    else:
+        _GWCS_VER_GT_0P12 = False
+except ImportError:
+    _GWCS_VER_GT_0P12 = False
+
+if LooseVersion(astropy.__version__) >= '4.0':
+    _ASTROPY_VER_GE_4 = True
+    from astropy.modeling import CompoundModel
+    from astropy.modeling.models import (
+        AffineTransformation2D, Scale, Identity, Mapping, Const1D,
+        RotationSequence3D
+    )
+else:
+    _ASTROPY_VER_GE_4 = False
 
 from .linalg import inv
 from . import __version__  # noqa: F401
@@ -34,18 +48,6 @@ log.setLevel(logging.DEBUG)
 
 _RAD2ARCSEC = 3600.0 * np.rad2deg(1.0)
 _ARCSEC2RAD = 1.0 / _RAD2ARCSEC
-
-
-if LooseVersion(gwcs.__version__) > '0.12.0':
-    from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-    _JWST_SUPPORT = True
-else:
-    _JWST_SUPPORT = False
-    log.warning(
-        "JWST support requires gwcs version > 12.1. "
-        "To pip install minimal required version, do the following:\n"
-        "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
-    )
 
 
 def _tp2tp(tpwcs1, tpwcs2, s=None):
@@ -248,6 +250,10 @@ class TPWCS(ABC):
             corresponding to the origin of the tangent plane.
 
         """
+        pscale = self._get_tanp_center_pixel_scale()
+        return pscale
+
+    def _get_tanp_center_pixel_scale(self):
         x, y = self.tanp_to_det(0.0, 0.0)
         pscale = self.tanp_pixel_scale(x, y)
         return pscale
@@ -348,6 +354,10 @@ class FITSWCS(TPWCS):
 
         return True, ''
 
+    def _get_tanp_center_pixel_scale(self):
+        pscale = self.tanp_pixel_scale(*self._wcs.wcs.crpix)
+        return pscale
+
     def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
                        ref_tpwcs=None, meta=None, **kwargs):
         """
@@ -416,7 +426,10 @@ class FITSWCS(TPWCS):
         # initial approximation for CD matrix of the image WCS:
         (U, u) = self._linearize(orig_wcs, ref_tpwcs, wcs.wcs.crpix,
                                  matrix, shift, hx=hx, hy=hy)
-        wcs.wcs.cd = np.dot(wcs.wcs.cd, U).astype(np.double)
+        if hasattr(wcs.wcs, 'pc'):
+            wcs.wcs.pc = np.dot(wcs.wcs.pc, U).astype(np.double)
+        else:
+            wcs.wcs.cd = np.dot(wcs.wcs.cd, U).astype(np.double)
         wcs.wcs.set()
 
         # save linear transformation info to the meta attribute:
@@ -453,8 +466,16 @@ class FITSWCS(TPWCS):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
+        ndim = np.ndim(x)
         ra, dec = self._wcs.wcs_pix2world(x, y, 0)
+        if not ndim:
+            # deal with a bug/feature in stwcs' all_world2pix v.1.5.3
+            ra = np.atleast_1d(ra)
+            dec = np.atleast_1d(dec)
         x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
+        if not ndim:
+            x = float(x)
+            y = float(y)
         return x, y
 
     def world_to_tanp(self, ra, dec):
@@ -564,11 +585,17 @@ class JWSTgWCS(TPWCS):
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
-        if not _JWST_SUPPORT:
+        if not _ASTROPY_VER_GE_4:
             raise NotImplementedError(
-                "JWST support requires gwcs version > 12.1. "
+                "JWST support requires astropy version >= 4.0"
+            )
+
+        if not _GWCS_VER_GT_0P12:
+            raise NotImplementedError(
+                "JWST support requires gwcs version > 0.12.0 "
                 "To pip install minimal required version, do the following:\n"
-                "pip install git+https://github.com/spacetelescope/gwcs@f638a8d"
+                "pip install git+https://github.com/spacetelescope/gwcs@"
+                "1c1cb3bb35caddef80fb760ea68bc71e189d32de"
             )
 
         valid, message = self._check_wcs_structure(wcs)
