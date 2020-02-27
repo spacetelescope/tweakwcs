@@ -39,9 +39,9 @@ jobs:
       displayName: Pip on Windows
 
       # Some namespace packages require but do not provide stsci.distutils.
+      # $(PIP_INSTALL) git+https://github.com/spacetelescope/jwst@stable
     - script: |
         $(PIP_INSTALL) pip numpy stsci.distutils d2to1
-        $(PIP_INSTALL) git+https://github.com/spacetelescope/jwst
       displayName: install dependencies
 
     - script: |
