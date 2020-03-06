@@ -36,7 +36,7 @@ from .helper_tpwcs import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
                            DummyTPWCS, create_DetToV2V3, create_V2V3ToDet)
 
 
-_ATOL = 1e3 * np.finfo(np.array([1.]).dtype).eps
+_ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
 _NO_JWST_SUPPORT = not (_ASTROPY_VER_GE_4 and _GWCS_VER_GT_0P12)
 
 
@@ -121,11 +121,11 @@ def test_v2v3todet_roundtrips():
         np.allclose(
             s2c(*v2d.inverse(*v2d(v2, v3))),
             s2c(v2, v3),
-            rtol=1e5 * _ATOL, atol=_ATOL
+            rtol=1e3 * _ATOL, atol=_ATOL
         ) or np.allclose(
             -np.asanyarray(s2c(*v2d.inverse(*v2d(v2, v3)))),
             s2c(v2, v3),
-            rtol=1e5 * _ATOL, atol=_ATOL
+            rtol=1e3 * _ATOL, atol=_ATOL
         )
     )
     assert np.allclose(v2d(*d2v(x, y)), (x, y),
@@ -272,8 +272,8 @@ def test_jwstgwcs_tangent_to_world(inputs):
     wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
     tanp_x, tanp_y, ra, dec = inputs
-    assert np.allclose(wc.world_to_tanp(ra, dec), (tanp_x, tanp_y), atol=100 * _ATOL)
-    assert np.allclose(wc.tanp_to_world(tanp_x, tanp_y), (ra, dec), atol=100 * _ATOL)
+    assert np.allclose(wc.world_to_tanp(ra, dec), (tanp_x, tanp_y), atol=1000 * _ATOL)
+    assert np.allclose(wc.tanp_to_world(tanp_x, tanp_y), (ra, dec), atol=_ATOL)
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
@@ -291,7 +291,7 @@ def test_jwstgwcs_detector_to_tanp(inputs):
     wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
     x, y, tanp_x, tanp_y = inputs
-    assert np.allclose(wc.det_to_tanp(x, y), (tanp_x, tanp_y), atol=_ATOL)
+    assert np.allclose(wc.det_to_tanp(x, y), (tanp_x, tanp_y), atol=10 * _ATOL)
     assert np.allclose(wc.tanp_to_det(tanp_x, tanp_y), (x, y), atol=_ATOL)
 
 
