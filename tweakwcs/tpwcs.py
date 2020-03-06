@@ -54,21 +54,26 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
     x = np.array([0.0, 1.0, 0.0], dtype=np.double)
     y = np.array([0.0, 0.0, 1.0], dtype=np.double)
 
+    if 'fit_info' in tpwcs1.meta:
+        center = np.array(tpwcs1.meta['fit_info']['center'])
+    else:
+        center = np.zeros(2)
+
     if s is None:
-        xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(x, y))
+        xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(center[0] + x, center[1] + y))
         m = np.array([(xt[1:] - xt[0]), (yt[1:] - yt[0])])
         s = np.sqrt(np.fabs(np.linalg.det(m)))
 
     x *= s
     y *= s
 
-    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x, y))
+    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(center[0] + x, center[1] + y))
 
     xrp = np.array(xrp, np.longdouble)
     yrp = np.array(yrp, np.longdouble)
 
     matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])]) / s
-    shift = -np.dot(inv(matrix), [xrp[0], yrp[0]])
+    shift = np.array([xrp[0], yrp[0]])
 
     return matrix, shift
 
@@ -659,7 +664,7 @@ class JWSTgWCS(TPWCS):
     @staticmethod
     def _check_tpcorr_structure(tpcorr):
         # implement a more sophisticated check later
-        if tpcorr.name != 'jwst tangent-plane linear correction. v1':
+        if tpcorr.name != 'JWST tangent-plane linear correction. v1':
             return False
         return True
 
@@ -669,13 +674,22 @@ class JWSTgWCS(TPWCS):
         detname = self._wcs.pipeline[0][0].name
         worldname = self._wcs.pipeline[-1][0].name
 
+        # Generally needed transformations:
         self._world_to_v23 = self._wcs.get_transform(worldname, self._v23name)
         self._v23_to_world = self._wcs.get_transform(self._v23name, worldname)
         self._det_to_v23 = self._wcs.get_transform(detname, self._v23name)
-        self._v23_to_det = self._wcs.get_transform(self._v23name, detname)
-
         self._det_to_world = self._wcs.__call__
-        self._world_to_det = self._wcs.invert
+
+        # Optional / convenience transformations:
+        try:
+            self._v23_to_det = self._wcs.get_transform(self._v23name, detname)
+        except NotImplementedError:
+            self._v23_to_det = None
+
+        try:
+            self._world_to_det = self._wcs.invert
+        except NotImplementedError:
+            self._world_to_det = None
 
     @staticmethod
     def _tpcorr_combine_affines(tpcorr, matrix, shift):
@@ -684,6 +698,11 @@ class JWSTgWCS(TPWCS):
         t = np.dot(matrix, tpcorr['tp_affine'].translation.value) + shift
         tpcorr['tp_affine'].matrix = m
         tpcorr['tp_affine'].translation = t
+
+        # update the affine transformation of the inverse model as well:
+        invm = np.linalg.inv(m)
+        tpcorr.inverse['tp_affine_inv'].matrix = invm
+        tpcorr.inverse['tp_affine_inv'].translation = -np.dot(invm, t)
 
     @staticmethod
     def _tpcorr_init(v2_ref, v3_ref, roll_ref):
@@ -713,7 +732,7 @@ class JWSTgWCS(TPWCS):
         c2tan = ((Mapping((0, 1, 2), name='xyz') /
                   Mapping((0, 0, 0), n_inputs=3, name='xxx')) |
                  Mapping((1, 2), name='xtyt'))
-        c2tan.name = 'cartesian 3D to TAN'
+        c2tan.name = 'Cartesian 3D to TAN'
         tan2c = (Mapping((0, 0, 1), n_inputs=2, name='xtyt2xyz') |
                  (Const1D(1, name='one') & Identity(2, name='I(2D)')))
         tan2c.name = 'TAN to cartesian 3D'
@@ -722,13 +741,13 @@ class JWSTgWCS(TPWCS):
             unit_conv | s2c | rot | c2tan | affine |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        total_corr.name = 'jwst tangent-plane linear correction. v1'
+        total_corr.name = 'JWST tangent-plane linear correction. v1'
 
         inv_total_corr = (
             unit_conv | s2c | rot | c2tan | affine_inv |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        inv_total_corr.name = 'inverse jwst tangent-plane linear correction. v1'
+        inv_total_corr.name = 'Inverse JWST tangent-plane linear correction. v1'
 
         # TODO
         # re-enable circular inverse definitions once
@@ -754,7 +773,7 @@ class JWSTgWCS(TPWCS):
         rot_inv = rot.inverse
         rot_inv.name = 'optic_axis_to_det'
 
-        c2tan = _get_submodel(tpcorr, 'cartesian 3D to TAN')
+        c2tan = _get_submodel(tpcorr, 'Cartesian 3D to TAN')
         tan2c = _get_submodel(tpcorr, 'TAN to cartesian 3D')
 
         v2v3_to_tpcorr = unit_conv | s2c | rot | c2tan | affine
@@ -816,8 +835,8 @@ class JWSTgWCS(TPWCS):
             # compute linear transformation from the tangent plane used for
             # alignment to the tangent plane of this wcs:
             r, t = _tp2tp(ref_tpwcs, self)
-            shift = np.dot(r, shift + np.dot(matrix, t) - t).astype(np.double)
             matrix = np.linalg.multi_dot([r, matrix, inv(r)]).astype(np.double)
+            shift = (np.dot(r, shift) - np.dot(matrix, t) + t).astype(np.double)
 
         # if original WCS did not have tangent-plane corrections, create
         # new correction and add it to the WCs pipeline:
@@ -937,6 +956,9 @@ class JWSTgWCS(TPWCS):
         (i.e., including distortions) transformations.
 
         """
+        if self._world_to_det is None:
+            raise NotImplementedError("World to detector transformation has "
+                                      "not been implemented.")
         x, y = self._world_to_det(ra, dec)
         return x, y
 
@@ -954,6 +976,12 @@ class JWSTgWCS(TPWCS):
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
+        if self._partial_tpcorr.inverse is None or self._v23_to_det is None:
+            raise NotImplementedError(
+                "Tangent plane to detector transformation has not been "
+                "implemented."
+            )
+
         v2, v3 = self._partial_tpcorr.inverse(
             _ARCSEC2RAD * np.asanyarray(x),
             _ARCSEC2RAD * np.asanyarray(y)
