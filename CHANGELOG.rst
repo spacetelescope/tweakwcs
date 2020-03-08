@@ -8,7 +8,7 @@ Release Notes
    ==================
 
 
-0.6.1 (06-March-2020)
+0.6.1 (09-March-2020)
 =====================
 
 - Fixed a bug in applying JWST correction for the case when alignment is

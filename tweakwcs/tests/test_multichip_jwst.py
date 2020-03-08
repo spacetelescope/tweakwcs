@@ -74,7 +74,7 @@ def _make_gwcs_wcs(fits_hdr):
     unit_conv_inv = unit_conv_inv & unit_conv_inv
     unit_conv_inv.name = 'deg_to_arcsec_2D'
 
-    c2s = CartesianToSpherical(name='c2s')
+    c2s = CartesianToSpherical(name='c2s', wrap_lon_at=180)
     s2c = SphericalToCartesian(name='s2c', wrap_lon_at=180)
     c2tan = ((Mapping((0, 1, 2), name='xyz') /
               Mapping((0, 0, 0), n_inputs=3, name='xxx')) |
