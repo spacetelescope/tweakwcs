@@ -8,12 +8,21 @@ Release Notes
    ==================
 
 
+0.6.2 (unreleased)
+==================
+
+- Adjust the point at which tangent plane-to-tangent plane transformation
+  is computed by 1/2 pixels for JWST corrections. This correction should
+  have no measurable impact on computed corrections. [#115]
+
+
 0.6.1 (09-March-2020)
 =====================
 
 - Fixed a bug in applying JWST correction for the case when alignment is
   performed twice on the same image. Due to this bug the inverse transformation
   was not updated. [#112]
+
 
 0.6.0 (25-February-2020)
 ========================

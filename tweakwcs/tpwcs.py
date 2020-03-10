@@ -51,8 +51,8 @@ _ARCSEC2RAD = 1.0 / _RAD2ARCSEC
 
 
 def _tp2tp(tpwcs1, tpwcs2, s=None):
-    x = np.array([0.0, 1.0, 0.0], dtype=np.double)
-    y = np.array([0.0, 0.0, 1.0], dtype=np.double)
+    x = np.array([-0.5, 0.5, -0.5, 0.0], dtype=np.double)
+    y = np.array([-0.5, -0.5, 0.5, 0.0], dtype=np.double)
 
     if 'fit_info' in tpwcs1.meta:
         center = np.array(tpwcs1.meta['fit_info']['center'])
@@ -61,7 +61,7 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
 
     if s is None:
         xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(center[0] + x, center[1] + y))
-        m = np.array([(xt[1:] - xt[0]), (yt[1:] - yt[0])])
+        m = np.array([(xt[1:-1] - xt[0]), (yt[1:-1] - yt[0])])
         s = np.sqrt(np.fabs(np.linalg.det(m)))
 
     x *= s
@@ -72,8 +72,8 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
     xrp = np.array(xrp, np.longdouble)
     yrp = np.array(yrp, np.longdouble)
 
-    matrix = np.array([(xrp[1:] - xrp[0]), (yrp[1:] - yrp[0])]) / s
-    shift = np.array([xrp[0], yrp[0]])
+    matrix = np.array([(xrp[1:-1] - xrp[0]), (yrp[1:-1] - yrp[0])]) / s
+    shift = np.array([xrp[-1], yrp[-1]])
 
     return matrix, shift
 
