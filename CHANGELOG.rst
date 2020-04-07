@@ -8,8 +8,11 @@ Release Notes
    ==================
 
 
-0.6.2 (unreleased)
-==================
+0.6.2 (07-April-2020)
+=====================
+
+- When WCS has valid bounding box, estimate scale at the center of the
+  bounding box. [#117]
 
 - Adjust the point at which tangent plane-to-tangent plane transformation
   is computed by 1/2 pixels for JWST corrections. This correction should
