@@ -57,7 +57,13 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
     if 'fit_info' in tpwcs1.meta:
         center = np.array(tpwcs1.meta['fit_info']['center'])
     else:
-        center = np.zeros(2)
+        if tpwcs2.wcs.pixel_bounds is None:
+            # TODO: A pissible improvement would be to get an estimate
+            #       of "center" (where scale is estimated) from source
+            #       positions (if any).
+            center = np.zeros(2)
+        else:
+            center = np.mean(tpwcs2.wcs.pixel_bounds, axis=1)
 
     if s is None:
         xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(center[0] + x, center[1] + y))
