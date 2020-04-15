@@ -70,10 +70,7 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
         m = np.array([(xt[1:-1] - xt[0]), (yt[1:-1] - yt[0])])
         s = np.sqrt(np.fabs(np.linalg.det(m)))
 
-    x *= s
-    y *= s
-
-    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(center[0] + x, center[1] + y))
+    xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x * s, y * s))
 
     xrp = np.array(xrp, np.longdouble)
     yrp = np.array(yrp, np.longdouble)
