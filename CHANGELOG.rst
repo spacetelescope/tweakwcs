@@ -8,6 +8,13 @@ Release Notes
    ==================
 
 
+0.6.3 (14-April-2020)
+=====================
+
+- Fixed a bug due to which reprojection transformation for JWST gWCS was
+  computed at wrong location in the tangent plane. [#118]
+
+
 0.6.2 (07-April-2020)
 =====================
 
