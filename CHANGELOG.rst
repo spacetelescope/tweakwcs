@@ -7,6 +7,12 @@ Release Notes
 .. 0.7.0 (unreleased)
    ==================
 
+0.6.4 (unreleased)
+==================
+
+- Do not attempt to extract center of linear transformation when not available
+  in ``'fit_info'``. [#119]
+
 
 0.6.3 (14-April-2020)
 =====================
