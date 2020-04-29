@@ -54,11 +54,11 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
     x = np.array([-0.5, 0.5, -0.5, 0.0], dtype=np.double)
     y = np.array([-0.5, -0.5, 0.5, 0.0], dtype=np.double)
 
-    if 'fit_info' in tpwcs1.meta:
+    if 'fit_info' in tpwcs1.meta and 'center' in tpwcs1.meta['fit_info']:
         center = np.array(tpwcs1.meta['fit_info']['center'])
     else:
         if tpwcs2.wcs.pixel_bounds is None:
-            # TODO: A pissible improvement would be to get an estimate
+            # TODO: A possible improvement would be to get an estimate
             #       of "center" (where scale is estimated) from source
             #       positions (if any).
             center = np.zeros(2)
