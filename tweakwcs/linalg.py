@@ -151,7 +151,7 @@ def inv(m):
         invm[k, :] /= pv
         w = invm[k, :]
 
-        for l in range(k + 1, order):
+        for l in range(k + 1, order):  # noqa: E741
             pv2 = m[l, k]
             m[l, (k + 1):] -= pv2 * r
             m[l, k] = 0.0

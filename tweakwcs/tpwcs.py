@@ -871,28 +871,13 @@ class JWSTgWCS(TPWCS):
         else:
             # combine old and new corrections into a single one and replace
             # old transformation with the combined correction transformation:
-            v2ref, v3ref, roll = self._tpcorr['det_to_optic_axis'].angles.value
-
-            tpcorr2 = JWSTgWCS._tpcorr_init(
-                v2_ref=v2ref,
-                v3_ref=v3ref,
-                roll_ref=roll
-            )
-
             JWSTgWCS._tpcorr_combine_affines(
-                tpcorr2,
+                self._tpcorr,
                 matrix,
                 _ARCSEC2RAD * np.asarray(shift)
             )
 
-            JWSTgWCS._tpcorr_combine_affines(
-                tpcorr2,
-                self._tpcorr['tp_affine'].matrix.value,
-                self._tpcorr['tp_affine'].translation.value
-            )
-
-            self._tpcorr = tpcorr2
-            self._partial_tpcorr = JWSTgWCS._v2v3_to_tpcorr_from_full(tpcorr2)
+            self._partial_tpcorr = JWSTgWCS._v2v3_to_tpcorr_from_full(self._tpcorr)
 
             idx_v2v3 = frms.index(self._v23name)
             pipeline = deepcopy(self._wcs.pipeline)
