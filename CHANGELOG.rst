@@ -7,8 +7,12 @@ Release Notes
 .. 0.7.0 (unreleased)
    ==================
 
-0.6.4 (unreleased)
-==================
+
+0.6.4 (14-May-2020)
+===================
+
+- Fix a bug in how corrections are applied to a previously corrected
+  JWST WCS. [#120]
 
 - Do not attempt to extract center of linear transformation when not available
   in ``'fit_info'``. [#119]
