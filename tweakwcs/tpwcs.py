@@ -766,8 +766,21 @@ class JWSTgWCS(TPWCS):
     def _v2v3_to_tpcorr_from_full(tpcorr):
         s2c = tpcorr['s2c']
         c2s = tpcorr['c2s']
-        unit_conv = _get_submodel(tpcorr, 'arcsec_to_deg_2D')
-        unit_conv_inv = _get_submodel(tpcorr, 'deg_to_arcsec_2D')
+
+        # unit_conv = _get_submodel(tpcorr, 'arcsec_to_deg_2D')
+        # unit_conv_inv = _get_submodel(tpcorr, 'deg_to_arcsec_2D')
+        #
+        # The code below is a work-around to the code above not working.
+        # TODO: understand why _get_submodel is unable to retrieve
+        #       some submodels in a compound model.
+        #
+        unit_conv = _get_submodel(tpcorr, 'arcsec_to_deg_1D')
+        unit_conv = unit_conv & unit_conv
+        unit_conv.name = 'arcsec_to_deg_2D'
+        unit_conv_inv = _get_submodel(tpcorr, 'deg_to_arcsec_1D')
+        unit_conv_inv = unit_conv_inv & unit_conv_inv
+        unit_conv_inv.name = 'deg_to_arcsec_2D'
+
         affine = tpcorr['tp_affine']
         affine_inv = affine.inverse
         affine_inv.name = 'tp_affine_inv'
@@ -776,8 +789,20 @@ class JWSTgWCS(TPWCS):
         rot_inv = rot.inverse
         rot_inv.name = 'optic_axis_to_det'
 
-        c2tan = _get_submodel(tpcorr, 'Cartesian 3D to TAN')
-        tan2c = _get_submodel(tpcorr, 'TAN to cartesian 3D')
+        # c2tan = _get_submodel(tpcorr, 'Cartesian 3D to TAN')
+        # tan2c = _get_submodel(tpcorr, 'TAN to cartesian 3D')
+        #
+        # The code below is a work-around to the code above not working.
+        # TODO: understand why _get_submodel is unable to retrieve
+        #       some submodels in a compound model.
+        #
+        c2tan = ((Mapping((0, 1, 2), name='xyz') /
+                  Mapping((0, 0, 0), n_inputs=3, name='xxx')) |
+                 Mapping((1, 2), name='xtyt'))
+        c2tan.name = 'Cartesian 3D to TAN'
+        tan2c = (Mapping((0, 0, 1), n_inputs=2, name='xtyt2xyz') |
+                 (Const1D(1, name='one') & Identity(2, name='I(2D)')))
+        tan2c.name = 'TAN to cartesian 3D'
 
         v2v3_to_tpcorr = unit_conv | s2c | rot | c2tan | affine
         v2v3_to_tpcorr.name = 'jwst_v2v3_to_tpcorr'
