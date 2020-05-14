@@ -11,6 +11,9 @@ Release Notes
 0.6.4 (14-May-2020)
 ===================
 
+- Bug fix: Unable to initialize ``JWSTgWCS`` tangent-plane corrector from an
+  already corrected WCS. [#122]
+
 - Fix a bug in how corrections are applied to a previously corrected
   JWST WCS. [#120]
 
