@@ -245,7 +245,8 @@ def test_align_wcs_simple_twpwcs_ref(mock_fits_wcs):
     refcat = Table(xyr, names=('x', 'y'))
     tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
     reftpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': refcat})
-    status = align_wcs(tpwcs, reftpwcs, fitgeom='general', match=None)
+    status = align_wcs(tpwcs, reftpwcs, ref_tpwcs=tpwcs,
+                       fitgeom='general', match=None)
 
     assert status
     assert tpwcs.meta['fit_info']['status'] == 'SUCCESS'

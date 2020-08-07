@@ -16,6 +16,7 @@ from distutils.version import LooseVersion
 
 import numpy as np
 from astropy import table
+from astropy.utils.decorators import deprecated_renamed_argument
 from spherical_geometry.polygon import SphericalPolygon
 
 try:
@@ -748,8 +749,8 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs: ImageGWCS
-            A `ImageGWCS` object that will provide transformations to
+        tanplane_wcs: TPWCS
+            A `TPWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
@@ -864,8 +865,8 @@ class WCSGroupCatalog(object):
         refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
-        tanplane_wcs: ImageGWCS
-            A `ImageGWCS` object that will provide transformations to
+        tanplane_wcs: TPWCS
+            A `TPWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
@@ -1005,12 +1006,13 @@ class WCSGroupCatalog(object):
 
         return fit
 
-    def apply_affine_to_wcs(self, tanplane_wcs, matrix, shift, meta=None):
+    @deprecated_renamed_argument('tanplane_wcs', 'ref_tpwcs', since='0.6.5')
+    def apply_affine_to_wcs(self, ref_tpwcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS. """
         for imcat in self:
-            imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=tanplane_wcs, meta=meta)
+            imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=ref_tpwcs, meta=meta)
 
-    def align_to_ref(self, refcat, match=None, minobj=None,
+    def align_to_ref(self, refcat, ref_tpwcs=None, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
         """
         Matches sources from the image catalog to the sources in the
@@ -1082,8 +1084,11 @@ class WCSGroupCatalog(object):
         Parameters
         ----------
         refcat: RefCatalog
-            A `RefCatalog` object that contains a catalog of reference sources
-            as well as a valid reference WCS.
+            A `RefCatalog` object that contains a catalog of reference sources.
+
+        ref_tpwcs : TPWCS
+            A `TPWCS` object that defines a projection tangent plane to be
+            used for matching and fitting during alignment.
 
         match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
@@ -1126,7 +1131,6 @@ class WCSGroupCatalog(object):
             This parameter is ignored when ``nclip`` is either `None` or 0
             or when ``match`` is `False`.
 
-
         Returns
         -------
         bool
@@ -1154,10 +1158,11 @@ class WCSGroupCatalog(object):
             else:
                 minobj = 1
 
-        tanplane_wcs = deepcopy(self._images[0].tpwcs)
+        if ref_tpwcs is None:
+            ref_tpwcs = deepcopy(self._images[0].tpwcs)
 
-        self.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
-        refcat.calc_tanp_xy(tanplane_wcs=tanplane_wcs)
+        self.calc_tanp_xy(tanplane_wcs=ref_tpwcs)
+        refcat.calc_tanp_xy(tanplane_wcs=ref_tpwcs)
 
         nmatches, mref_idx, minput_idx = self.match2ref(
             refcat=refcat,
@@ -1172,7 +1177,7 @@ class WCSGroupCatalog(object):
                 imcat.fit_status = 'FAILED: not enough matches'
             return False
 
-        fit = self.fit2ref(refcat=refcat, tanplane_wcs=tanplane_wcs,
+        fit = self.fit2ref(refcat=refcat, tanplane_wcs=ref_tpwcs,
                            fitgeom=fitgeom, nclip=nclip, sigma=sigma)
 
         fit_info = {
@@ -1204,7 +1209,7 @@ class WCSGroupCatalog(object):
             })
 
         self.apply_affine_to_wcs(
-            tanplane_wcs=tanplane_wcs,
+            ref_tpwcs=ref_tpwcs,
             matrix=fit['matrix'],
             shift=fit['shift'],
             # meta=meta
@@ -1264,7 +1269,7 @@ class RefCatalog(object):
 
     @property
     def name(self):
-        """ Get/set :py:class:`WCSImageCatalog` object's name.
+        """ Get/set :py:class:`RefCatalog` object's name.
         """
         return self._name
 
@@ -1507,8 +1512,8 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs: ImageGWCS
-            A `ImageGWCS` object that will provide transformations to
+        tanplane_wcs: TPWCS
+            A `TPWCS` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 

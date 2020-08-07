@@ -38,12 +38,6 @@ jobs:
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
       displayName: Pip on Windows
 
-      # Some namespace packages require but do not provide stsci.distutils.
-      # $(PIP_INSTALL) git+https://github.com/spacetelescope/jwst@stable
-    - script: |
-        $(PIP_INSTALL) pip numpy stsci.distutils d2to1
-      displayName: install dependencies
-
     - script: |
         $(PIP_INSTALL) -e .[test]
       displayName: build package

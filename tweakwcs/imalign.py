@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
+def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
             sigma=(3.0, 'rmse')):
     """ "Tweak" **a single** image's ``WCS`` by fitting image catalog to a
     reference catalog. This is a simplified version of `align_wcs` that does
@@ -73,6 +73,12 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
         This ``TPWCS``-subclassed WCS corrector object must also define
         a tangent plane that will be used for fitting the two catalogs'
         sources and in which WCS corrections will be applied.
+
+    ref_tpwcs: TPWCS, None, optional
+        A reference WCS of the type ``TPWCS`` that provides the tangent
+        plane in which matching will be performed and corrections will be
+        defined. When not provided (i.e., set to `None`), reference tangent
+        plane will be the same as defined by ``tpwcs`` argument.
 
     fitgeom: {'shift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
@@ -238,8 +244,15 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     wgcat = WCSGroupCatalog(wimcat, name=imcat.meta.get('name', 'Unnamed'))
     wrefcat = RefCatalog(refcat, name=imcat.meta.get('name', 'Unnamed'))
 
-    succes = wgcat.align_to_ref(refcat=wrefcat, match=None, minobj=None,
-                                fitgeom=fitgeom, nclip=nclip, sigma=sigma)
+    succes = wgcat.align_to_ref(
+        refcat=wrefcat,
+        ref_tpwcs=ref_tpwcs,
+        match=None,
+        minobj=None,
+        fitgeom=fitgeom,
+        nclip=nclip,
+        sigma=sigma
+    )
 
     tpwcs.meta['fit_info'] = wimcat.fit_info
     if not succes:
@@ -257,7 +270,7 @@ def fit_wcs(refcat, imcat, tpwcs, fitgeom='general', nclip=3,
     return wgcat[0].tpwcs
 
 
-def align_wcs(wcscat, refcat=None, enforce_user_order=True,
+def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
               expand_refcat=False, minobj=None, match=TPMatch(),
               fitgeom='general', nclip=3, sigma=(3.0, 'rmse')):
     r"""
@@ -331,6 +344,14 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
         coordinates (in degrees). An optional column in the catalog is
         the ``'weight'`` column, which when present, will be used in fitting.
         See ``Notes`` section for further details.
+
+    ref_tpwcs: TPWCS, None, optional
+        A reference WCS of the type ``TPWCS`` that provides the tangent
+        plane in which matching will be performed and corrections will be
+        defined. When not provided (i.e., set to `None`), reference tangent
+        plane will be defined from the first ``TPWCS`` object
+        *in the re-ordered* (if ``enforce_user_order`` was
+        set to `True`) input list ``wcscat``.
 
     enforce_user_order: bool, optional
         Specifies whether images should be aligned in the order specified in
@@ -613,6 +634,7 @@ def align_wcs(wcscat, refcat=None, enforce_user_order=True,
 
         current_wcat.align_to_ref(
             refcat=refcat,
+            ref_tpwcs=ref_tpwcs,
             match=match,
             minobj=minobj,
             fitgeom=fitgeom,

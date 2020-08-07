@@ -8,6 +8,21 @@ Release Notes
    ==================
 
 
+
+0.6.5 (unreleased)
+==================
+
+- Added ``ref_tpwcs`` parameter to ``imalign.fit_wcs()``,
+  ``imalign.align_wcs()``, ``wcsimage.WCSGroupCatalog.align_to_ref()`` to allow
+  alignment to be performed in user-specified distortion-free tangent
+  plane. [#125]
+
+- Renamed ``tanplane_wcs`` parameter in
+  ``wcsimage.WCSGroupCatalog.apply_affine_to_wcs()`` to ``ref_tpwcs``.
+  ``tanplane_wcs`` parameter was deprecated and will be removed in a future
+  release. [#125]
+
+
 0.6.4 (14-May-2020)
 ===================
 
