@@ -1,8 +1,12 @@
+from itertools import product
+
 import numpy as np
 from astropy.io import fits
 from astropy import table
 from astropy import wcs
 from astropy.utils.data import get_pkg_data_filename
+import pytest
+
 import tweakwcs
 
 
@@ -85,6 +89,86 @@ def test_multichip_fitswcs_alignment():
 
     assert np.allclose(fi1['<scale>'], 1.0025, rtol=0, atol=2e-8)
     assert np.allclose(fi2['<scale>'], 1.0025, rtol=0, atol=2e-8)
+
+    assert fi1['rmse'] < 5e-5
+    assert fi2['rmse'] < 5e-5
+
+    cat1 = imcat1.meta['catalog']
+    ra1, dec1 = w1.all_pix2world(cat1['x'], cat1['y'], 0)
+
+    cat2 = imcat2.meta['catalog']
+    ra2, dec2 = w2.all_pix2world(cat2['x'], cat2['y'], 0)
+
+    ra = np.concatenate([ra1, ra2])
+    dec = np.concatenate([dec1, dec2])
+
+    rmse_ra = np.sqrt(np.mean((ra - refcat['RA'])**2))
+    rmse_dec = np.sqrt(np.mean((dec - refcat['DEC'])**2))
+
+    assert rmse_ra < 1e-9
+    assert rmse_dec < 1e-9
+
+
+@pytest.mark.parametrize('wcsno, refscale, crpixx, crpixy', (
+    x for x in product(
+        [0, 1],
+        [((15, 25), (1.0005, 0.9993))],
+        [1, 4096],
+        [1, 2048]
+    )
+))
+def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, crpixx, crpixy):
+    # This test was designed to check that the results of alignment,
+    # in particular and most importantly, the sky positions of sources in
+    # aligned images do not depend on the tangent reference plane used
+    # for alignment. [#125]
+    h1 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis1.hdr'))
+    w1 = wcs.WCS(h1)
+    imcat1 = tweakwcs.FITSWCS(w1)
+    imcat1.meta['catalog'] = table.Table.read(
+        get_pkg_data_filename('data/wfc3_uvis1.cat'),
+        format='ascii.csv',
+        delimiter=' ',
+        names=['x', 'y']
+    )
+    imcat1.meta['group_id'] = 1
+    imcat1.meta['name'] = 'ext1'
+
+    h2 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis2.hdr'))
+    w2 = wcs.WCS(h2)
+    imcat2 = tweakwcs.FITSWCS(w2)
+    imcat2.meta['catalog'] = table.Table.read(
+        get_pkg_data_filename('data/wfc3_uvis2.cat'),
+        format='ascii.csv',
+        delimiter=' ',
+        names=['x', 'y']
+    )
+    imcat2.meta['group_id'] = 1
+    imcat2.meta['name'] = 'ext4'
+
+    refcat = table.Table.read(
+        get_pkg_data_filename('data/ref.cat'),
+        format='ascii.csv', delimiter=' ',
+        names=['RA', 'DEC']
+    )
+
+    refwcses = [wcs.WCS(h1), wcs.WCS(h2)]
+
+    refwcs = refwcses[wcsno]
+    refwcs.wcs.crval = refwcses[1 - wcsno].all_pix2world(crpixx, crpixy, 1)
+    rotm = tweakwcs.linearfit.build_fit_matrix(*refscale)
+    refwcs.wcs.cd = np.dot(refwcs.wcs.cd, rotm)
+    refwcs.wcs.set()
+    ref_tpwcs = tweakwcs.FITSWCS(refwcs)
+
+    tweakwcs.align_wcs([imcat1, imcat2], refcat, ref_tpwcs=ref_tpwcs,
+                       match=_match, nclip=None, sigma=3, fitgeom='general')
+
+    fi1 = imcat1.meta['fit_info']
+    fi2 = imcat2.meta['fit_info']
+
+    w1 = imcat1.wcs
+    w2 = imcat2.wcs
 
     assert fi1['rmse'] < 5e-5
     assert fi2['rmse'] < 5e-5
