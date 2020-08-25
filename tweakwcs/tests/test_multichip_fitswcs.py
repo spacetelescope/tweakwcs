@@ -109,15 +109,15 @@ def test_multichip_fitswcs_alignment():
     assert rmse_dec < 1e-9
 
 
-@pytest.mark.parametrize('wcsno, refscale, crpixx, crpixy', (
+@pytest.mark.parametrize('wcsno, refscale, dra, ddec', (
     x for x in product(
         [0, 1],
         [((15, 25), (1.0005, 0.9993))],
-        [1, 4096],
-        [1, 2048]
+        [0, 0.05, -0.05, 4, -4],
+        [0, 0.05, -0.05, 4, -4]
     )
 ))
-def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, crpixx, crpixy):
+def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, dra, ddec):
     # This test was designed to check that the results of alignment,
     # in particular and most importantly, the sky positions of sources in
     # aligned images do not depend on the tangent reference plane used
@@ -155,7 +155,10 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, crpixx, crpixy):
     refwcses = [wcs.WCS(h1), wcs.WCS(h2)]
 
     refwcs = refwcses[wcsno]
-    refwcs.wcs.crval = refwcses[1 - wcsno].all_pix2world(crpixx, crpixy, 1)
+
+    # change pointing of the reference WCS (alignment tangent plane):
+    refwcs.wcs.crval = refwcses[1 - wcsno].wcs.crval + np.asarray([dra, ddec])
+
     rotm = tweakwcs.linearfit.build_fit_matrix(*refscale)
     refwcs.wcs.cd = np.dot(refwcs.wcs.cd, rotm)
     refwcs.wcs.set()
@@ -170,8 +173,8 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, crpixx, crpixy):
     w1 = imcat1.wcs
     w2 = imcat2.wcs
 
-    assert fi1['rmse'] < 5e-5
-    assert fi2['rmse'] < 5e-5
+    assert fi1['rmse'] < 1e-4
+    assert fi2['rmse'] < 1e-4
 
     cat1 = imcat1.meta['catalog']
     ra1, dec1 = w1.all_pix2world(cat1['x'], cat1['y'], 0)
@@ -185,5 +188,5 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, crpixx, crpixy):
     rmse_ra = np.sqrt(np.mean((ra - refcat['RA'])**2))
     rmse_dec = np.sqrt(np.mean((dec - refcat['DEC'])**2))
 
-    assert rmse_ra < 1e-9
-    assert rmse_dec < 1e-9
+    assert rmse_ra < 5e-9
+    assert rmse_dec < 5e-9
