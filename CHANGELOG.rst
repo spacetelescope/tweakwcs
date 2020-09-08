@@ -9,8 +9,8 @@ Release Notes
 
 
 
-0.6.5 (unreleased)
-==================
+0.6.5 (09-September-2020)
+=========================
 
 - Added ``ref_tpwcs`` parameter to ``imalign.fit_wcs()``,
   ``imalign.align_wcs()``, ``wcsimage.WCSGroupCatalog.align_to_ref()`` to allow
