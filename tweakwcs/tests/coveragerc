@@ -1,0 +1,13 @@
+[run]
+source = tweakwcs
+omit =
+   tweakwcs/conftest*
+   tweakwcs/tests/*
+
+[report]
+exclude_lines =
+   # Have to re-enable the standard pragma
+   pragma: no cover
+
+   # Ignore branches that don't pertain to this version of Python
+   pragma: py{ignore_python_version}

@@ -17,7 +17,20 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara, Warren Hack'
 
-__all__ = ['iter_linear_fit', 'build_fit_matrix']
+__all__ = ['iter_linear_fit', 'build_fit_matrix', 'SUPPORTED_FITGEOM_MODES']
+
+
+# Supported fitgeom modes and corresponding minobj
+SUPPORTED_FITGEOM_MODES = {
+    'shift': 1,
+    'rshift': 2,
+    'rscale': 2,
+    'general': 3
+}
+
+_FITGEOM_KEYS = tuple(SUPPORTED_FITGEOM_MODES.keys())
+_SUPPORTED_FITGEOM_EN_STR = (', '.join(map(repr, _FITGEOM_KEYS[:-1])) +
+                             ', or ' + repr(_FITGEOM_KEYS[-1]))
 
 
 log = logging.getLogger(__name__)
@@ -94,7 +107,7 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
         will be contribute equally to the fit if ``wxy`` is also set to `None`.
         See ``Notes`` section for more details.
 
-    fitgeom: {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rshift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the shifts (offsets), rotations
         and/or scale changes from the matched object lists. The 'general'
@@ -205,17 +218,23 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
 
     """
-    if fitgeom == 'general':
-        linear_fit = fit_general
-    elif fitgeom == 'rscale':
-        linear_fit = fit_rscale
-    elif fitgeom == 'shift':
-        linear_fit = fit_shifts
-    else:
-        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
+    try:
+        minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
 
-    minobj_per_fitgeom = {'shift': 1, 'rscale': 2, 'general': 3}
-    minobj = minobj_per_fitgeom[fitgeom]
+        if fitgeom == 'general':
+            linear_fit = fit_general
+        elif fitgeom == 'rscale':
+            linear_fit = fit_rscale
+        elif fitgeom == 'rshift':
+            linear_fit = fit_rshift
+        elif fitgeom == 'shift':
+            linear_fit = fit_shifts
+        else:  # pragma: no cover
+            raise AssertionError("Notify developer: fitter selector block is "
+                                 "out-of-sync with SUPPORTED_FITGEOM_MODES.")
+
+    except KeyError:
+        raise ValueError("Unsupported 'fitgeom' value: '{}'".format(fitgeom))
 
     xy = np.array(xy, dtype=np.longdouble)
     uv = np.array(uv, dtype=np.longdouble)
@@ -413,15 +432,23 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
 
 
 # Implementation of geomap 'rscale' fitting based on 'lib/geofit.x'
-# by Warren Hack. Support for axis flips added by Mihai Cara.
-def fit_rscale(xy, uv, wxy=None, wuv=None):
+# by Warren Hack. Support for axis flips and for constraining scale
+# added by Mihai Cara.
+def fit_rscale(xy, uv, wxy=None, wuv=None, scale=None):
     """ Fits (non-iteratively and without sigma-clipping) a displacement,
-    rotation and scale transformations between input lists of positions
-    ``xy`` and ``uv``. When weights are provided, a weighted fit is performed.
-    Parameter descriptions and return values are identical to those
-    in `iter_linear_fit`, except returned ``fit`` dictionary does not contain
-    the following keys irrelevant to this function: ``'center'``,
+    rotation and (optionally) scale transformations between input lists of
+    positions ``xy`` and ``uv``. When weights are provided, a weighted fit
+    is performed. Parameter descriptions and return values are identical to
+    those in `iter_linear_fit`, except returned ``fit`` dictionary does
+    not contain the following keys irrelevant to this function: ``'center'``,
     ``'fitmask'``, and ``'eff_nclip'``.
+
+    When ``scale`` is `None` then this function will fit for the scale of the
+    transformation. If ``scale`` is a positive number - it will be used as
+    fixed scale constraint and it will not be fitted for. A typical usage is
+    to set ``scale`` to `None` in order to fit for shifts, rotations *and*
+    scale and to set ``scale`` argument to, e.g., 1 to fit for shifts and
+    rotations only.
 
     """
     if len(xy) < 2:
@@ -429,6 +456,13 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
             "At least two points are required to find shifts, rotation, and "
             "scale."
         )
+
+    if scale is None:
+        fitgeom = 'rscale'
+    elif scale > 0:
+        fitgeom = 'rshift'
+    else:
+        raise ValueError("'scale' argument must be None or a positive number.")
 
     x = np.array(xy[:, 0], dtype=np.longdouble)
     y = np.array(xy[:, 1], dtype=np.longdouble)
@@ -449,13 +483,14 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         u -= um
         v -= vm
 
-        su2 = np.dot(u, u)
-        sv2 = np.dot(v, v)
         sxv = np.dot(x, v)
         syu = np.dot(y, u)
         sxu = np.dot(x, u)
         syv = np.dot(y, v)
-        su2v2 = su2 + sv2
+        if scale is None:
+            su2 = np.dot(u, u)
+            sv2 = np.dot(v, v)
+            su2v2 = su2 + sv2
 
     else:
         if wxy is None:
@@ -474,7 +509,7 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
             raise ValueError("Invalid weights: weights must be non-negative.")
 
         if np.sum(w > 0) < 2:
-            raise ValueError("Not enough valid data for 'rscale' fit: "
+            raise ValueError(f"Not enough valid data for '{fitgeom:s}' fit: "
                              "too many weights are zero!")
 
         w /= np.sum(w, dtype=np.longdouble)
@@ -488,13 +523,14 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
         u -= um
         v -= vm
 
-        su2 = np.dot(w, u**2)
-        sv2 = np.dot(w, v**2)
         sxv = np.dot(w, x * v)
         syu = np.dot(w, y * u)
         sxu = np.dot(w, x * u)
         syv = np.dot(w, y * v)
-        su2v2 = su2 + sv2
+        if scale is None:
+            su2 = np.dot(w, u**2)
+            sv2 = np.dot(w, v**2)
+            su2v2 = su2 + sv2
 
     det = sxu * syv - sxv * syu
     if det < 0:
@@ -515,7 +551,9 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     stheta = np.sin(np.deg2rad(theta))
     s_num = rot_denom * ctheta + rot_num * stheta
 
-    if su2v2 > 0.0:
+    if scale is not None:
+        mag = scale
+    elif su2v2 > 0.0:
         mag = s_num / su2v2
     else:
         raise SingularMatrixError(
@@ -542,11 +580,26 @@ def fit_rscale(xy, uv, wxy=None, wuv=None):
     q = np.array([-sthetax, cthetay, yshift], dtype=np.longdouble)
 
     # Return the shift, rotation, and scale changes
-    fit = _build_fit(p, q, fitgeom='rscale')
+    fit = _build_fit(p, q, fitgeom=fitgeom)
     resids = xy - np.dot(uv, fit['matrix_ld'].T) - fit['shift_ld']
     fit['resids'] = resids.astype(np.double)
     _compute_stat(fit, residuals=resids, weights=w)
     return fit
+
+
+def fit_rshift(xy, uv, wxy=None, wuv=None):
+    """ Fits (non-iteratively and without sigma-clipping) a displacement,
+    rotation between input lists of positions ``xy`` and ``uv``. When weights
+    are provided, a weighted fit is performed. Parameter descriptions and
+    return values are identical to those in `iter_linear_fit`, except
+    returned ``fit`` dictionary does not contain the following keys irrelevant
+    to this function: ``'center'``, ``'fitmask'``, and ``'eff_nclip'``.
+
+    .. note::
+        This function is equivalent to calling `fit_rscale` with ``scale=1``.
+
+    """
+    return fit_rscale(xy=xy, uv=uv, wxy=wxy, wuv=wuv, scale=1)
 
 
 def fit_general(xy, uv, wxy=None, wuv=None):
@@ -707,7 +760,7 @@ def _build_fit(p, q, fitgeom):
                    wfit[0, 0] + sdet * wfit[1, 1])
     )
 
-    if proper and fitgeom == 'rscale':
+    if proper and fitgeom in ['rshift', 'rscale']:
         rotx = prop_rot
         roty = prop_rot
         rot = prop_rot

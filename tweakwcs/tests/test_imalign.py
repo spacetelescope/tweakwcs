@@ -132,7 +132,7 @@ def test_fit_wcs_unsupported_fitgeom(mock_fits_wcs):
     with pytest.raises(ValueError) as e:
         tpwcs = fit_wcs(refcat, imcat, tpwcs, fitgeom='unsupported')
     assert (e.value.args[0] == "Unsupported 'fitgeom'. Valid values are: "
-            "'shift', 'rscale', or 'general'")
+            "'shift', 'rshift', 'rscale', or 'general'")
 
 
 @pytest.mark.parametrize('x, y, fitgeom', [
@@ -278,7 +278,7 @@ def test_align_wcs_unknown_fitgeom(mock_fits_wcs):
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs, fitgeom='unknown')
     assert (e.value.args[0] == "Unsupported 'fitgeom'. Valid values are: "
-            "'shift', 'rscale', or 'general'")
+            "'shift', 'rshift', 'rscale', or 'general'")
 
 
 def test_align_wcs_no_radec_in_refcat(mock_fits_wcs):

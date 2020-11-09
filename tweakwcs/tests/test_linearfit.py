@@ -18,14 +18,19 @@ _SMALL_SAMPLE_SIZE = 10
 _BAD_DATA_FRACTION = 0.2
 
 _TRANSFORM_SELECTOR = {
+    'shift': linearfit.fit_shifts,
+    'rshift': linearfit.fit_rshift,
     'rscale': linearfit.fit_rscale,
     'general': linearfit.fit_general,
-    'shift': linearfit.fit_shifts,
 }
 
 _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
     np.finfo(linalg._MAX_LINALG_TYPE).eps
 )
+
+
+def test_test_transform_selector():
+    assert(set(_TRANSFORM_SELECTOR) == set(linearfit.SUPPORTED_FITGEOM_MODES))
 
 
 @pytest.fixture(scope="module")
@@ -39,7 +44,7 @@ def ideal_small_data(request):
 
 
 @pytest.fixture(scope="function", params=[
-    'shifts', 'rscale', 'rscale-flip-x', 'rscale-flip-y', 'affine'
+    'shifts', 'rshift', 'rscale', 'rscale-flip-x', 'rscale-flip-y', 'affine'
 ])
 def ideal_large_data(request):
     # rscale data with proper rotations and no noise
@@ -57,6 +62,12 @@ def ideal_large_data(request):
         scale = (1, 1)
         proper = True
         transform = 'shift'
+
+    elif request.param == 'rshift':
+        angle = (angle, angle)
+        scale = 1
+        proper = True
+        transform = 'rshift'
 
     elif request.param == 'rscale':
         angle = (angle, angle)
@@ -403,3 +414,9 @@ def test_iter_linear_fit_clip_style(ideal_large_data, weight_data,
         assert fit['eff_nclip'] == 0
         assert (fit['fitmask'].sum(dtype=np.int) == npts -
                 np.union1d(idx_xy[0], idx_uv[0]).size)
+
+
+def test_iter_rscale_invalid_scale():
+    # incorrect coordinate array dimensionality:
+    with pytest.raises(ValueError):
+        linearfit.fit_rscale(np.zeros((4, 2)), np.zeros((4, 2)), scale=0)
