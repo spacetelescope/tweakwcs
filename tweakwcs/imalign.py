@@ -22,6 +22,7 @@ import astropy
 from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
 from . tpwcs import TPWCS
 from . matchutils import TPMatch
+from . linearfit import SUPPORTED_FITGEOM_MODES, _SUPPORTED_FITGEOM_EN_STR
 
 from . import __version__
 
@@ -80,7 +81,7 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         defined. When not provided (i.e., set to `None`), reference tangent
         plane will be the same as defined by ``tpwcs`` argument.
 
-    fitgeom: {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rshift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the offsets, rotations and/or scale
         changes from the matched object lists. The 'general' fit geometry
@@ -235,9 +236,10 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
 
     # check fitgeom:
     fitgeom = fitgeom.lower()
-    if fitgeom not in ['shift', 'rscale', 'general']:
-        raise ValueError("Unsupported 'fitgeom'. Valid values are: "
-                         "'shift', 'rscale', or 'general'")
+    if fitgeom not in SUPPORTED_FITGEOM_MODES:
+        raise ValueError(
+            f"Unsupported 'fitgeom'. Valid values are: {_SUPPORTED_FITGEOM_EN_STR:s}"
+        )
 
     wimcat = WCSImageCatalog(imcat, tpwcs,
                              name=imcat.meta.get('name', 'Unnamed'))
@@ -389,7 +391,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         ``'TPy'`` that represent the source coordinates in some common
         (to both catalogs) coordinate system.
 
-    fitgeom: {'shift', 'rscale', 'general'}, optional
+    fitgeom: {'shift', 'rshift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
         This parameter is used in fitting the offsets, rotations and/or scale
         changes from the matched object lists. The 'general' fit geometry
@@ -521,17 +523,12 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
     # check fitgeom:
     fitgeom = fitgeom.lower()
-    if fitgeom not in ['shift', 'rscale', 'general']:
-        raise ValueError("Unsupported 'fitgeom'. Valid values are: "
-                         "'shift', 'rscale', or 'general'")
-
-    if minobj is None:  # pragma: no branch
-        if fitgeom == 'general':
-            minobj = 3
-        elif fitgeom == 'rscale':
-            minobj = 2
-        else:
-            minobj = 1
+    try:
+        minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported 'fitgeom'. Valid values are: {_SUPPORTED_FITGEOM_EN_STR:s}"
+        )
 
     # process reference catalog or image if provided:
     if refcat is not None:

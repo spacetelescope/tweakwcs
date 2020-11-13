@@ -19,6 +19,8 @@ from astropy import table
 from astropy.utils.decorators import deprecated_renamed_argument
 from spherical_geometry.polygon import SphericalPolygon
 
+from . linearfit import SUPPORTED_FITGEOM_MODES
+
 try:
     import gwcs
     if LooseVersion(gwcs.__version__) > '0.12.0':
@@ -981,12 +983,12 @@ class WCSGroupCatalog(object):
         log.info("Computed '{:s}' fit for {}:".format(fitgeom, self.name))
         if fitgeom == 'shift':
             log.info("XSH: {:.6g}  YSH: {:.6g}".format(*fit['shift']))
-        elif fitgeom == 'rscale' and fit['proper']:
+        elif fitgeom in ['rshift', 'rscale'] and fit['proper']:
             log.info(
                 "XSH: {:.6g}  YSH: {:.6g}    ROT: {:.6g}    SCALE: {:.6g}"
                 .format(*fit['shift'], fit['proper_rot'], fit['<scale>'])
             )
-        elif fitgeom == 'general' or (fitgeom == 'rscale' and not
+        elif fitgeom == 'general' or (fitgeom in ['rshift', 'rscale'] and not
                                       fit['proper']):
             log.info("XSH: {:.6g}  YSH: {:.6g}    PROPER ROT: {:.6g}    "
                      .format(*fit['shift'], fit['proper_rot']))
@@ -1150,13 +1152,7 @@ class WCSGroupCatalog(object):
         for imcat in self:
             imcat.fit_status = "FAILED: Unknown error"
 
-        if minobj is None:
-            if fitgeom == 'general':
-                minobj = 3
-            elif fitgeom == 'rscale':
-                minobj = 2
-            else:
-                minobj = 1
+        minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
 
         if ref_tpwcs is None:
             ref_tpwcs = deepcopy(self._images[0].tpwcs)
