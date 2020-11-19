@@ -8,8 +8,8 @@ Release Notes
    ==================
 
 
-0.7.0 (unreleased)
-==================
+0.7.0 (11-November-2020)
+========================
 
 - Added ``linearfit.fit_rshift`` function to support a new ``fitgeom`` fitting
   mode ``'rshift'`` that fits only for shifts and a rotation. [#128]
