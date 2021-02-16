@@ -27,7 +27,7 @@ jobs:
 
 - job: 'PEP8'
   pool:
-    vmImage: 'Ubuntu-16.04'
+    vmImage: 'Ubuntu-18.04'
 
   steps:
   - task: UsePythonVersion@0
@@ -44,7 +44,7 @@ jobs:
 - job: 'Publish'
   dependsOn: 'Linux'
   pool:
-    vmImage: 'Ubuntu-16.04'
+    vmImage: 'Ubuntu-18.04'
 
   steps:
   - task: UsePythonVersion@0

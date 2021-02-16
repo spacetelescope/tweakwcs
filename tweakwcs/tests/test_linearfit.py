@@ -119,8 +119,8 @@ def weight_data(request):
     if not any(request.param):
         wxy = None
         wuv = None
-        idx_xy = (np.array([], dtype=np.int), )
-        idx_uv = (np.array([], dtype=np.int), )
+        idx_xy = (np.array([], dtype=int), )
+        idx_uv = (np.array([], dtype=int), )
         bd_xy = np.zeros((0, 2))
         bd_uv = np.zeros((0, 2))
 
@@ -149,7 +149,7 @@ def weight_data(request):
         idx = np.random.choice(np.arange(_LARGE_SAMPLE_SIZE),
                                nbd, replace=False)
         idx_xy = (idx, )
-        idx_uv = (np.array([], dtype=np.int), )
+        idx_uv = (np.array([], dtype=int), )
         wxy = np.random.random(_LARGE_SAMPLE_SIZE)
         wxy[idx_xy] = 0.0
         wuv = None
@@ -161,7 +161,7 @@ def weight_data(request):
         idx = np.random.choice(np.arange(_LARGE_SAMPLE_SIZE), nbd,
                                replace=False)
         idx_uv = (idx, )
-        idx_xy = (np.array([], dtype=np.int), )
+        idx_xy = (np.array([], dtype=int), )
         wuv = np.random.random(_LARGE_SAMPLE_SIZE)
         wuv[idx_uv] = 0.0
         wxy = None
@@ -409,10 +409,10 @@ def test_iter_linear_fit_clip_style(ideal_large_data, weight_data,
     assert fit['proper'] == proper
     if nclip:
         assert fit['eff_nclip'] > 0
-        assert fit['fitmask'].sum(dtype=np.int) < npts
+        assert fit['fitmask'].sum(dtype=int) < npts
     else:
         assert fit['eff_nclip'] == 0
-        assert (fit['fitmask'].sum(dtype=np.int) == npts -
+        assert (fit['fitmask'].sum(dtype=int) == npts -
                 np.union1d(idx_xy[0], idx_uv[0]).size)
 
 

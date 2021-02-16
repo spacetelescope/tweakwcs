@@ -36,7 +36,7 @@ def rect_imcat(mock_fits_wcs):
 
 @pytest.mark.parametrize('val, expected', [
     (1, True), (1.0, False), ('1', False), (True, False),
-    (np.bool(1), False), (np.float16(1.0), False), (np.int16(1), True),
+    (np.bool_(1), False), (np.float16(1.0), False), (np.int16(1), True),
 ])
 def test_is_int(val, expected):
     assert _is_int(val) is expected
@@ -297,8 +297,8 @@ def test_wcsgroupcat_match2ref(mock_fits_wcs, rect_imcat):
 
     ref.calc_tanp_xy(rect_imcat.tpwcs)
     g.calc_tanp_xy(rect_imcat.tpwcs)
-    g.catalog['matched_ref_id'] = np.ones(5, dtype=np.bool)
-    g.catalog['_raw_matched_ref_idx'] = np.ones(5, dtype=np.bool)
+    g.catalog['matched_ref_id'] = np.ones(5, dtype=bool)
+    g.catalog['_raw_matched_ref_idx'] = np.ones(5, dtype=bool)
     g.match2ref(ref, match=TPMatch())
 
 

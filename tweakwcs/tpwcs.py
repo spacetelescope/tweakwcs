@@ -625,7 +625,7 @@ class JWSTgWCS(TPWCS):
         if 'v2v3corr' in frms:
             self._v23name = 'v2v3corr'
             self._tpcorr = deepcopy(
-                wcs.pipeline[frms.index('v2v3corr') - 1][1]
+                wcs.pipeline[frms.index('v2v3corr') - 1].transform
             )
             self._default_tpcorr = None
             if not JWSTgWCS._check_tpcorr_structure(self._tpcorr):
@@ -673,8 +673,8 @@ class JWSTgWCS(TPWCS):
     def _update_transformations(self):
         # define transformations from detector/world coordinates to
         # the tangent plane:
-        detname = self._wcs.pipeline[0][0].name
-        worldname = self._wcs.pipeline[-1][0].name
+        detname = self._wcs.pipeline[0].frame.name
+        worldname = self._wcs.pipeline[-1].frame.name
 
         # Generally needed transformations:
         self._world_to_v23 = self._wcs.get_transform(worldname, self._v23name)
@@ -905,7 +905,7 @@ class JWSTgWCS(TPWCS):
 
             idx_v2v3 = frms.index(self._v23name)
             pipeline = deepcopy(self._wcs.pipeline)
-            pipeline[idx_v2v3 - 1] = (pipeline[idx_v2v3 - 1][0],
+            pipeline[idx_v2v3 - 1] = (pipeline[idx_v2v3 - 1].frame,
                                       deepcopy(self._tpcorr))
             self._wcs = gwcs.WCS(pipeline, name=self._owcs.name)
 

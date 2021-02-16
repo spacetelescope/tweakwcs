@@ -108,7 +108,7 @@ def inv(m):
     order = m.shape[0]
 
     # create permutation matrices:
-    qt = np.eye(order, dtype=np.int)
+    qt = np.eye(order, dtype=int)
 
     eps = np.finfo(np.double).tiny
 
@@ -131,7 +131,7 @@ def inv(m):
 
         if im != k or jm != k:
             # swap rows & columns:
-            q = np.eye(order, dtype=np.int)
+            q = np.eye(order, dtype=int)
 
             # swap rows in the m and invm matrix:
             m[k, :], m[im, :] = m[im, :], m[k, :].copy()
