@@ -579,7 +579,6 @@ class JWSTgWCS(TPWCS):
 
             This dictionary **must contain** the following keys and values:
 
-
             'v2_ref': float
                 V2 position of the reference point in arc seconds.
 
@@ -651,7 +650,7 @@ class JWSTgWCS(TPWCS):
             )
 
         else:
-            self._v23name = 'v2v3'
+            self._v23name = 'v2v3vacorr' if 'v2v3vacorr' in frms else 'v2v3'
             self._tpcorr = None
             self._default_tpcorr = JWSTgWCS._tpcorr_init(
                 v2_ref=v2_ref / 3600.0,
@@ -931,14 +930,23 @@ class JWSTgWCS(TPWCS):
             return (False, "First and last frames in the WCS pipeline must "
                     "be unique.")
 
-        if frms.count('v2v3') != 1:
-            return (False, "Only one 'v2v3' frame is allowed in the WCS "
-                    "pipeline.")
+        if frms.count('v2v3') != 1 or frms.count('v2v3vacorr') > 1:
+            return (False, "Only one 'v2v3' or 'v2v3vacorr' frame is allowed "
+                    "in the WCS pipeline.")
 
         idx_v2v3 = frms.index('v2v3')
         if idx_v2v3 == 0 or idx_v2v3 == (nframes - 1):
             return (False, "'v2v3' frame cannot be first or last in the WCS "
                     "pipeline.")
+
+        try:
+            idx_v2v3vacorr = frms.index('v2v3vacorr')
+            if idx_v2v3vacorr < idx_v2v3 or idx_v2v3vacorr == (nframes - 1):
+                return (False, "'v2v3vacorr' frame cannot precede the 'v2v3' "
+                        "frame or be the last frame in the WCS pipeline.")
+            idx_v2v3 = idx_v2v3vacorr
+        except ValueError:
+            pass
 
         nv2v3corr = frms.count('v2v3corr')
         if nv2v3corr == 0:

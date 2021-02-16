@@ -217,7 +217,8 @@ def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
     wc.set_correction()
     p = wc.wcs.pipeline
 
-    np = [(v[0], create_V2V3ToDet()) if v[0].name == 'v2v3' else v for v in p]
+    np = [(v[0], create_V2V3ToDet()) if v[0].name == 'v2v3vacorr'
+          else v for v in p]
     mangled_wc = gwcs.wcs.WCS(np)
 
     with pytest.raises(ValueError):
@@ -322,10 +323,11 @@ def test_jwstgwcs_bbox():
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
-def test_jwstgwcs_bad_pipelines():
+def test_jwstgwcs_bad_pipelines_no_vacorr():
     p0 = make_mock_jwst_pipeline(
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
-        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
+        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0],
+        enable_vacorr=False
     )
 
     # no pipeline or empty pipeline:
@@ -377,6 +379,24 @@ def test_jwstgwcs_bad_pipelines():
 
     # misplaced 'v2v3corr' frame:
     del p[-2]
+    w = gwcs.wcs.WCS(p)
+    with pytest.raises(ValueError):
+        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+
+
+@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
+def test_jwstgwcs_bad_pipelines_with_vacorr():
+    p0 = make_mock_jwst_pipeline(
+        v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
+        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0],
+        enable_vacorr=True
+    )
+
+    # multiple 'v2v3vacorr' frames:
+    w = gwcs.wcs.WCS(p0)
+    w = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    p = w.wcs.pipeline
+    p.insert(1, p[2])
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
         tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})

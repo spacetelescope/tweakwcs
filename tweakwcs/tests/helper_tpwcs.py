@@ -9,7 +9,7 @@ from distutils.version import LooseVersion
 
 import numpy as np
 from astropy.modeling import Model, Parameter
-from astropy.modeling.models import AffineTransformation2D
+from astropy.modeling.models import AffineTransformation2D, Identity
 from astropy import coordinates as coord
 from astropy import units as u
 
@@ -230,12 +230,16 @@ class V2V3ToSkyInv(Model):
 
 
 def make_mock_jwst_pipeline(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
-                            cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0]):
+                            cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0],
+                            enable_vacorr=True):
     detector = gwcs.coordinate_frames.Frame2D(
         name='detector', axes_order=(0, 1), unit=(u.pix, u.pix)
     )
     v2v3 = gwcs.coordinate_frames.Frame2D(
         name='v2v3', axes_order=(0, 1), unit=(u.arcsec, u.arcsec)
+    )
+    v2v3vacorr = gwcs.coordinate_frames.Frame2D(
+        name='v2v3vacorr', axes_order=(0, 1), unit=(u.arcsec, u.arcsec)
     )
     world = gwcs.coordinate_frames.CelestialFrame(reference_frame=coord.ICRS(),
                                                   name='world')
@@ -244,13 +248,19 @@ def make_mock_jwst_pipeline(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
 
     v23sky = V2V3ToSky([-v2ref / 3600.0, v3ref / 3600.0, -roll,
                         -crval[1], crval[0]], [2, 1, 0, 1, 2])
-    pipeline = [(detector, det2v2v3), (v2v3, v23sky), (world, None)]
+    if enable_vacorr:
+        pipeline = [(detector, det2v2v3), (v2v3, Identity(2)),
+                    (v2v3vacorr, v23sky), (world, None)]
+    else:
+        pipeline = [(detector, det2v2v3), (v2v3, v23sky), (world, None)]
+
     return pipeline
 
 
 def make_mock_jwst_wcs(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
-                       cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0]):
-    pipeline = make_mock_jwst_pipeline(v2ref, v3ref, roll, crpix, cd, crval)
+                       cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0],
+                       enable_vacorr=True):
+    pipeline = make_mock_jwst_pipeline(v2ref, v3ref, roll, crpix, cd, crval, enable_vacorr)
     wcs = gwcs.wcs.WCS(pipeline)
     wcs.bounding_box = ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5))
     wcs.array_shape = (2048, 1024)
