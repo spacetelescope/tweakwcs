@@ -181,7 +181,7 @@ def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
 
     assert len(v2v3idx) == 1
 
-    tp_corr = wc.wcs.pipeline[v2v3idx[0] - 1][1]
+    tp_corr = wc.wcs.pipeline[v2v3idx[0] - 1].transform
 
     assert isinstance(tp_corr, CompoundModel)
     assert np.max(np.abs(tp_corr['tp_affine'].matrix.value - np.identity(2))) < _ATOL

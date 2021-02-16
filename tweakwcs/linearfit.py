@@ -412,7 +412,7 @@ def fit_shifts(xy, uv, wxy=None, wuv=None):
         if np.any(w < 0.0):
             raise ValueError("Invalid weights: weights must be non-negative.")
 
-        if not np.sum(w > 0, dtype=np.int):
+        if not np.sum(w > 0, dtype=int):
             raise ValueError("Not enough valid data for 'shift' fit: "
                              "too many weights are zero!")
 

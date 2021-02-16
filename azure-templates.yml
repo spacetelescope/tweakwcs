@@ -2,11 +2,11 @@ jobs:
 - job: ${{ format(parameters.name) }}
   pool:
     ${{ if eq(parameters.os, 'windows') }}:
-      vmImage: vs2017-win2016
+      vmImage: windows-2019
     ${{ if eq(parameters.os, 'macos') }}:
       vmImage: macOS-10.15
     ${{ if eq(parameters.os, 'linux') }}:
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-18.04
 
   strategy:
     matrix:
@@ -14,10 +14,10 @@ jobs:
       # py35 is mostly dead at this point anyway
       #Python35:
       #  python.version: '3.5'
-      Python36:
-        python.version: '3.6'
       Python37:
         python.version: '3.7'
+      Python38:
+        python.version: '3.8'
     maxParallel: 4
 
   steps:
