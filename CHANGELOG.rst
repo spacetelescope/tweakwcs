@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 0.7.1 (unreleased)
+.. 0.7.2 (unreleased)
    ==================
+
+
+0.7.1 (16-February-2021)
+========================
+
+- Added support for detecting and using velocity aberration corrected
+  ``V2-V3`` frames when available in JWST WCS (``'v2v3vacorr'``). [#130]
 
 
 0.7.0 (11-November-2020)

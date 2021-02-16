@@ -5,6 +5,7 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 from itertools import product
+import logging
 import random
 import pytest
 import numpy as np
@@ -222,8 +223,12 @@ def test_estimate_2dhist_shift_two_equal_maxima(caplog):
     imgxy = np.array([[0, 1], [0, 1]])
     refxy = np.array([[1, 0], [0, 2]])
     assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (-0.5, 0.0)
-    assert (caplog.record_tuples[-2][-1] == "Unable to estimate significance "
-            "of the detection of the initial shift.")
+    assert (caplog.record_tuples[-1][2] == "Found initial X and Y shifts of "
+            "-0.5, 0 with 4 matches." and
+            caplog.record_tuples[-1][1] == logging.INFO)
+    assert (caplog.record_tuples[-2][2] == "Unable to estimate significance "
+            "of the detection of the initial shift." and
+            caplog.record_tuples[-2][1] == logging.WARNING)
 
 
 @pytest.mark.parametrize('searchrad, separation, tolerance', [
