@@ -64,6 +64,7 @@ PACKAGE_DATA = {
     ],
     'tweakwcs': get_transforms_data()
 }
+
 INSTALL_REQUIRES = [
     'numpy',
     'astropy>=3.1',
@@ -71,13 +72,20 @@ INSTALL_REQUIRES = [
     'stsci.imagestats',
     'spherical_geometry',
 ]
+
 TESTS_REQUIRE = [
     'pytest',
     'pytest-cov',
-    'codecov'
+    'codecov',
 ]
+
 DOCS_REQUIRE = [
-    'numpydoc'
+    'numpydoc',
+    'sphinx',
+    'sphinx_automodapi',
+    'sphinx_rtd_theme',
+    'stsci_rtd_theme',
+    'graphviz',
 ]
 
 setup(
