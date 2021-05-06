@@ -56,19 +56,21 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
 
     if s is None:
         if 'fit_info' in tpwcs1.meta and 'center' in tpwcs1.meta['fit_info']:
-            center = np.array(tpwcs1.meta['fit_info']['center'])
+            cx, cy = tpwcs1.meta['fit_info']['center']
+            s = tpwcs1.tanp_pixel_scale(cx, cy)
         else:
             if tpwcs2.wcs.pixel_bounds is None:
                 # TODO: A possible improvement would be to get an estimate
                 #       of "center" (where scale is estimated) from source
                 #       positions (if any).
-                center = np.zeros(2)
+                xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(x, y))
             else:
-                center = np.mean(tpwcs2.wcs.pixel_bounds, axis=1)
-
-        xt, yt = tpwcs1.world_to_tanp(*tpwcs2.det_to_world(center[0] + x, center[1] + y))
-        m = np.array([(xt[1:-1] - xt[0]), (yt[1:-1] - yt[0])])
-        s = np.sqrt(np.fabs(np.linalg.det(m)))
+                cx, cy = np.mean(tpwcs2.wcs.pixel_bounds, axis=1)
+                xt, yt = tpwcs1.world_to_tanp(
+                    *tpwcs2.det_to_world(cx + x, cy + y)
+                )
+            m = np.array([(xt[1:-1] - xt[0]), (yt[1:-1] - yt[0])])
+            s = np.sqrt(np.fabs(np.linalg.det(m)))
 
     xrp, yrp = tpwcs2.world_to_tanp(*tpwcs1.tanp_to_world(x * s, y * s))
 

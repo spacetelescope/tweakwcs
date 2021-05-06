@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 0.7.2 (unreleased)
+.. 0.7.3 (unreleased)
    ==================
+
+
+0.7.2 (06-May-2021)
+===================
+
+- Fixed a bug in how re-projection was computed when ``center`` of the
+  transformations was provided. [#135]
 
 
 0.7.1 (16-February-2021)
