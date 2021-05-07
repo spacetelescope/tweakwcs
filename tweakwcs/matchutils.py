@@ -518,12 +518,12 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     ym = (c10 * c11 - 2.0 * c01 * c20) / det
 
     if 0.0 <= xm <= (nx - 1.0) and 0.0 <= ym <= (ny - 1.0):
-        coord = (xm, ym)
         fit_status = 'SUCCESS'
-
     else:
         xm = 0.0 if xm < 0.0 else min(xm, nx - 1.0)
         ym = 0.0 if ym < 0.0 else min(ym, ny - 1.0)
         fit_status = 'WARNING:EDGE'
+
+    coord = (xm, ym)
 
     return coord, fit_status, np.s_[y1:y2, x1:x2]

@@ -189,7 +189,7 @@ def test_find_peak_fit_over_edge():
     data[:, 0] = 0.0
     coord, fit_status, fit_box = _find_peak(data, peak_fit_box=7)
     assert fit_status == 'WARNING:EDGE'
-    assert np.allclose(coord, (1, 11), rtol=0, atol=1e-6)
+    assert np.allclose(coord, (0, 11), rtol=0, atol=1e-6)
 
 
 @pytest.mark.parametrize('shift', [100, 2])
