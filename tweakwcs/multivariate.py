@@ -10,7 +10,13 @@ import numpy as np
 
 
 class _Index(FittableModel):
-
+    """
+    This is a model that accepts an input value or array of values and
+    generates an array of values that gives the index value of each 
+    input value. E.g., in effect an arange function that matches the 
+    size of the input. This is useful for selecting parts of the input
+    based on position.
+    """
     def __init__(self):
         self._inputs = ()
         self._outputs = ()

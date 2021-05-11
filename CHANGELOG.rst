@@ -7,6 +7,9 @@ Release Notes
 .. 0.7.3 (unreleased)
    ==================
 
+- Added (temporarily) a module to allow multivariate output fits.
+  (multivariate.py) [#137]
+
 
 0.7.2 (07-May-2021)
 ===================
