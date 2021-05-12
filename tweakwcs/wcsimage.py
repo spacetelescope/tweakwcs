@@ -17,7 +17,7 @@ from distutils.version import LooseVersion
 import numpy as np
 from astropy import table
 from astropy.utils.decorators import deprecated_renamed_argument
-from spherical_geometry.polygon import SphericalPolygon
+from spherical_geometry.polygon import SphericalPolygon, MalformedPolygonError
 
 from . linearfit import SUPPORTED_FITGEOM_MODES
 
@@ -520,8 +520,8 @@ class WCSGroupCatalog(object):
                             "'WCSImageCatalog' objects")
 
         self._name = name
-        self.update_bounding_polygon()
         self._catalog = self.create_group_catalog()
+        self.update_bounding_polygon()
 
     @property
     def name(self):
@@ -586,7 +586,17 @@ class WCSGroupCatalog(object):
         """
         polygons = [im.polygon for im in self._images]
         if polygons:
-            self._polygon = SphericalPolygon.multi_union(polygons)
+            try:
+                self._polygon = SphericalPolygon.multi_union(polygons)
+            except MalformedPolygonError:
+                log.warning(
+                    "MalformedPolygonError in spherical_geometry. Using "
+                    "convex hull instead of multi_union. Alignment order "
+                    "may be sub-optimal."
+                )
+                refcat = RefCatalog(self._catalog)
+                self._polygon = refcat.polygon
+
         else:
             self._polygon = SphericalPolygon([])
 
