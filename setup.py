@@ -70,7 +70,7 @@ INSTALL_REQUIRES = [
     'astropy>=3.1',
     'stsci.stimage',
     'stsci.imagestats',
-    'spherical_geometry',
+    'spherical_geometry>=1.2.20',
 ]
 
 TESTS_REQUIRE = [
