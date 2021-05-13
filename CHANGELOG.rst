@@ -8,8 +8,11 @@ Release Notes
    ==================
 
 
-0.7.2 (07-May-2021)
+0.7.2 (13-May-2021)
 ===================
+
+- Make code more robust to exceptions in the ``spherical_geometry``
+  package. [#138]
 
 - Fixed a bug in ``matchutils._find_peak()`` due to which it could return
   coordinates of the peak that were outside of the image. [#136]
