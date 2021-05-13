@@ -340,6 +340,31 @@ class WCSImageCatalog(object):
                 )
             return area
 
+    def _guarded_intersection_area(self, wcsim):
+        """
+        Calculate the area of the intersection polygon. If some
+        intersections fail due to a bug/limitation of ``spherical_geometry``
+        then the area of the valid intersections will be returned.
+        If images do not intersect or intersection fails, 0 will be returned.
+        """
+        if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
+            try:
+                return np.fabs(self.intersection(wcsim).area())
+            except MalformedPolygonError:
+                return 0.0
+
+        else:
+            # this is bug workaround:
+            area = 0.0
+            for wim in wcsim:
+                try:
+                    area += np.fabs(
+                        self.polygon.intersection(wim.polygon).area()
+                    )
+                except MalformedPolygonError:
+                    continue
+            return area
+
     def _calc_chip_bounding_polygon(self, stepsize=None):
         """
         Compute image's bounding polygon.
@@ -580,6 +605,15 @@ class WCSGroupCatalog(object):
         """ Calculate the area of the intersection polygon.
         """
         return sum(im.intersection_area(wcsim) for im in self._images)
+
+    def _guarded_intersection_area(self, wcsim):
+        """
+        Calculate the area of the intersection polygon. If some
+        intersections fail due to a bug/limitation of ``spherical_geometry``
+        then the area of the valid intersections will be returned.
+        If images do not intersect or intersection fails, 0 will be returned.
+        """
+        return sum(im._guarded_intersection_area(wcsim) for im in self._images)
 
     def update_bounding_polygon(self):
         """ Recompute bounding polygons of the member images.
@@ -1367,6 +1401,31 @@ class RefCatalog(object):
                 area += np.fabs(
                     self.polygon.intersection(wim.polygon).area()
                 )
+            return area
+
+    def _guarded_intersection_area(self, wcsim):
+        """
+        Calculate the area of the intersection polygon. If some
+        intersections fail due to a bug/limitation of ``spherical_geometry``
+        then the area of the valid intersections will be returned.
+        If images do not intersect or intersection fails, 0 will be returned.
+        """
+        if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
+            try:
+                return np.fabs(self.intersection(wcsim).area())
+            except MalformedPolygonError:
+                return 0.0
+
+        else:
+            # this is bug workaround:
+            area = 0.0
+            for wim in wcsim:
+                try:
+                    area += np.fabs(
+                        self.polygon.intersection(wim.polygon).area()
+                    )
+                except MalformedPolygonError:
+                    continue
             return area
 
     def _calc_cat_convex_hull(self):
