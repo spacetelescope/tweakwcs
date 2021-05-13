@@ -98,6 +98,13 @@ def test_wcsimcat_intersections(mock_fits_wcs, rect_imcat):
     )
 
 
+def test_wcsimcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
+    assert np.allclose(
+        rect_imcat._guarded_intersection_area(rect_imcat),
+        2.9904967391303217e-12, atol=0.0, rtol=5.0e-4
+    )
+
+
 def test_wcsimcat_no_wcs_bb(mock_fits_wcs, rect_cat):
     tpwcs = FITSWCS(mock_fits_wcs)
     tpwcs._owcs.pixel_bounds = None
@@ -194,6 +201,14 @@ def test_wcsgroupcat_intersections(mock_fits_wcs, rect_imcat):
 
     assert np.allclose(
         g.intersection_area(g), 2.9904967391303217e-12, atol=0.0, rtol=5.0e-4
+    )
+
+
+def test_wcsgroupcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
+    g = WCSGroupCatalog(rect_imcat)
+    assert np.allclose(
+        g._guarded_intersection_area(g), 2.9904967391303217e-12,
+        atol=0.0, rtol=5.0e-4
     )
 
 
@@ -360,6 +375,19 @@ def test_wcsrefcat_intersections(mock_fits_wcs, rect_imcat):
 
     assert np.allclose(
         ref.intersection_area(ref), 2.9902125220360176e-10, atol=0.0,
+        rtol=0.005,
+    )
+
+
+def test_wcsrefcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
+    ra, dec = mock_fits_wcs.all_pix2world(10 * rect_imcat.catalog['x'],
+                                          10 * rect_imcat.catalog['y'], 0)
+    refcat = Table([ra, dec], names=('RA', 'DEC'))
+    ref = RefCatalog(refcat)
+    ref.calc_tanp_xy(rect_imcat.tpwcs)
+
+    assert np.allclose(
+        ref._guarded_intersection_area(ref), 2.9902125220360176e-10, atol=0.0,
         rtol=0.005,
     )
 
