@@ -8,6 +8,7 @@ from itertools import product
 import math
 import pytest
 import numpy as np
+from astropy.modeling.models import Shift, Rotation2D
 from tweakwcs import linearfit, linalg
 
 
@@ -420,3 +421,16 @@ def test_iter_rscale_invalid_scale():
     # incorrect coordinate array dimensionality:
     with pytest.raises(ValueError):
         linearfit.fit_rscale(np.zeros((4, 2)), np.zeros((4, 2)), scale=0)
+
+
+def test_levmar2x2_multivariate():
+    inputs = [np.array([10., 10., 20., 20.]), np.array([10., 20., 20., 10.])]
+    outputs = [np.array([8.06101731, 0.98994949, 8.06101731, 15.13208512]),
+               np.array([12.16223664, 19.23330445, 26.30437226, 19.23330445])]
+    rot = Rotation2D()
+    rot.fittable = True
+    model = (Shift() & Shift()) | rot
+    fitter = linearfit._LevMarLSQFitter2x2()
+    finfo = fitter(model, inputs, outputs)
+    assert np.allclose(finfo.parameters, np.array([4.3, -7.1, 45.]),
+                       rtol=1e-5, atol=1e-5)

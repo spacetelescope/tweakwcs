@@ -11,14 +11,17 @@ sets of 2D points.
 import logging
 import numbers
 import numpy as np
+from astropy.modeling.fitting import LevMarLSQFitter, _fitter_to_model_params
 
 from .linalg import inv
 from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara, Warren Hack'
 
-__all__ = ['iter_linear_fit', 'build_fit_matrix', 'SUPPORTED_FITGEOM_MODES']
-
+__all__ = [
+    'iter_linear_fit', 'build_fit_matrix', 'SUPPORTED_FITGEOM_MODES',
+    '_LevMarLSQFitter2x2'
+]
 
 # Supported fitgeom modes and corresponding minobj
 SUPPORTED_FITGEOM_MODES = {
@@ -832,3 +835,14 @@ def build_fit_matrix(rot, scale=1):
                        [-sx * np.sin(rx), sy * np.cos(ry)]])
 
     return matrix
+
+
+class _LevMarLSQFitter2x2(LevMarLSQFitter):
+    """ Performs fits of 2D vector-models to 2D reference points. """
+    def objective_function(self, fps, *args):
+        model, weights, inputs, meas = args
+        _fitter_to_model_params(model, fps)
+        if weights is None:
+            return np.ravel(np.subtract(model(*inputs), meas))
+        else:
+            return np.ravel(weights * np.subtract(model(*inputs), meas))
