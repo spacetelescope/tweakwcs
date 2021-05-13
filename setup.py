@@ -77,6 +77,7 @@ TESTS_REQUIRE = [
     'pytest',
     'pytest-cov',
     'codecov',
+    'scipy'
 ]
 
 DOCS_REQUIRE = [
