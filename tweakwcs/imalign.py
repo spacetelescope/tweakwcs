@@ -699,7 +699,7 @@ def overlap_matrix(images):
     m = np.zeros((nimg, nimg), dtype=np.double)
     for i in range(nimg):
         for j in range(i + 1, nimg):
-            area = images[i].intersection_area(images[j])
+            area = images[i]._guarded_intersection_area(images[j])
             m[j, i] = area
             m[i, j] = area
     return m
