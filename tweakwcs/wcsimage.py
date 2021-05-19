@@ -1196,7 +1196,10 @@ class WCSGroupCatalog(object):
         for imcat in self:
             imcat.fit_status = "FAILED: Unknown error"
 
-        minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
+        if minobj is None:
+            minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
+
+        log.debug("minobj set to {} for fitgeom='{}'".format(minobj, fitgeom))
 
         if ref_tpwcs is None:
             ref_tpwcs = deepcopy(self._images[0].tpwcs)
