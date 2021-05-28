@@ -517,7 +517,10 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     xm = (c01 * c11 - 2.0 * c02 * c10) / det
     ym = (c10 * c11 - 2.0 * c01 * c20) / det
 
-    if 0.0 <= xm <= (nx - 1.0) and 0.0 <= ym <= (ny - 1.0):
+    if xm < x1 or xm > x2 or ym < y1 or ym > y2:
+        xm, ym = coord
+        fit_status = 'WARNING: BADFIT'
+    elif 0.0 <= xm <= (nx - 1.0) and 0.0 <= ym <= (ny - 1.0):
         fit_status = 'SUCCESS'
     else:
         xm = 0.0 if xm < 0.0 else min(xm, nx - 1.0)
