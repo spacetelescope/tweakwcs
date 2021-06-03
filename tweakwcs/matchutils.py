@@ -351,9 +351,9 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     """
     Find location of the peak in an array. This is done by fitting a second
     degree 2D polynomial to the data within a `peak_fit_box` and computing the
-    location of its maximum. An initial
-    estimate of the position of the maximum will be performed by searching
-    for the location of the pixel/array element with the maximum value.
+    location of its maximum. An initial estimate of the position of the maximum
+    will be performed by searching for the location of the pixel/array element
+    with the maximum value.
 
     Parameters
     ----------
@@ -362,7 +362,8 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     peak_fit_box: int, optional
         Size (in pixels) of the box around the initial estimate of the maximum
-        to be used for quadratic fitting from which peak location is computed.
+        to be used both for quadratic fitting from which peak location is
+        computed and for the center-of-mass estimate.
         It is assumed that fitting box is a square with sides of length
         given by ``peak_fit_box``.
 
@@ -386,19 +387,42 @@ def _find_peak(data, peak_fit_box=5, mask=None):
           returned coordinate is the center of input array;
         - ``'WARNING:EDGE'``: Peak lies on the edge of the input array.
           Returned coordinates are the result of a discreet search;
-        - ``'WARNING:BADFIT'``: Performed fid did not find a maximum. Returned
-          coordinates are the result of a discreet search;
+        - ``'WARNING:BADFIT'``: Performed fid did not find a maximum or the
+          estimated maximum is outside of the fit box. Returned
+          coordinates are the result of either a center-of-mass estimate or
+          a discreet search;
         - ``'WARNING:CENTER-OF-MASS'``: Returned coordinates are the result
           of a center-of-mass estimate instead of a polynomial fit. This is
-          either due to too few points to perform a fit or due to a
-          failure of the polynomial fit.
+          either due to too few points to perform a fit, polynomial peak being
+          outside of the fit box, or due to a failure of the polynomial fit.
 
-    fit_box: a tuple of two tuples
-        A tuple of two tuples of the form ``((x1, x2), (y1, y2))`` that
+    fit_box: a tuple of `slice`
+        A tuple of `slice` objects of the form
+        ``(slice(y1, y2, None), slice(x1, x2, None))`` that
         indicates pixel ranges used for fitting (these indices can be used
         directly for slicing input data)
 
     """
+
+    def _center_of_mass(v, d, x1, x2, y1, y2):
+        # Compute center-of-mass. Assumes that ``v`` was computed using
+        # coordinates ``x``, ``y`` relative to ``x1 - 1`` and ``y1 - 1``.
+        # Returned coordinate is relative to origin.
+        m = np.logical_not(np.isfinite(d))
+        vx = v[:, 1].flatten()
+        vy = v[:, 2].flatten()
+        d[m] = 0
+        vx[m] = 0
+        vy[m] = 0
+        dt = d.sum()
+        if dt == 0.0:
+            coord = ((x2 + x1 - 1.0) / 2.0, (y2 + y1 - 1.0) / 2.0)
+            return coord, 'ERROR:NODATA'
+        xc = np.dot(vx, d) / dt
+        yc = np.dot(vy, d) / dt
+        return ((float(x1 + xc - 1), float(y1 + yc - 1)),
+                'WARNING:CENTER-OF-MASS')
+
     # check arguments:
     if peak_fit_box < 1:
         raise ValueError("peak_fit_box must be at least 1 pixel in size.")
@@ -406,24 +430,22 @@ def _find_peak(data, peak_fit_box=5, mask=None):
     ny, nx = data.shape
 
     # find index of the pixel having maximum value:
-    if mask is None:
-        jmax, imax = np.unravel_index(np.argmax(data), data.shape)
-        coord = (float(imax), float(jmax))
+    finite = np.isfinite(data)
+    mask = finite if mask is None else np.logical_and(mask, finite)
 
-    else:
-        j, i = np.indices(data.shape)
-        i = i[mask]
-        j = j[mask]
+    j, i = np.indices(data.shape)
+    i = i[mask]
+    j = j[mask]
 
-        if i.size == 0:
-            # no valid data:
-            coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-            return coord, 'ERROR:NODATA', np.s_[0:ny, 0:nx]
+    if i.size == 0:
+        # no valid data:
+        coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
+        return coord, 'ERROR:NODATA', np.s_[0:ny, 0:nx]
 
-        ind = np.argmax(data[mask])
-        imax = i[ind]
-        jmax = j[ind]
-        coord = (float(imax), float(jmax))
+    ind = np.argmax(data[mask])
+    imax = i[ind]
+    jmax = j[ind]
+    coord = (float(imax), float(jmax))
 
     if data[jmax, imax] < 1:
         # no valid data: we need some counts in the histogram bins
@@ -438,7 +460,7 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     # if peak is at the edge of the box, return integer indices of the max:
     if imax == x1 or imax == x2 - 1 or jmax == y1 or jmax == y2 - 1:
-        return (float(imax), float(jmax)), 'WARNING:EDGE', np.s_[y1:y2, x1:x2]
+        return coord, 'WARNING:EDGE', np.s_[y1:y2, x1:x2]
 
     # expand the box if needed:
     if (x2 - x1) < peak_fit_box:  # pragma: no branch
@@ -455,75 +477,53 @@ def _find_peak(data, peak_fit_box=5, mask=None):
 
     assert x2 - x1 > 0 or y2 - y1 > 0
 
+    fit_slice = np.s_[y1:y2, x1:x2]
+
     # fit a 2D 2nd degree polynomial to data:
-    xi = np.arange(x1, x2)
-    yi = np.arange(y1, y2)
+    m = mask[fit_slice].ravel()
+    xi = np.arange(x1, x2) - (x1 - 1)
+    yi = np.arange(y1, y2) - (y1 - 1)
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
-    v = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
-    d = data[y1:y2, x1:x2].ravel()
-    if mask is not None:
-        m = mask[y1:y2, x1:x2].ravel()
-        v = v[m]
-        d = d[m]
+    v = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T[m]
+    d = data[fit_slice].ravel()[m]
 
     if d.size < 6:
         # we need at least 6 points to fit a 2D quadratic polynomial
         # attempt center-of-mass instead:
-        m = np.logical_not(np.isfinite(d))
-        vx = v[:, 1].flatten()
-        vy = v[:, 2].flatten()
-        d[m] = 0
-        vx[m] = 0
-        vy[m] = 0
-        dt = d.sum()
-        if dt == 0.0:
-            coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-            return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
-        xc = np.dot(vx, d) / dt
-        yc = np.dot(vy, d) / dt
-        return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]
+        coord, fit_status = _center_of_mass(v, d, x1, x2, y1, y2)
+        return coord, fit_status, fit_slice
 
     try:
         c = np.linalg.lstsq(v, d, rcond=None)[0]
         if not np.all(np.isfinite(c)):
             raise np.linalg.LinAlgError("Results of the fit are not finite.")
     except np.linalg.LinAlgError as e:
-        print("WARNING: Least squares failed!\n{}".format(e))
+        log.warning("Least squares failed!\n{}".format(e))
 
         # attempt center-of-mass instead:
-        m = np.logical_not(np.isfinite(d))
-        vx = v[:, 1].flatten()
-        vy = v[:, 2].flatten()
-        d[m] = 0
-        vx[m] = 0
-        vy[m] = 0
-        dt = d.sum()
-        if dt == 0.0:
-            coord = ((nx - 1.0) / 2.0, (ny - 1.0) / 2.0)
-            return coord, 'ERROR:NODATA', np.s_[y1:y2, x1:x2]
-        xc = np.dot(vx, d) / dt
-        yc = np.dot(vy, d) / dt
-        return (xc, yc), 'WARNING:CENTER-OF-MASS', np.s_[y1:y2, x1:x2]
+        coord, fit_status = _center_of_mass(v, d, x1, x2, y1, y2)
+        return coord, fit_status, fit_slice
 
     # find maximum of the polynomial:
     _, c10, c01, c11, c20, c02 = c
     det = 4 * c02 * c20 - c11**2
     if det <= 0 or ((c20 > 0.0 and c02 >= 0.0) or (c20 >= 0.0 and c02 > 0.0)):
         # polynomial does not have max. return maximum value in the data:
-        return coord, 'WARNING:BADFIT', np.s_[y1:y2, x1:x2]
+        coord, fit_status = _center_of_mass(v, d, x1, x2, y1, y2)
+        if fit_status.startswith('ERROR'):
+            return coord, fit_status, fit_slice
+        return coord, 'WARNING:BADFIT', fit_slice
 
-    xm = (c01 * c11 - 2.0 * c02 * c10) / det
-    ym = (c10 * c11 - 2.0 * c01 * c20) / det
+    xm = (c01 * c11 - 2.0 * c02 * c10) / det + x1 - 1
+    ym = (c10 * c11 - 2.0 * c01 * c20) / det + y1 - 1
 
-    if 0.0 <= xm <= (nx - 1.0) and 0.0 <= ym <= (ny - 1.0):
+    if x1 <= xm <= (x2 - 1.0) and y1 <= ym <= (y2 - 1.0):
+        coord = (xm, ym)
         fit_status = 'SUCCESS'
+
     else:
-        xm = 0.0 if xm < 0.0 else min(xm, nx - 1.0)
-        ym = 0.0 if ym < 0.0 else min(ym, ny - 1.0)
-        fit_status = 'WARNING:EDGE'
+        coord, fit_status = _center_of_mass(v, d, x1, x2, y1, y2)
 
-    coord = (xm, ym)
-
-    return coord, fit_status, np.s_[y1:y2, x1:x2]
+    return coord, fit_status, fit_slice
