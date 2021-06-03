@@ -4,8 +4,16 @@
 Release Notes
 =============
 
-.. 0.7.3 (unreleased)
+.. 0.7.4 (unreleased)
    ==================
+
+
+0.7.3 (unreleased)
+==================
+
+- Make peak finding code switch to center-of-mass algorithm when estimated
+  2D parabolic fit estimates a peak outside of the fit box. Reduce
+  accuracy loss in computation. [#143]
 
 
 0.7.2 (13-May-2021)

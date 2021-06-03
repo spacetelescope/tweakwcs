@@ -12,6 +12,8 @@ import numpy as np
 
 from astropy.table import Table
 from astropy.wcs import WCS
+from astropy.io import fits
+from astropy.utils.data import get_pkg_data_filename
 
 import tweakwcs
 from tweakwcs.matchutils import (_xy_2dhist, _estimate_2dhist_shift,
@@ -111,7 +113,7 @@ def test_find_peak_few_data_for_center_of_mass():
     mask[i - 1, j - 1] = True
     coord, fit_status, fit_box = _find_peak(data, peak_fit_box=3, mask=mask)
     assert fit_status == 'ERROR:NODATA'
-    assert np.allclose(coord, (10, 10), rtol=0, atol=_ATOL)
+    assert np.allclose(coord, (j, i), rtol=0, atol=_ATOL)
 
 
 def test_find_peak_negative_peak():
@@ -151,15 +153,6 @@ def test_find_peak_success():
     assert np.allclose(coord, (8, 11), rtol=0, atol=1e-6)
 
 
-def test_find_peak_fail_lstsq():
-    data = np.zeros((11, 21))
-    data[6, 7] = 10
-    data[8, 7] = np.nan
-    coord, fit_status, fit_box = _find_peak(data, peak_fit_box=7)
-    assert fit_status == 'WARNING:CENTER-OF-MASS'
-    assert np.allclose(coord, (7, 6), rtol=0, atol=1e-6)
-
-
 def test_find_peak_nodata_after_fail():
     data = np.zeros((21, 21))
     i = random.choice(range(6, 14))
@@ -168,8 +161,9 @@ def test_find_peak_nodata_after_fail():
     data[i - 1, j - 1] = -1.0
     data[i + 1, j + 1] = np.nan
     coord, fit_status, fit_box = _find_peak(data, peak_fit_box=5)
-    assert fit_status == 'ERROR:NODATA'
-    assert np.allclose(coord, (10, 10), rtol=0, atol=_ATOL)
+    assert fit_status == 'SUCCESS'
+    shift = 0.53583061889252015
+    assert np.allclose(coord, (j + shift, i + shift), rtol=0, atol=20 * _ATOL)
 
 
 def test_find_peak_badfit():
@@ -179,17 +173,25 @@ def test_find_peak_badfit():
     data[(x < 5) | (x > 11) | (y < 8) | (y > 14)] = 0
     coord, fit_status, fit_box = _find_peak(data, peak_fit_box=7)
     assert fit_status == 'WARNING:BADFIT'
-    assert np.allclose(coord, (11, 14), rtol=0, atol=1e-6)
+    assert np.allclose(coord, (9.55681818, 12.55681818), rtol=0, atol=1e-6)
 
 
-def test_find_peak_fit_over_edge():
+def test_find_peak_fit_over_fitbox_edge():
     data = np.zeros((21, 21))
     y, x = np.indices(data.shape)
     data = 100 * np.exp(-0.5 * (x**2 + (y - 11)**2))
     data[:, 0] = 0.0
     coord, fit_status, fit_box = _find_peak(data, peak_fit_box=7)
-    assert fit_status == 'WARNING:EDGE'
-    assert np.allclose(coord, (0, 11), rtol=0, atol=1e-6)
+    assert fit_status == 'WARNING:CENTER-OF-MASS'
+    assert np.allclose(coord, (1.2105026810165653, 11), rtol=0, atol=1e-6)
+
+
+def test_find_peak_sparse_2dhist():
+    data = fits.getdata(get_pkg_data_filename('data/sparse-2dhist.fits'))
+    coord, fit_status, fit_box = _find_peak(data, mask=data > 0)
+    assert fit_status == 'WARNING:CENTER-OF-MASS'
+    assert np.allclose(coord, (35.046728971962615, 35.02803738317757),
+                       rtol=0, atol=1e-14)
 
 
 @pytest.mark.parametrize('shift', [100, 2])
