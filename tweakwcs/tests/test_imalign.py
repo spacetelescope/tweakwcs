@@ -335,6 +335,29 @@ def test_align_wcs_refcat_from_imcat(mock_fits_wcs, enforce):
         assert cat.meta['fit_info']['status'] == 'SUCCESS'
 
 
+def test_align_wcs_minobj(mock_fits_wcs):
+    shift = (12, -34)
+    rot = (15, 17)
+    scale = (1.0123, 0.9876)
+
+    crpix = mock_fits_wcs.wcs.crpix - 1
+    xy = 1024 * np.random.random((100, 2))
+    m = build_fit_matrix(rot, scale)
+    xyr = np.dot(xy - crpix, m) + crpix + shift
+    imcat = Table(xy, names=('x', 'y'))
+    refcat = Table(xyr, names=('x', 'y'))
+    tpwcs1 = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    reftpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': refcat})
+
+    status = align_wcs(
+        [reftpwcs, tpwcs1], refcat=None, fitgeom='general', minobj=200,
+        match=None, enforce_user_order=True, expand_refcat=False
+    )
+    assert status
+    assert reftpwcs.meta['fit_info']['status'] == 'REFERENCE'
+    assert tpwcs1.meta['fit_info']['status'] == 'FAILED: not enough matches'
+
+
 def test_multi_image_set(mock_fits_wcs):
     np.random.seed(1)
     v1 = 1e10 * np.finfo(np.double).eps

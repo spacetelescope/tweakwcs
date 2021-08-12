@@ -8,8 +8,11 @@ Release Notes
    ==================
 
 
-0.7.3 (unreleased)
-==================
+0.7.3 (12-August-2021)
+======================
+
+- Fix a bug due to which ``minobj`` parameter to
+  ``WCSGroupCatalog.align_to_ref()`` and ``align_wcs()`` was ignored. [#144]
 
 - Make peak finding code switch to center-of-mass algorithm when estimated
   2D parabolic fit estimates a peak outside of the fit box. Reduce

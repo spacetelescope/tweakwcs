@@ -524,7 +524,9 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
     # check fitgeom:
     fitgeom = fitgeom.lower()
     try:
-        minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
+        if minobj is None:
+            minobj = SUPPORTED_FITGEOM_MODES[fitgeom]
+            log.debug(f"Setting 'minobj' to {minobj} for fitgeom='{fitgeom}'")
     except KeyError:
         raise ValueError(
             f"Unsupported 'fitgeom'. Valid values are: {_SUPPORTED_FITGEOM_EN_STR:s}"
