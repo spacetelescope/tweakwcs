@@ -460,6 +460,12 @@ class WCSImageCatalog(object):
 
         elif len(x) > 2:
             ra, dec = convex_hull(x, y, wcs=self.det_to_world)
+            # Remove any duplicate points at this stage
+            # This will prevent any mathematical singularities with the Polygon
+            # or the computation of it's area.
+            _,idx = np.unique(ra, return_index=True)
+            ra = ra[np.sort(idx)]
+            dec = dec[np.sort(idx)]
             # else, for len(x) in [1, 2], use entire image footprint.
             # TODO: a more robust algorithm should be implemented to deal with
             #       len(x) in [1, 2] cases.
