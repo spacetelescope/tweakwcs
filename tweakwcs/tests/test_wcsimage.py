@@ -8,7 +8,6 @@ import copy
 import pytest
 import numpy as np
 from astropy.table import Table, Column
-from spherical_geometry.polygon import SphericalPolygon
 from tweakwcs import TPMatch, FITSWCS
 from tweakwcs.wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,
                                WCSGroupCatalog, _is_int)
