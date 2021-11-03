@@ -460,12 +460,7 @@ class WCSImageCatalog(object):
 
         elif len(x) > 2:
             ra, dec = convex_hull(x, y, wcs=self.det_to_world)
-            # Remove any duplicate points at this stage
-            # This will prevent any mathematical singularities with the Polygon
-            # or the computation of it's area.
-            _, idx = np.unique(ra, return_index=True)
-            ra = ra[np.sort(idx)]
-            dec = dec[np.sort(idx)]
+
             # else, for len(x) in [1, 2], use entire image footprint.
             # TODO: a more robust algorithm should be implemented to deal with
             #       len(x) in [1, 2] cases.
@@ -474,8 +469,8 @@ class WCSImageCatalog(object):
             #       dec[0] != dec[-1] (even though we close the polygon in the
             #       previous two lines). Then SphericalPolygon fails because
             #       points are not closed. Threfore we force it to be closed:
-            ra = np.append(ra, ra[0])
-            dec = np.append(dec, dec[0])
+            # ra[-1] = ra[0]
+            # dec[-1] = dec[0]
 
             self._bb_radec = (ra, dec)
             self._polygon = SphericalPolygon.from_radec(ra, dec)
@@ -1684,8 +1679,20 @@ Convex_hull/Monotone_chain>`_
 
     # convert x, y vertex coordinates to RA & DEC:
     ra, dec = wcs(ptx, pty)
-    ra[-1] = ra[0]
-    dec[-1] = dec[0]
+
+    # Remove any duplicate points at this stage
+    # This will prevent any mathematical singularities with the Polygon
+    # or the computation of it's area.
+    rd = np.array([ra, dec]).T
+    # Identify (ra,dec) tuples that are unique to the last decimal place
+    _, idx = np.unique(rd, axis=0, return_index=True)
+    # Keep only unique values
+    ra = ra[np.sort(idx)]
+    dec = dec[np.sort(idx)]
+
+    # Close the polygon now by adding the first point as the last point
+    ra = np.append(ra, ra[0])
+    dec = np.append(dec, dec[0])
 
     if ndarray:
         return (ra, dec)
