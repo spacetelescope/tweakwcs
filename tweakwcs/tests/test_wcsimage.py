@@ -8,6 +8,7 @@ import copy
 import pytest
 import numpy as np
 from astropy.table import Table, Column
+from spherical_geometry.polygon import SphericalPolygon
 from tweakwcs import TPMatch, FITSWCS
 from tweakwcs.wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,
                                WCSGroupCatalog, _is_int)
@@ -28,6 +29,16 @@ def rect_cat(scope='function'):
 def rect_imcat(mock_fits_wcs):
     x = np.array([0.0, 0.0, 10.0, 10.0, 0.0]) - 5
     y = np.array([0.0, 10.0, 10.0, 0.0, 0.0]) - 5
+    imcat = Table([x, y], names=('x', 'y'))
+    tpwcs = FITSWCS(mock_fits_wcs)
+    w = WCSImageCatalog(imcat, tpwcs)
+    return w
+
+
+@pytest.fixture(scope='function')
+def rect_imcat_dup(mock_fits_wcs):
+    x = np.array([0.0, 0.0, 10.0, 10.0, 10.0, 0.0]) - 5
+    y = np.array([0.0, 10.0, 10.0, 0.0, 0.0, 0.0]) - 5
     imcat = Table([x, y], names=('x', 'y'))
     tpwcs = FITSWCS(mock_fits_wcs)
     w = WCSImageCatalog(imcat, tpwcs)
@@ -140,6 +151,16 @@ def test_wcsimcat_bb_radec(mock_fits_wcs, rect_imcat):
     ra2, dec2 = rect_imcat.bb_radec
     assert np.allclose(ra1, ra2[::-1])
     assert np.allclose(dec1, dec2[::-1])
+
+
+def test_wcsimcat_area(mock_fits_wcs, rect_imcat):
+    rect_imcat._calc_cat_convex_hull()
+    assert(np.isclose(rect_imcat._poly_area, 2.9913849175500218e-12, atol=0.0, rtol=5.0e-4))
+
+
+def test_wcsimcat_area_dup(mock_fits_wcs, rect_imcat_dup):
+    rect_imcat_dup._calc_cat_convex_hull()
+    assert(np.isclose(rect_imcat_dup._poly_area, 2.9913849175500218e-12, atol=0.0, rtol=5.0e-4))
 
 
 def test_wcsgroupcat_init(mock_fits_wcs, rect_imcat):

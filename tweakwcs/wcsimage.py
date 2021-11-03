@@ -463,7 +463,7 @@ class WCSImageCatalog(object):
             # Remove any duplicate points at this stage
             # This will prevent any mathematical singularities with the Polygon
             # or the computation of it's area.
-            _,idx = np.unique(ra, return_index=True)
+            _, idx = np.unique(ra, return_index=True)
             ra = ra[np.sort(idx)]
             dec = dec[np.sort(idx)]
             # else, for len(x) in [1, 2], use entire image footprint.
@@ -474,8 +474,8 @@ class WCSImageCatalog(object):
             #       dec[0] != dec[-1] (even though we close the polygon in the
             #       previous two lines). Then SphericalPolygon fails because
             #       points are not closed. Threfore we force it to be closed:
-            ra[-1] = ra[0]
-            dec[-1] = dec[0]
+            ra = np.append(ra, ra[0])
+            dec = np.append(dec, dec[0])
 
             self._bb_radec = (ra, dec)
             self._polygon = SphericalPolygon.from_radec(ra, dec)
