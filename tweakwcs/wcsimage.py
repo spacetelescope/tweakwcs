@@ -1687,8 +1687,8 @@ Convex_hull/Monotone_chain>`_
         # remove points that are too close to each other:
         idx = list(range(np.size(ptx)))
         for k in range(np.size(ptx) - 2, 0, -1):
-            if (np.abs(ptx[k] - ptx[k + 1]) <= min_separation and
-                np.abs(pty[k] - pty[k + 1]) <= min_separation):
+            if np.abs(ptx[k] - ptx[k + 1]) <= min_separation and \
+               np.abs(pty[k] - pty[k + 1]) <= min_separation:
                 idx.pop(k)
 
         ptx = ptx[idx]

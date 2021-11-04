@@ -13,7 +13,6 @@ from astropy import wcs
 from tweakwcs import TPMatch, FITSWCS
 from tweakwcs.wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,
                                WCSGroupCatalog, _is_int)
-from astropy import table
 from astropy.utils.data import get_pkg_data_filename
 
 
