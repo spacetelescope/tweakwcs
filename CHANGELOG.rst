@@ -4,8 +4,14 @@
 Release Notes
 =============
 
-.. 0.7.4 (unreleased)
+.. 0.7.5 (unreleased)
    ==================
+
+0.7.4 (unreleased)
+==================
+
+- Remove consecutive convex hull vertices that are very close to each
+  other. [#147]
 
 
 0.7.3 (12-August-2021)
