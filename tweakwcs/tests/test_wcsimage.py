@@ -8,9 +8,12 @@ import copy
 import pytest
 import numpy as np
 from astropy.table import Table, Column
+from astropy.io import fits
+from astropy import wcs
 from tweakwcs import TPMatch, FITSWCS
 from tweakwcs.wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,
                                WCSGroupCatalog, _is_int)
+from astropy.utils.data import get_pkg_data_filename
 
 
 _ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
@@ -132,6 +135,20 @@ def test_wcsimcat_calc_chip_bounding_polygon_custom_stepsize(mock_fits_wcs,
 def test_wcsimcat_calc_cat_convex_hull_no_catalog(mock_fits_wcs, rect_imcat):
     rect_imcat.catalog = None
     assert rect_imcat._calc_cat_convex_hull() is None
+
+
+def test_wcsimcat_calc_cat_convex_hull_adjacent():
+    h = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis1.hdr'))
+    w = wcs.WCS(h)
+    tpwcs = FITSWCS(w)
+    cat = Table.read(
+        get_pkg_data_filename('data/convex_hull_proximity.cat'),
+        format='ascii.tab',
+        delimiter='\t',
+        names=['x', 'y']
+    )
+    w = WCSImageCatalog(cat, tpwcs)
+    assert len(list(w.polygon.points)[0]) == 14
 
 
 def test_wcsimcat_bb_radec(mock_fits_wcs, rect_imcat):
@@ -417,3 +434,25 @@ def test_wcsrefcat_convex_hull(mock_fits_wcs):
     xc, yc = convex_hull(np.array(x + [3, 6, 7]), np.array(y + [5, 1, 8]),
                          lambda x, y: (x, y))
     assert set(xc) == set(x) and set(yc) == set(y)
+
+
+def test_convex_hull_invalid_min_separation():
+    x = [0.0, 10.0, 10.0, 5.0, 0.0, 0.0]
+    y = [0.0, 0.0, 10.0, 11.0, 10.0, 0.0]
+
+    with pytest.raises(ValueError) as e:
+        convex_hull(x, y, min_separation=-1)
+    assert (e.value.args[0] == "'min_separation' must be non-negative or None.")
+
+
+def test_convex_hull_adjacent():
+    x = [0.0, 10.0, 10.0, 5.001, 5.0, 0.0, 0.0]
+    y = [0.0, 0.0, 10.0, 11.000001, 11.0, 10.0, 0.0]
+
+    xc, yc = convex_hull(x, y, min_separation=None)
+    assert np.allclose([x, y], [xc, yc], rtol=0, atol=1e-14)
+
+    xc, yc = convex_hull(x, y, min_separation=1e-2)
+    x.pop(3)
+    y.pop(3)
+    assert np.allclose([x, y], [xc, yc], rtol=0, atol=1e-14)

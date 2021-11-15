@@ -459,17 +459,10 @@ class WCSImageCatalog(object):
             )
 
         elif len(x) > 2:
-            ra, dec = convex_hull(x, y, wcs=self.det_to_world)
+            ra, dec = convex_hull(x, y, wcs=self.det_to_world, min_separation=1e-8)
             # else, for len(x) in [1, 2], use entire image footprint.
             # TODO: a more robust algorithm should be implemented to deal with
             #       len(x) in [1, 2] cases.
-
-            # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
-            #       dec[0] != dec[-1] (even though we close the polygon in the
-            #       previous two lines). Then SphericalPolygon fails because
-            #       points are not closed. Threfore we force it to be closed:
-            ra[-1] = ra[0]
-            dec[-1] = dec[0]
 
             self._bb_radec = (ra, dec)
             self._polygon = SphericalPolygon.from_radec(ra, dec)
@@ -1459,7 +1452,7 @@ class RefCatalog(object):
         x = yr / xr
         y = zr / xr
 
-        xv, yv = convex_hull(x, y)
+        xv, yv = convex_hull(x, y, wcs=None, min_separation=1e-11)
 
         if len(xv) == 0:
             # no points
@@ -1469,36 +1462,34 @@ class RefCatalog(object):
 
         elif len(xv) == 1:
             # one point. build a small box around it:
-            x, y = convex_hull(x, y, wcs=None)
             tol = 0.5 * self._footprint_tol
 
-            xv = [x[0] - tol, x[0] - tol, x[0] + tol, x[0] + tol, x[0] - tol]
-            yv = [y[0] - tol, y[0] + tol, y[0] + tol, y[0] - tol, y[0] - tol]
+            xv = [xv[0] - tol, xv[0] - tol, xv[0] + tol, xv[0] + tol, xv[0] - tol]
+            yv = [yv[0] - tol, yv[0] + tol, yv[0] + tol, yv[0] - tol, yv[0] - tol]
 
         elif len(xv) == 2 or len(xv) == 3:
             # two points. build a small box around them:
-            x, y = convex_hull(x, y, wcs=None)
             tol = 0.5 * self._footprint_tol
 
-            vx = y[1] - y[0]
-            vy = x[1] - x[0]
+            vx = yv[1] - yv[0]
+            vy = xv[1] - xv[0]
             norm = np.sqrt(vx * vx + vy * vy)
             vx /= norm
             vy /= norm
 
             xv = [
-                x[0] - (vx - vy) * tol,
-                x[0] - (vx + vy) * tol,
-                x[1] + (vx - vy) * tol,
-                x[1] + (vx + vy) * tol,
-                x[0] - (vx - vy) * tol
+                xv[0] - (vx - vy) * tol,
+                xv[0] - (vx + vy) * tol,
+                xv[1] + (vx - vy) * tol,
+                xv[1] + (vx + vy) * tol,
+                xv[0] - (vx - vy) * tol
             ]
             yv = [
-                y[0] - (vy + vx) * tol,
-                y[0] - (vy - vx) * tol,
-                y[1] + (vy + vx) * tol,
-                y[1] + (vy - vx) * tol,
-                y[0] - (vy + vx) * tol
+                yv[0] - (vy + vx) * tol,
+                yv[0] - (vy - vx) * tol,
+                yv[1] + (vy + vx) * tol,
+                yv[1] + (vy - vx) * tol,
+                yv[0] - (vy + vx) * tol
             ]
 
         # "unrotate" cartezian coordinates back to their original
@@ -1596,7 +1587,7 @@ class RefCatalog(object):
         )
 
 
-def convex_hull(x, y, wcs=None):
+def convex_hull(x, y, wcs=None, min_separation=None):
     """Computes the convex hull of a set of 2D points.
 
     Implements `Andrew's monotone chain algorithm <http://en.wikibooks.org\
@@ -1609,17 +1600,39 @@ Convex_hull/Monotone_chain>`_
     Parameters
     ----------
 
-    points: list of tuples
-        An iterable sequence of (x, y) pairs representing the points.
+    x: list, tuple, numpy.ndarray
+        An iterable sequence of ``x``-coordinates of points.
+
+    y: list, tuple, numpy.ndarray
+        An iterable sequence of ``y``-coordinates of points.
+
+    wcs : function
+        A function that takes two arguments (``x``, ``y``) and converts them
+        to "world" coordinates. If provided, returned convex hull vertex
+        coordnates will be in "world" coordinates.
+
+    min_separation : None, float
+        A non-negative number or `None`. When provided as a number, it
+        specifies the minimum separation in both ``x`` and ``y`` coordinates
+        between adjacent verices in the hull. Vertices too close to their
+        neighbors will be removed. This operation is performed _before_
+        convertion to "world" coordinates. When ``min_separation`` is `None`,
+        all vertices are kept.
 
     Returns
     -------
     Output: list
         A list of vertices of the convex hull in counter-clockwise order,
         starting from the vertex with the lexicographically smallest
-        coordinates.
+        coordinates. When a coordinate conversion function is supplied via the
+        ``wcs`` argument, the returned values are those of the converted
+        vertex coordinates.
 
     """
+    if min_separation is not None:
+        if min_separation < 0:
+            raise ValueError("'min_separation' must be non-negative or None.")
+
     ndarray = isinstance(x, np.ndarray) or isinstance(y, np.ndarray)
 
     # Sort the points lexicographically (tuples are compared
@@ -1670,6 +1683,17 @@ Convex_hull/Monotone_chain>`_
     ptx = total_hull[:, 0]
     pty = total_hull[:, 1]
 
+    if min_separation is not None:
+        # remove points that are too close to each other:
+        idx = list(range(np.size(ptx)))
+        for k in range(np.size(ptx) - 2, 0, -1):
+            if np.abs(ptx[k] - ptx[k + 1]) <= min_separation and \
+               np.abs(pty[k] - pty[k + 1]) <= min_separation:
+                idx.pop(k)
+
+        ptx = ptx[idx]
+        pty = pty[idx]
+
     if wcs is None:
         if ndarray:
             return (ptx, pty)
@@ -1678,6 +1702,11 @@ Convex_hull/Monotone_chain>`_
 
     # convert x, y vertex coordinates to RA & DEC:
     ra, dec = wcs(ptx, pty)
+
+    # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
+    #       dec[0] != dec[-1] (even though we close the polygon in the
+    #       previous two lines). Then SphericalPolygon fails because
+    #       points are not closed. Threfore we force it to be closed:
     ra[-1] = ra[0]
     dec[-1] = dec[0]
 
