@@ -11,14 +11,14 @@ of ``WCS``.
 import logging
 from copy import deepcopy
 from abc import ABC, abstractmethod
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import numpy as np
 import astropy
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
         _GWCS_VER_GT_0P12 = True
     else:
@@ -26,7 +26,7 @@ try:
 except ImportError:
     _GWCS_VER_GT_0P12 = False
 
-if LooseVersion(astropy.__version__) >= '4.0':
+if Version(astropy.__version__) >= Version('4.0'):
     _ASTROPY_VER_GE_4 = True
     from astropy.modeling import CompoundModel
     from astropy.modeling.models import (
