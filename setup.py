@@ -71,6 +71,7 @@ INSTALL_REQUIRES = [
     'stsci.stimage',
     'stsci.imagestats',
     'spherical_geometry>=1.2.20',
+    'packaging>=19.0',
 ]
 
 TESTS_REQUIRE = [

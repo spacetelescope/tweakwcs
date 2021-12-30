@@ -12,7 +12,7 @@ import os
 import logging
 import numbers
 from copy import deepcopy
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import numpy as np
 from astropy import table
@@ -23,7 +23,7 @@ from . linearfit import SUPPORTED_FITGEOM_MODES
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
         _GWCS_VER_GT_0P12 = True
     else:
