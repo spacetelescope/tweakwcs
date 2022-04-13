@@ -10,8 +10,15 @@ sets of 2D points.
 """
 import logging
 import numbers
+from packaging.version import Version
+
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter, _fitter_to_model_params
+import astropy
+from astropy.modeling.fitting import LevMarLSQFitter
+if Version(astropy.__version__) >= Version('5.1'):
+    from astropy.modeling.fitting import fitter_to_model_params
+else:
+    from astropy.modeling.fitting import _fitter_to_model_params as fitter_to_model_params
 
 from .linalg import inv
 from . import __version__  # noqa: F401
@@ -841,7 +848,7 @@ class _LevMarLSQFitter2x2(LevMarLSQFitter):
     """ Performs fits of 2D vector-models to 2D reference points. """
     def objective_function(self, fps, *args):
         model, weights, inputs, meas = args
-        _fitter_to_model_params(model, fps)
+        fitter_to_model_params(model, fps)
         if weights is None:
             return np.ravel(np.subtract(model(*inputs), meas))
         else:
