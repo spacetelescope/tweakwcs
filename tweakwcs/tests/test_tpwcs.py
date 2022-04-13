@@ -16,18 +16,13 @@ try:
     import gwcs
     if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import SphericalToCartesian
-        _GWCS_VER_GT_0P12 = True
+        _NO_JWST_SUPPORT = False
     else:
-        _GWCS_VER_GT_0P12 = False
+        _NO_JWST_SUPPORT = True
 except ImportError:
-    _GWCS_VER_GT_0P12 = False
+    _NO_JWST_SUPPORT = True
 
-import astropy
-if Version(astropy.__version__) >= Version('4.0'):
-    _ASTROPY_VER_GE_4 = True
-    from astropy.modeling import CompoundModel
-else:
-    _ASTROPY_VER_GE_4 = False
+from astropy.modeling import CompoundModel
 
 from tweakwcs.linearfit import build_fit_matrix
 from tweakwcs import tpwcs
@@ -37,7 +32,6 @@ from .helper_tpwcs import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
 
 
 _ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
-_NO_JWST_SUPPORT = not (_ASTROPY_VER_GE_4 and _GWCS_VER_GT_0P12)
 
 
 def test_tpwcs():

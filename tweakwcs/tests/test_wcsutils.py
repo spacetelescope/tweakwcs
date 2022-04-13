@@ -17,13 +17,11 @@ try:
         from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
         _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
         _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-        _GWCS_VER_GT_0P12 = True
+        _NO_JWST_SUPPORT = False
     else:
-        _GWCS_VER_GT_0P12 = False
+        _NO_JWST_SUPPORT = True
 except ImportError:
-    _GWCS_VER_GT_0P12 = False
-
-_NO_JWST_SUPPORT = not _GWCS_VER_GT_0P12
+    _NO_JWST_SUPPORT = True
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")

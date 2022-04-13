@@ -2,7 +2,6 @@ from packaging.version import Version
 
 import pytest
 import numpy as np
-import astropy
 from astropy.io import fits
 from astropy import table
 from astropy import wcs as fitswcs
@@ -23,14 +22,11 @@ try:
     if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
         from gwcs import coordinate_frames as cf
-        _GWCS_VER_GT_0P12 = True
+        _NO_JWST_SUPPORT = False
     else:
-        _GWCS_VER_GT_0P12 = False
+        _NO_JWST_SUPPORT = True
 except ImportError:
-    _GWCS_VER_GT_0P12 = False
-
-_ASTROPY_VER_GE_4 = Version(astropy.__version__) >= Version('4.0')
-_NO_JWST_SUPPORT = not (_ASTROPY_VER_GE_4 and _GWCS_VER_GT_0P12)
+    _NO_JWST_SUPPORT = True
 
 _ATOL = 1e3 * np.finfo(np.array([1.]).dtype).eps
 
