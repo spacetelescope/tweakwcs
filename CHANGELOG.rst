@@ -13,6 +13,8 @@ Release Notes
 - Remove consecutive convex hull vertices that are very close to each
   other. [#147]
 
+- Set astropy min version to 5.0.4. [#153]
+
 
 0.7.3 (12-August-2021)
 ======================
