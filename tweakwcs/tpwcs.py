@@ -14,7 +14,6 @@ from abc import ABC, abstractmethod
 from packaging.version import Version
 
 import numpy as np
-import astropy
 
 try:
     import gwcs
@@ -26,15 +25,11 @@ try:
 except ImportError:
     _GWCS_VER_GT_0P12 = False
 
-if Version(astropy.__version__) >= Version('4.0'):
-    _ASTROPY_VER_GE_4 = True
-    from astropy.modeling import CompoundModel
-    from astropy.modeling.models import (
-        AffineTransformation2D, Scale, Identity, Mapping, Const1D,
-        RotationSequence3D
-    )
-else:
-    _ASTROPY_VER_GE_4 = False
+from astropy.modeling import CompoundModel
+from astropy.modeling.models import (
+    AffineTransformation2D, Scale, Identity, Mapping, Const1D,
+    RotationSequence3D
+)
 
 from .linalg import inv
 from . import __version__  # noqa: F401
@@ -594,11 +589,6 @@ class JWSTgWCS(TPWCS):
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
-        if not _ASTROPY_VER_GE_4:
-            raise NotImplementedError(
-                "JWST support requires astropy version >= 4.0"
-            )
-
         if not _GWCS_VER_GT_0P12:
             raise NotImplementedError(
                 "JWST support requires gwcs version > 0.12.0 "
