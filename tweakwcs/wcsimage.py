@@ -12,46 +12,19 @@ import os
 import logging
 import numbers
 from copy import deepcopy
-from packaging.version import Version
 
 import numpy as np
 from astropy import table
 from astropy.utils.decorators import deprecated_renamed_argument
 from spherical_geometry.polygon import SphericalPolygon, MalformedPolygonError
+from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
 
 from . linearfit import SUPPORTED_FITGEOM_MODES
 
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-        _GWCS_VER_GT_0P12 = True
-    else:
-        _GWCS_VER_GT_0P12 = False
 
-except ImportError:
-    _GWCS_VER_GT_0P12 = False
+_S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+_C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
-
-if _GWCS_VER_GT_0P12:
-    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-
-else:
-    def _S2C(phi, theta):
-        phi = np.deg2rad(phi)
-        theta = np.deg2rad(theta)
-        cs = np.cos(theta)
-        x = cs * np.cos(phi)
-        y = cs * np.sin(phi)
-        z = np.sin(theta)
-        return x, y, z
-
-    def _C2S(x, y, z):
-        h = np.hypot(x, y)
-        phi = np.rad2deg(np.arctan2(y, x))
-        theta = np.rad2deg(np.arctan2(z, h))
-        return phi, theta
 
 from .wcsutils import planar_rot_3d
 from .tpwcs import TPWCS
