@@ -48,9 +48,10 @@ from tweakwcs.tpwcs import TPWCS, JWSTgWCS
 
 
 class DummyTPWCS(TPWCS):
-    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0], meta=None,
-                       **kwargs):
-        super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
+    def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
+                       ref_tpwcs=None, meta=None, **kwargs):
+        super().set_correction(matrix=matrix, shift=shift,
+                               ref_tpwcs=ref_tpwcs, meta=meta, **kwargs)
 
     def det_to_world(self, x, y):
         return super().det_to_world(x, y)
