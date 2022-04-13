@@ -67,8 +67,11 @@ def test_tpwcs():
     with pytest.raises(TypeError) as arg_err:
         tpwcs.set_correction(matrix, shift, None, {'pytest': 'ABC.TPWCS'},
                              'some_weird_arg')
-    assert (arg_err.value.args[0] == "set_correction() takes from 1 "
-            "to 5 positional arguments but 6 were given")
+    assert (
+        arg_err.value.args[0].endswith(
+            "set_correction() takes from 1 to 5 positional arguments but 6 were given"
+        )
+    )
 
 
 @pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
