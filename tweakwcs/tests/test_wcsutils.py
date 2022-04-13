@@ -5,26 +5,15 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 import pytest
-from packaging.version import Version
 
 import numpy as np
-
+from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
 from tweakwcs import wcsutils
 
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
-        _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-        _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-        _NO_JWST_SUPPORT = False
-    else:
-        _NO_JWST_SUPPORT = True
-except ImportError:
-    _NO_JWST_SUPPORT = True
+_S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+_C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 @pytest.mark.parametrize('x,y,z', [
     (1, 0, 0),
     (0, 1, 0),
@@ -39,7 +28,6 @@ def test_cartesian_spherical_cartesian_roundtrip_special(x, y, z):
     assert np.allclose((x, y, z), xyz, rtol=0, atol=feps)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_cartesian_spherical_cartesian_roundtrip_rand():
     feps = 100 * np.finfo(np.double).eps
     xyz = np.random.random((100, 3))
@@ -51,7 +39,6 @@ def test_cartesian_spherical_cartesian_roundtrip_rand():
     assert np.allclose(rz, z, rtol=0, atol=feps)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_spherical_cartesian_spherical_roundtrip_ugrid():
     feps = 1000 * np.finfo(np.double).eps
     angles = np.linspace(-180, 180, 13)

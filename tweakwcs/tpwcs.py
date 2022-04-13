@@ -11,20 +11,10 @@ of ``WCS``.
 import logging
 from copy import deepcopy
 from abc import ABC, abstractmethod
-from packaging.version import Version
 
 import numpy as np
-
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-        _GWCS_VER_GT_0P12 = True
-    else:
-        _GWCS_VER_GT_0P12 = False
-except ImportError:
-    _GWCS_VER_GT_0P12 = False
-
+import gwcs
+from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
 from astropy.modeling import CompoundModel
 from astropy.modeling.models import (
     AffineTransformation2D, Scale, Identity, Mapping, Const1D,
@@ -589,14 +579,6 @@ class JWSTgWCS(TPWCS):
             Dictionary that will be merged to the object's ``meta`` fields.
 
         """
-        if not _GWCS_VER_GT_0P12:
-            raise NotImplementedError(
-                "JWST support requires gwcs version > 0.12.0 "
-                "To pip install minimal required version, do the following:\n"
-                "pip install git+https://github.com/spacetelescope/gwcs@"
-                "1c1cb3bb35caddef80fb760ea68bc71e189d32de"
-            )
-
         valid, message = self._check_wcs_structure(wcs)
         if not valid:
             raise ValueError("Unsupported WCS structure: {}".format(message))

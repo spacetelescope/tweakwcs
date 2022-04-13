@@ -1,6 +1,3 @@
-from packaging.version import Version
-
-import pytest
 import numpy as np
 from astropy.io import fits
 from astropy import table
@@ -13,20 +10,11 @@ from astropy.modeling.models import (
 )
 from astropy import units as u
 from astropy import coordinates as coord
-
+import gwcs
+from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
+from gwcs import coordinate_frames as cf
 import tweakwcs
 
-
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
-        from gwcs import coordinate_frames as cf
-        _NO_JWST_SUPPORT = False
-    else:
-        _NO_JWST_SUPPORT = True
-except ImportError:
-    _NO_JWST_SUPPORT = True
 
 _ATOL = 1e3 * np.finfo(np.array([1.]).dtype).eps
 
@@ -137,7 +125,6 @@ def _match(x, y):
     return match
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_multichip_jwst_alignment():
     w1 = _make_gwcs_wcs('data/wfc3_uvis1.hdr')
 

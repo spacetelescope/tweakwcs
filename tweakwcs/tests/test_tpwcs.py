@@ -6,24 +6,13 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 import copy
 import pytest
-from packaging.version import Version
 
 import numpy as np
 from astropy.modeling.models import Scale, Identity
 from astropy import wcs as fitswcs
-
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import SphericalToCartesian
-        _NO_JWST_SUPPORT = False
-    else:
-        _NO_JWST_SUPPORT = True
-except ImportError:
-    _NO_JWST_SUPPORT = True
-
 from astropy.modeling import CompoundModel
-
+import gwcs
+from gwcs.geometry import SphericalToCartesian
 from tweakwcs.linearfit import build_fit_matrix
 from tweakwcs import tpwcs
 
@@ -68,7 +57,6 @@ def test_tpwcs():
     )
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_mock_jwst_gwcs():
     w = make_mock_jwst_wcs(v2ref=123, v3ref=500, roll=115, crpix=[-512, -512],
                            cd=[[1e-5, 0], [0, 1e-5]], crval=[82, 12])
@@ -76,7 +64,6 @@ def test_mock_jwst_gwcs():
     assert np.allclose(w.invert(*w(23, 1023)), (23, 1023))
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 @pytest.mark.parametrize('crpix, cd', [
     (np.zeros(3), np.diag(np.ones(3))),
     (np.zeros((2, 2)), np.diag(np.ones(2))),
@@ -92,7 +79,6 @@ def test_mock_wcs_fails(crpix, cd):
         create_V2V3ToDet(v2ref=123, v3ref=500, roll=15, crpix=crpix, cd=cd)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_v2v3todet_roundtrips():
     s2c = (Scale(1.0 / 3600.0) & Scale(1.0 / 3600.0)) | SphericalToCartesian(wrap_lon_at=180)
 
@@ -141,7 +127,6 @@ def test_v2v3todet_roundtrips():
     )
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwst_wcs_corr_applied(mock_jwst_wcs):
     w = make_mock_jwst_wcs(
         v2ref=123.0, v3ref=500.0, roll=115.0, crpix=[512.0, 512.0],
@@ -156,7 +141,6 @@ def test_jwst_wcs_corr_applied(mock_jwst_wcs):
     assert 'dummy_meta' in wc.meta
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
     wc = tpwcs.JWSTgWCS(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0}
@@ -185,7 +169,6 @@ def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
     assert np.max(np.abs(tp_corr['tp_affine'].translation.value)) < _ATOL
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_unsupported_wcs():
     from tweakwcs import tpwcs
     dummy_wcs = gwcs.wcs.WCS(Identity(2), 'det', 'world')
@@ -193,7 +176,6 @@ def test_jwstgwcs_unsupported_wcs():
         tpwcs.JWSTgWCS(dummy_wcs, {})
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_inconsistent_ref(mock_jwst_wcs):
     wc = tpwcs.JWSTgWCS(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
@@ -206,7 +188,6 @@ def test_jwstgwcs_inconsistent_ref(mock_jwst_wcs):
         )
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
     wc = tpwcs.JWSTgWCS(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
@@ -224,7 +205,6 @@ def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
         )
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_ref_angles_preserved(mock_jwst_wcs):
     wc = tpwcs.JWSTgWCS(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
@@ -236,7 +216,6 @@ def test_jwstgwcs_ref_angles_preserved(mock_jwst_wcs):
 # Test inputs with different shapes
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 @pytest.mark.parametrize('inputs', [[500, 512, 12, 24],
                                     [[500, 500], [512, 512], [12, 12], [24, 24]],
                                     [[[500, 500], [500, 500]],
@@ -255,7 +234,6 @@ def test_jwstgwcs_detector_to_world(inputs):
     assert np.allclose(wc.world_to_det(ra, dec), (x, y), atol=_ATOL)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 @pytest.mark.parametrize('inputs', [[0, 0, 12, 24],
                                     [[0, 0], [0, 0], [12, 12], [24, 24]],
                                     [[[0, 0], [0, 0]],
@@ -274,7 +252,6 @@ def test_jwstgwcs_tangent_to_world(inputs):
     assert np.allclose(wc.tanp_to_world(tanp_x, tanp_y), (ra, dec), atol=_ATOL)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 @pytest.mark.parametrize('inputs', [[500, 512, 0, 0],
                                     [[500, 500], [512, 512], [0, 0], [0, 0]],
                                     [[[500, 500], [500, 500]],
@@ -293,7 +270,6 @@ def test_jwstgwcs_detector_to_tanp(inputs):
     assert np.allclose(wc.tanp_to_det(tanp_x, tanp_y), (x, y), atol=_ATOL)
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_bbox():
     w = make_mock_jwst_wcs(
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
@@ -319,7 +295,6 @@ def test_jwstgwcs_bbox():
     assert wc.bounding_box is None
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_bad_pipelines_no_vacorr():
     p0 = make_mock_jwst_pipeline(
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
@@ -381,7 +356,6 @@ def test_jwstgwcs_bad_pipelines_no_vacorr():
         tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
 
-@pytest.mark.skipif(_NO_JWST_SUPPORT, reason="requires gwcs>=0.12.1")
 def test_jwstgwcs_bad_pipelines_with_vacorr():
     p0 = make_mock_jwst_pipeline(
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],

@@ -5,45 +5,18 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 import math
-from packaging.version import Version
 import numpy as np
 from astropy.modeling import Model, Parameter
 from astropy.modeling.models import AffineTransformation2D, Identity
 from astropy import coordinates as coord
 from astropy import units as u
-
-try:
-    import gwcs
-    if Version(gwcs.__version__) > Version('0.12.0'):
-        from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-        _GWCS_VER_GT_0P12 = True
-    else:
-        _GWCS_VER_GT_0P12 = False
-except (ImportError, ModuleNotFoundError):
-    _GWCS_VER_GT_0P12 = False
-
-if _GWCS_VER_GT_0P12:
-    _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-    _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-
-else:
-    def _S2C(phi, theta):
-        phi = np.deg2rad(phi)
-        theta = np.deg2rad(theta)
-        cs = np.cos(theta)
-        x = cs * np.cos(phi)
-        y = cs * np.sin(phi)
-        z = np.sin(theta)
-        return x, y, z
-
-    def _C2S(x, y, z):
-        h = np.hypot(x, y)
-        phi = np.rad2deg(np.arctan2(y, x))
-        theta = np.rad2deg(np.arctan2(z, h))
-        return phi, theta
-
-
+import gwcs
+from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
 from tweakwcs.tpwcs import TPWCS, JWSTgWCS
+
+
+_S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+_C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 
 class DummyTPWCS(TPWCS):
