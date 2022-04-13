@@ -6,7 +6,7 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 import copy
 import pytest
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import numpy as np
 from astropy.modeling.models import Scale, Identity
@@ -14,7 +14,7 @@ from astropy import wcs as fitswcs
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import SphericalToCartesian
         _GWCS_VER_GT_0P12 = True
     else:
@@ -23,7 +23,7 @@ except ImportError:
     _GWCS_VER_GT_0P12 = False
 
 import astropy
-if LooseVersion(astropy.__version__) >= '4.0':
+if Version(astropy.__version__) >= Version('4.0'):
     _ASTROPY_VER_GE_4 = True
     from astropy.modeling import CompoundModel
 else:

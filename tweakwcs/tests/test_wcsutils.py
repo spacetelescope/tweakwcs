@@ -5,7 +5,7 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 import pytest
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from tweakwcs import wcsutils
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
         _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
         _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)

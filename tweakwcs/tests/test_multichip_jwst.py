@@ -1,4 +1,4 @@
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import pytest
 import numpy as np
@@ -20,7 +20,7 @@ import tweakwcs
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import SphericalToCartesian, CartesianToSpherical
         from gwcs import coordinate_frames as cf
         _GWCS_VER_GT_0P12 = True
@@ -29,7 +29,7 @@ try:
 except ImportError:
     _GWCS_VER_GT_0P12 = False
 
-_ASTROPY_VER_GE_4 = LooseVersion(astropy.__version__) >= '4.0'
+_ASTROPY_VER_GE_4 = Version(astropy.__version__) >= Version('4.0')
 _NO_JWST_SUPPORT = not (_ASTROPY_VER_GE_4 and _GWCS_VER_GT_0P12)
 
 _ATOL = 1e3 * np.finfo(np.array([1.]).dtype).eps
