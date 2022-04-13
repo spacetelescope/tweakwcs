@@ -5,8 +5,7 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
 import math
-from distutils.version import LooseVersion
-
+from packaging.version import Version
 import numpy as np
 from astropy.modeling import Model, Parameter
 from astropy.modeling.models import AffineTransformation2D, Identity
@@ -15,7 +14,7 @@ from astropy import units as u
 
 try:
     import gwcs
-    if LooseVersion(gwcs.__version__) > '0.12.0':
+    if Version(gwcs.__version__) > Version('0.12.0'):
         from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
         _GWCS_VER_GT_0P12 = True
     else:

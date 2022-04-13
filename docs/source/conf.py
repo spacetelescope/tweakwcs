@@ -17,7 +17,7 @@ import sys
 import datetime
 import sphinx
 import stsci_rtd_theme
-from distutils.version import LooseVersion
+from packaging.version import Version
 try:
     from ConfigParser import ConfigParser
 except ImportError:
@@ -44,8 +44,8 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 
 def check_sphinx_version(expected_version):
-    sphinx_version = LooseVersion(sphinx.__version__)
-    expected_version = LooseVersion(expected_version)
+    sphinx_version = Version(sphinx.__version__)
+    expected_version = Version(expected_version)
     if sphinx_version < expected_version:
         raise RuntimeError(
             "At least Sphinx version {0} is required to build this "
@@ -84,7 +84,7 @@ extensions = [
 if on_rtd:
     extensions.append('sphinx.ext.mathjax')
 
-elif LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
+elif Version(sphinx.__version__) < Version('1.4'):
     extensions.append('sphinx.ext.pngmath')
 
 else:
