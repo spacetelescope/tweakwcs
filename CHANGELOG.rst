@@ -7,13 +7,18 @@ Release Notes
 .. 0.7.5 (unreleased)
    ==================
 
-0.7.4 (unreleased)
-==================
+0.7.4 (13-April-2022)
+=====================
+
+This is almost exclusively a maintenance release except for close vertices
+in the convex hull issue to make the code more robust.
+
+- Set ``gwcs`` min version to 0.14. [#158]
+
+- Set ``astropy`` min version to 5.0.4. [#153]
 
 - Remove consecutive convex hull vertices that are very close to each
   other. [#147]
-
-- Set astropy min version to 5.0.4. [#153]
 
 
 0.7.3 (12-August-2021)
