@@ -220,7 +220,7 @@ def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
     wc.set_correction()
     p = wc.wcs.pipeline
 
-    np = [(v[0], create_V2V3ToDet()) if v[0].name == 'v2v3vacorr'
+    np = [(v.frame, create_V2V3ToDet()) if v.frame.name == 'v2v3vacorr'
           else v for v in p]
     mangled_wc = gwcs.wcs.WCS(np)
 

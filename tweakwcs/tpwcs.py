@@ -886,7 +886,9 @@ class JWSTgWCS(TPWCS):
 
             idx_v2v3 = frms.index(self._v23name)
             pipeline = deepcopy(self._wcs.pipeline)
-            pf, pt = pipeline[idx_v2v3]
+            step = pipeline[idx_v2v3]
+            pf = step.frame
+            pt = step.transform
             pipeline[idx_v2v3] = (pf, deepcopy(self._tpcorr))
             frm_v2v3corr = deepcopy(pf)
             frm_v2v3corr.name = 'v2v3corr'
