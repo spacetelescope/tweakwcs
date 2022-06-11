@@ -20,7 +20,7 @@ python:
             - docs
       - method: setuptools
         path: .
-   system_packages: false
+   system_packages: true
 
 submodules:
    include: all
