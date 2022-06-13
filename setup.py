@@ -85,9 +85,9 @@ TESTS_REQUIRE = [
 DOCS_REQUIRE = [
     'numpydoc',
     'sphinx',
-    'sphinx_automodapi',
-    'sphinx_rtd_theme',
-    'stsci_rtd_theme',
+    'sphinx-automodapi',
+    'sphinx-rtd-theme',
+    'sphinx-astropy',
     'graphviz',
 ]
 
