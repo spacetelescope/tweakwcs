@@ -58,7 +58,6 @@ intersphinx_mapping = {
     'python': ('http://docs.python.org/3/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-    'matplotlib': ('http://matplotlib.org/', None),
     'astropy': ('http://docs.astropy.org/en/stable/', None),
 }
 
@@ -231,16 +230,16 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['../_static']
-html_context = {
-    'css_files': [
-        '../_static/css/custom.css', 'custom.css'
-    ],
-}
+# html_context = {
+#     'css_files': [
+#         '../_static/css/custom.css', 'custom.css'
+#     ],
+# }
 # html_style = 'custom.css'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../_static/stsci_pri_combo_mark_white.png'
+html_logo = '../_static/stsci_logo_small.png'
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -312,7 +311,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = '../_static/stsci_pri_combo_mark_white.png'
+latex_logo = '../_static/stsci_logo_large.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
