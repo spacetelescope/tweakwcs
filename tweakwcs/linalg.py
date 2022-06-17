@@ -5,7 +5,7 @@ routines.
 
 :Authors: Mihai Cara (contact: help@stsci.edu)
 
-:License: :doc:`../LICENSE`
+:License: :doc:`LICENSE`
 
 """
 # STDLIB

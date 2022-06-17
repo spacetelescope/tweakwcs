@@ -6,7 +6,7 @@ image catalogs "align" to the reference catalog *on the sky*.
 
 :Authors: Mihai Cara
 
-:License: :doc:`../LICENSE`
+:License: :doc:`LICENSE`
 
 """
 # STDLIB

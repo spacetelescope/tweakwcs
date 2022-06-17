@@ -14,14 +14,14 @@ Content
 .. toctree::
    :maxdepth: 2
 
-   imalign
-   tpwcs
-   matchutils
-   wcsimage
-   linearfit
-   wcsutils
-   linalg
-   LICENSE.rst
+   source/imalign
+   source/tpwcs
+   source/matchutils
+   source/wcsimage
+   source/linearfit
+   source/wcsutils
+   source/linalg
+   source/LICENSE.rst
 
 
 Development Notes
@@ -31,12 +31,11 @@ Development Notes
    :maxdepth: 1
    :titlesonly:
 
-   CHANGELOG.rst
+   source/CHANGELOG.rst
 
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

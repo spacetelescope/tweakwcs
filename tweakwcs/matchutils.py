@@ -3,7 +3,7 @@
 A module that provides algorithms matching catalogs and for initial estimation
 of shifts based on 2D histograms.
 
-:License: :doc:`../LICENSE`
+:License: :doc:`LICENSE`
 
 """
 import logging

@@ -4,6 +4,8 @@ A module that provides utility functions for WCS transformations.
 
 :Authors: Mihai Cara (contact: help@stsci.edu)
 
+:License: :doc:`LICENSE`
+
 """
 # NOTES:
 #
