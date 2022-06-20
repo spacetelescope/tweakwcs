@@ -5,7 +5,7 @@ sets of 2D points.
 
 :Authors: Mihai Cara, Warren Hack
 
-:License: :doc:`../LICENSE`
+:License: :doc:`LICENSE`
 
 """
 import logging

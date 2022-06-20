@@ -5,7 +5,7 @@ source catalogs.
 
 :Authors: Mihai Cara
 
-:License: :doc:`../LICENSE`
+:License: :doc:`LICENSE`
 
 """
 import os

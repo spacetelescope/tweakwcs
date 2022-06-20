@@ -1,0 +1,10 @@
+@import '../custom.css';
+@import 'theme.css';  /* Read the Docs theme */
+
+.math {
+    text-align: center
+}
+
+.eqno {
+    float: right;
+}
