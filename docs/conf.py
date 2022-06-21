@@ -4,7 +4,7 @@ import os
 import sys
 import datetime
 import sphinx
-import sphinx_rtd_theme
+import stsci_rtd_theme
 from packaging.version import Version
 try:
     from ConfigParser import ConfigParser
@@ -46,8 +46,8 @@ def check_sphinx_version(expected_version):
     expected_version = Version(expected_version)
     if sphinx_version < expected_version:
         raise RuntimeError(
-            "At least Sphinx version {expected_version} is required to build this "
-            "documentation.  Found {sphinx_version}.")
+            f"At least Sphinx version {expected_version} is required to build this "
+            f"documentation.  Found {sphinx_version}.")
 
 
 # Configuration for intersphinx: refer to the Python standard library.
@@ -193,7 +193,7 @@ graphviz_dot_args = [
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'stsci_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -209,7 +209,7 @@ html_theme_options = {
 #        }
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -231,7 +231,7 @@ html_style = 'css/custom-tweakwcs.css'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/stsci_logo_small.png'
+# html_logo = '_static/stsci_logo_small.png'
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -303,7 +303,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = '_static/stsci_logo_large.png'
+# latex_logo = 'stsci_logo_large.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
