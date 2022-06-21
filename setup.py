@@ -87,6 +87,7 @@ DOCS_REQUIRE = [
     'sphinx',
     'sphinx-automodapi',
     'sphinx-rtd-theme',
+    'stsci-rtd-theme',
     'sphinx-astropy',
     'graphviz',
 ]
