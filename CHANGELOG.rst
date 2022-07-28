@@ -4,8 +4,15 @@
 Release Notes
 =============
 
-.. 0.7.5 (unreleased)
+.. 0.7.6 (unreleased)
    ==================
+
+0.7.5 (unreleased)
+==================
+
+- Exposed in top-level functions parameter ``clip_accum`` that controls
+  whether or not to reset the list of "bad" (clipped out) sources after each
+  clipping iteration during model fitting. [#169]
 
 0.7.4 (13-April-2022)
 =====================

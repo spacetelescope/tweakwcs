@@ -149,9 +149,10 @@ def iter_linear_fit(xy, uv, wxy=None, wuv=None,
     clip_accum: bool, optional
         Indicates whether or not to reset the list of "bad" (clipped out)
         sources after each clipping iteration. When set to `True` the list
-        only grows with each iteration as "bad" positions never re-enter the
-        pool of available position for the fit. By default the list of
-        "bad" source positions is purged at each iteration.
+        only grows with each iteration as "bad" positions never re-enter
+        the pool of available position for the fit. By default the list of
+        "bad" source positions is purged at each iteration. This parameter
+        is ignored when ``nclip`` is either `None` or 0.
 
     Returns
     -------

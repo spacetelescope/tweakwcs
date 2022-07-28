@@ -865,7 +865,7 @@ class WCSGroupCatalog(object):
         return nmatches, mref_idx, minput_idx
 
     def fit2ref(self, refcat, tanplane_wcs, fitgeom='general', nclip=3,
-                sigma=(3.0, 'rmse')):
+                sigma=(3.0, 'rmse'), clip_accum=False):
         """
         Perform linear fit of this group's combined catalog to the reference
         catalog. When either/both group's catalog or/and the reference catalog
@@ -905,6 +905,14 @@ class WCSGroupCatalog(object):
             the default error estimate ``'rmse'`` is assumed.
 
             This parameter is ignored when ``nclip`` is either `None` or 0.
+
+        clip_accum: bool, optional
+            Indicates whether or not to reset the list of "bad" (clipped out)
+            sources after each clipping iteration. When set to `True` the list
+            only grows with each iteration as "bad" positions never re-enter
+            the pool of available position for the fit. By default the list of
+            "bad" source positions is purged at each iteration. This parameter
+            is ignored when ``nclip`` is either `None` or 0.
 
         Notes
         -----
@@ -978,7 +986,8 @@ class WCSGroupCatalog(object):
 
         fit = iter_linear_fit(
             refxy, im_xyref, ref_weight, im_weight,
-            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=None
+            fitgeom=fitgeom, nclip=nclip, sigma=sigma, center=None,
+            clip_accum=clip_accum
         )
 
         # re-compute shifts for the center at (0, 0):
@@ -1025,7 +1034,8 @@ class WCSGroupCatalog(object):
             imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=ref_tpwcs, meta=meta)
 
     def align_to_ref(self, refcat, ref_tpwcs=None, match=None, minobj=None,
-                     fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse')):
+                     fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse'),
+                     clip_accum=False):
         """
         Matches sources from the image catalog to the sources in the
         reference catalog, finds the affine transformation between matched
@@ -1143,6 +1153,14 @@ class WCSGroupCatalog(object):
             This parameter is ignored when ``nclip`` is either `None` or 0
             or when ``match`` is `False`.
 
+        clip_accum: bool, optional
+            Indicates whether or not to reset the list of "bad" (clipped out)
+            sources after each clipping iteration. When set to `True` the list
+            only grows with each iteration as "bad" positions never re-enter
+            the pool of available position for the fit. By default the list of
+            "bad" source positions is purged at each iteration. This parameter
+            is ignored when ``nclip`` is either `None` or 0.
+
         Returns
         -------
         bool
@@ -1186,7 +1204,8 @@ class WCSGroupCatalog(object):
             return False
 
         fit = self.fit2ref(refcat=refcat, tanplane_wcs=ref_tpwcs,
-                           fitgeom=fitgeom, nclip=nclip, sigma=sigma)
+                           fitgeom=fitgeom, nclip=nclip, sigma=sigma,
+                           clip_accum=clip_accum)
 
         fit_info = {
             'fitgeom': fitgeom,
