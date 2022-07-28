@@ -36,7 +36,7 @@ log.setLevel(logging.DEBUG)
 
 
 def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
-            sigma=(3.0, 'rmse')):
+            sigma=(3.0, 'rmse'), clip_accum=False):
     """ "Tweak" **a single** image's ``WCS`` by fitting image catalog to a
     reference catalog. This is a simplified version of `align_wcs` that does
     not perform matching and is limited to the fitting part.
@@ -103,6 +103,14 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         the default error estimate ``'rmse'`` is assumed.
 
         This parameter is ignored when ``nclip`` is either `None` or 0.
+
+    clip_accum: bool, optional
+        Indicates whether or not to reset the list of "bad" (clipped out)
+        sources after each clipping iteration. When set to `True` the list
+        only grows with each iteration as "bad" positions never re-enter
+        the pool of available position for the fit. By default the list of
+        "bad" source positions is purged at each iteration. This parameter
+        is ignored when ``nclip`` is either `None` or 0.
 
     Returns
     -------
@@ -253,7 +261,8 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         minobj=None,
         fitgeom=fitgeom,
         nclip=nclip,
-        sigma=sigma
+        sigma=sigma,
+        clip_accum=clip_accum
     )
 
     tpwcs.meta['fit_info'] = wimcat.fit_info
@@ -274,7 +283,8 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
 
 def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
               expand_refcat=False, minobj=None, match=TPMatch(),
-              fitgeom='general', nclip=3, sigma=(3.0, 'rmse')):
+              fitgeom='general', nclip=3, sigma=(3.0, 'rmse'),
+              clip_accum=False):
     r"""
     Align (groups of) image catalogs by adjusting the parameters of their
     WCS based on fits between matched sources in these catalogs and a reference
@@ -413,6 +423,14 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         the default error estimate ``'rmse'`` is assumed.
 
         This parameter is ignored when ``nclip`` is either `None` or 0.
+
+    clip_accum: bool, optional
+        Indicates whether or not to reset the list of "bad" (clipped out)
+        sources after each clipping iteration. When set to `True` the list
+        only grows with each iteration as "bad" positions never re-enter
+        the pool of available position for the fit. By default the list of
+        "bad" source positions is purged at each iteration. This parameter
+        is ignored when ``nclip`` is either `None` or 0.
 
     Returns
     -------
@@ -638,7 +656,8 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
             minobj=minobj,
             fitgeom=fitgeom,
             nclip=nclip,
-            sigma=sigma
+            sigma=sigma,
+            clip_accum=clip_accum
         )
 
         for wcat in current_wcat:
