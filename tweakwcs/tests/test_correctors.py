@@ -14,17 +14,18 @@ from astropy.modeling import CompoundModel
 import gwcs
 from gwcs.geometry import SphericalToCartesian
 from tweakwcs.linearfit import build_fit_matrix
-from tweakwcs import tpwcs
+from tweakwcs.correctors import JWSTWCSCorrector, FITSWCSCorrector
 
-from .helper_tpwcs import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
-                           DummyTPWCS, create_DetToV2V3, create_V2V3ToDet)
+from .helper_correctors import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
+                                DummyWCSCorrector, create_DetToV2V3,
+                                create_V2V3ToDet)
 
 
 _ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
 
 
 def test_tpwcs():
-    tpwcs = DummyTPWCS(None, meta={})
+    tpwcs = DummyWCSCorrector(None, meta={})
     x, y, ra, dec = np.random.random(4)
     matrix = np.random.random((2, 2))
     shift = np.random.random(2)
@@ -38,17 +39,17 @@ def test_tpwcs():
     assert tpwcs.tanp_center_pixel_scale == 1
     assert tpwcs.wcs is None
     assert tpwcs.original_wcs is None
-    assert isinstance(tpwcs.copy(), DummyTPWCS)
+    assert isinstance(tpwcs.copy(), DummyWCSCorrector)
     assert tpwcs.bounding_box is None
 
     tpwcs.set_correction(matrix=matrix, shift=shift,
-                         meta={'pytest': 'ABC.TPWCS'}, pytest_kwarg=True)
+                         meta={'pytest': 'ABC.WCSCorrector'}, pytest_kwarg=True)
     assert np.all(tpwcs.meta['matrix'] == matrix)
     assert np.all(tpwcs.meta['shift'] == shift)
-    assert tpwcs.meta['pytest'] == 'ABC.TPWCS'
+    assert tpwcs.meta['pytest'] == 'ABC.WCSCorrector'
 
     with pytest.raises(TypeError) as arg_err:
-        tpwcs.set_correction(matrix, shift, None, {'pytest': 'ABC.TPWCS'},
+        tpwcs.set_correction(matrix, shift, None, {'pytest': 'ABC.WCSCorrector'},
                              'some_weird_arg')
     assert (
         arg_err.value.args[0].endswith(
@@ -133,7 +134,7 @@ def test_jwst_wcs_corr_applied(mock_jwst_wcs):
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[82.0, 12.0]
     )
 
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         w, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0}, meta={}
     )
     wc.set_correction(meta={'dummy_meta': None}, dummy_par=1)
@@ -142,7 +143,7 @@ def test_jwst_wcs_corr_applied(mock_jwst_wcs):
 
 
 def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0}
     )
     matrix1 = np.array([[1.0, 0.2], [-0.3, 1.1]])
@@ -152,7 +153,7 @@ def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
 
     matrix2 = np.linalg.inv(matrix1)
     shift2 = -np.dot(matrix2, shift1)
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         wc.wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0}
     )
     wc.set_correction(matrix=matrix2, shift=shift2)
@@ -170,26 +171,25 @@ def test_jwst_wcs_corr_are_being_combined(mock_jwst_wcs):
 
 
 def test_jwstgwcs_unsupported_wcs():
-    from tweakwcs import tpwcs
     dummy_wcs = gwcs.wcs.WCS(Identity(2), 'det', 'world')
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(dummy_wcs, {})
+        JWSTWCSCorrector(dummy_wcs, {})
 
 
 def test_jwstgwcs_inconsistent_ref(mock_jwst_wcs):
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
     )
     wc.set_correction()
 
     with pytest.raises(ValueError):
-        wc = tpwcs.JWSTgWCS(
+        wc = JWSTWCSCorrector(
             wc.wcs, {'v2_ref': 124.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
         )
 
 
 def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
     )
     wc.set_correction()
@@ -200,13 +200,13 @@ def test_jwstgwcs_wrong_tpcorr_type(mock_jwst_wcs):
     mangled_wc = gwcs.wcs.WCS(np)
 
     with pytest.raises(ValueError):
-        wc = tpwcs.JWSTgWCS(
+        wc = JWSTWCSCorrector(
             mangled_wc, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
         )
 
 
 def test_jwstgwcs_ref_angles_preserved(mock_jwst_wcs):
-    wc = tpwcs.JWSTgWCS(
+    wc = JWSTWCSCorrector(
         mock_jwst_wcs, {'v2_ref': 123.0, 'v3_ref': 500.0, 'roll_ref': 115.0},
     )
     assert wc.ref_angles['v2_ref'] == 123.0
@@ -227,7 +227,7 @@ def test_jwstgwcs_detector_to_world(inputs):
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
     )
-    wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    wc = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
     x, y, ra, dec = inputs
     assert np.allclose(wc.det_to_world(x, y), (ra, dec), atol=_ATOL)
@@ -245,7 +245,7 @@ def test_jwstgwcs_tangent_to_world(inputs):
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
     )
-    wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    wc = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
     tanp_x, tanp_y, ra, dec = inputs
     assert np.allclose(wc.world_to_tanp(ra, dec), (tanp_x, tanp_y), atol=1000 * _ATOL)
@@ -263,7 +263,7 @@ def test_jwstgwcs_detector_to_tanp(inputs):
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
     )
-    wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    wc = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
     x, y, tanp_x, tanp_y = inputs
     assert np.allclose(wc.det_to_tanp(x, y), (tanp_x, tanp_y), atol=10 * _ATOL)
@@ -275,7 +275,7 @@ def test_jwstgwcs_bbox():
         v2ref=0.0, v3ref=0.0, roll=0.0, crpix=[500.0, 512.0],
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]], crval=[12.0, 24.0]
     )
-    wc = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    wc = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     wc.set_correction()
 
     assert np.allclose(
@@ -304,56 +304,56 @@ def test_jwstgwcs_bad_pipelines_no_vacorr():
 
     # no pipeline or empty pipeline:
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(None, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(None, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # fewer than 3 frames:
     w = gwcs.wcs.WCS(p0[:2])
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # repeated (any one of the) last two frames:
     w = gwcs.wcs.WCS(p0 + [p0[-1]])
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     w = gwcs.wcs.WCS(p0 + [p0[-2]])
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # multiple 'v2v3' frames:
     w = gwcs.wcs.WCS(p0)
-    w = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     p = w.wcs.pipeline
     p.insert(1, p[1])
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # misplaced 'v2v3' frame:
     w = gwcs.wcs.WCS(p0)
-    w = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     w.set_correction()
     p = w.wcs.pipeline
     del p[0]
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # multiple 'v2v3corr' frame:
     w = gwcs.wcs.WCS(p0)
-    w = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     w.set_correction()
     p = w.wcs.pipeline
     p.insert(1, p[-2])
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # misplaced 'v2v3corr' frame:
     del p[-2]
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
 
 def test_jwstgwcs_bad_pipelines_with_vacorr():
@@ -365,40 +365,40 @@ def test_jwstgwcs_bad_pipelines_with_vacorr():
 
     # multiple 'v2v3vacorr' frames:
     w = gwcs.wcs.WCS(p0)
-    w = tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     p = w.wcs.pipeline
     p.insert(1, p[2])
     w = gwcs.wcs.WCS(p)
     with pytest.raises(ValueError):
-        tpwcs.JWSTgWCS(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
 
 def test_fitswcs_non_celestial():
     # non-celestial WCS
     w = fitswcs.WCS(naxis=3)
     with pytest.raises(ValueError):
-        tpwcs.FITSWCS(w)
+        FITSWCSCorrector(w)
 
     # invalid WCS
     with pytest.raises(ValueError):
-        tpwcs.FITSWCS(None)
+        FITSWCSCorrector(None)
 
 
 def test_fitswcs_unaccounted_dist(mock_fits_wcs):
     w = copy.deepcopy(mock_fits_wcs)
     w.pix2foc = lambda x, o: x + 3
     with pytest.raises(ValueError):
-        tpwcs.FITSWCS(w)
+        FITSWCSCorrector(w)
 
     w = copy.deepcopy(mock_fits_wcs)
     f = w.all_world2pix
     w.all_world2pix = lambda x, o: f(x, o) + 2
     with pytest.raises(ValueError):
-        tpwcs.FITSWCS(w)
+        FITSWCSCorrector(w)
 
 
 def test_fitswcs_1(mock_fits_wcs):
-    wc = tpwcs.FITSWCS(mock_fits_wcs)
+    wc = FITSWCSCorrector(mock_fits_wcs)
     wc.set_correction()
 
 
@@ -411,7 +411,7 @@ def test_fitswcs_coord_transforms(mock_fits_wcs):
     w.pixel_shape = [1024, 2048]
     w.wcs.set()
 
-    wc = tpwcs.FITSWCS(w)
+    wc = FITSWCSCorrector(w)
     wc.set_correction()
 
     assert np.allclose(wc.det_to_world(499, 511), (12, 24), atol=_ATOL)
@@ -424,7 +424,7 @@ def test_fitswcs_coord_transforms(mock_fits_wcs):
 
 def test_fitswcs_bbox(mock_fits_wcs):
     w = copy.deepcopy(mock_fits_wcs)
-    wc = tpwcs.FITSWCS(w)
+    wc = FITSWCSCorrector(w)
     wc.set_correction()
 
     assert np.allclose(

@@ -10,7 +10,7 @@ import numpy as np
 from astropy.table import Table, Column
 from astropy.io import fits
 from astropy import wcs
-from tweakwcs import TPMatch, FITSWCS
+from tweakwcs import XYXYMatch, FITSWCSCorrector
 from tweakwcs.wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,
                                WCSGroupCatalog, _is_int)
 from astropy.utils.data import get_pkg_data_filename
@@ -32,8 +32,8 @@ def rect_imcat(mock_fits_wcs):
     x = np.array([0.0, 0.0, 10.0, 10.0, 0.0]) - 5
     y = np.array([0.0, 10.0, 10.0, 0.0, 0.0]) - 5
     imcat = Table([x, y], names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs)
-    w = WCSImageCatalog(imcat, tpwcs)
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    w = WCSImageCatalog(imcat, corr)
     return w
 
 
@@ -49,8 +49,8 @@ def test_wcsimcat_wrong_tpwcs_type(mock_fits_wcs):
     imcat = Table([[], []], names=('x', 'y'))
     with pytest.raises(TypeError) as e:
         WCSImageCatalog(imcat, None)
-    assert (e.value.args[0] == "Unsupported 'tpwcs' type. 'tpwcs' must be "
-            "a subtype of TPWCS.")
+    assert (e.value.args[0] == "Unsupported 'corrector' type. 'corrector' "
+            "must be a subtype of WCSCorrector.")
 
 
 def test_wcsimcat_wrong_fit_status(mock_fits_wcs, rect_imcat):
@@ -67,8 +67,8 @@ def test_wcsimcat_wcs_transforms_roundtrip(mock_fits_wcs):
     x = np.arange(5)
     y = np.random.permutation(5)
     imcat = Table([x, y], names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs)
-    w = WCSImageCatalog(imcat, tpwcs)
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    w = WCSImageCatalog(imcat, corr)
 
     assert np.allclose(
         w.world_to_det(*w.det_to_world(x, y)), (x, y), rtol=0, atol=1.0e-5
@@ -109,13 +109,13 @@ def test_wcsimcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
 
 
 def test_wcsimcat_no_wcs_bb(mock_fits_wcs, rect_cat):
-    tpwcs = FITSWCS(mock_fits_wcs)
-    tpwcs._owcs.pixel_bounds = None
-    tpwcs._owcs.pixel_shape = None
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    corr._owcs.pixel_bounds = None
+    corr._owcs.pixel_shape = None
 
-    assert tpwcs.bounding_box is None
+    assert corr.bounding_box is None
 
-    WCSImageCatalog(rect_cat, tpwcs)
+    WCSImageCatalog(rect_cat, corr)
 
 
 def test_wcsimcat_calc_chip_bounding_polygon_custom_stepsize(mock_fits_wcs,
@@ -140,14 +140,14 @@ def test_wcsimcat_calc_cat_convex_hull_no_catalog(mock_fits_wcs, rect_imcat):
 def test_wcsimcat_calc_cat_convex_hull_adjacent():
     h = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis1.hdr'))
     w = wcs.WCS(h)
-    tpwcs = FITSWCS(w)
+    corr = FITSWCSCorrector(w)
     cat = Table.read(
         get_pkg_data_filename('data/convex_hull_proximity.cat'),
         format='ascii.tab',
         delimiter='\t',
         names=['x', 'y']
     )
-    w = WCSImageCatalog(cat, tpwcs)
+    w = WCSImageCatalog(cat, corr)
     assert len(list(w.polygon.points)[0]) == 14
 
 
@@ -323,15 +323,15 @@ def test_wcsgroupcat_match2ref(mock_fits_wcs, rect_imcat):
 
     # call calc_tanp_xy before matching
     with pytest.raises(RuntimeError) as e:
-        g.match2ref(ref, match=TPMatch())
+        g.match2ref(ref, match=XYXYMatch())
     assert (e.value.args[0] == "'calc_tanp_xy()' should have been run "
             "prior to match2ref()")
 
-    ref.calc_tanp_xy(rect_imcat.tpwcs)
-    g.calc_tanp_xy(rect_imcat.tpwcs)
+    ref.calc_tanp_xy(rect_imcat.corrector)
+    g.calc_tanp_xy(rect_imcat.corrector)
     g.catalog['matched_ref_id'] = np.ones(5, dtype=bool)
     g.catalog['_raw_matched_ref_idx'] = np.ones(5, dtype=bool)
-    g.match2ref(ref, match=TPMatch())
+    g.match2ref(ref, match=XYXYMatch())
 
 
 def test_wcsgroupcat_fit2ref(mock_fits_wcs, caplog, rect_imcat):
@@ -339,14 +339,14 @@ def test_wcsgroupcat_fit2ref(mock_fits_wcs, caplog, rect_imcat):
                                           rect_imcat.catalog['y'], 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
     ref = RefCatalog(refcat)
-    ref.calc_tanp_xy(rect_imcat.tpwcs)
+    ref.calc_tanp_xy(rect_imcat.corrector)
 
     g = WCSGroupCatalog(rect_imcat)
-    g.calc_tanp_xy(rect_imcat.tpwcs)
+    g.calc_tanp_xy(rect_imcat.corrector)
     g.match2ref(ref)
 
-    g.fit2ref(ref, rect_imcat.tpwcs, fitgeom='shift')
-    g.apply_affine_to_wcs(g[0].tpwcs, np.identity(2), np.zeros(2))
+    g.fit2ref(ref, rect_imcat.corrector, fitgeom='shift')
+    g.apply_affine_to_wcs(g[0].corrector, np.identity(2), np.zeros(2))
 
     g._images = []
     g.align_to_ref(ref)
@@ -379,7 +379,7 @@ def test_wcsrefcat_intersections(mock_fits_wcs, rect_imcat):
                                           10 * rect_imcat.catalog['y'], 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
     ref = RefCatalog(refcat)
-    ref.calc_tanp_xy(rect_imcat.tpwcs)
+    ref.calc_tanp_xy(rect_imcat.corrector)
 
     pts1 = list(ref.polygon.points)[0]
     pts2 = list(ref.intersection(ref.polygon).points)[0]
@@ -401,7 +401,7 @@ def test_wcsrefcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
                                           10 * rect_imcat.catalog['y'], 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
     ref = RefCatalog(refcat)
-    ref.calc_tanp_xy(rect_imcat.tpwcs)
+    ref.calc_tanp_xy(rect_imcat.corrector)
 
     assert np.allclose(
         ref._guarded_intersection_area(ref), 2.9902125220360176e-10, atol=0.0,
@@ -442,7 +442,7 @@ def test_convex_hull_invalid_min_separation():
 
     with pytest.raises(ValueError) as e:
         convex_hull(x, y, min_separation=-1)
-    assert (e.value.args[0] == "'min_separation' must be non-negative or None.")
+    assert e.value.args[0] == "'min_separation' must be non-negative or None."
 
 
 def test_convex_hull_adjacent():

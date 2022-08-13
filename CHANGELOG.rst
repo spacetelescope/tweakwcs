@@ -4,15 +4,39 @@
 Release Notes
 =============
 
-.. 0.7.6 (unreleased)
+.. 0.8.1 (unreleased)
    ==================
 
-0.7.5 (unreleased)
+0.8.0 (unreleased)
 ==================
 
 - Exposed in top-level functions parameter ``clip_accum`` that controls
   whether or not to reset the list of "bad" (clipped out) sources after each
   clipping iteration during model fitting. [#169]
+
+- Deprecated ``tweakwcs.tpwcs`` module in favor of
+  ``tweakwcs.correctors``. [#170]
+
+- Deprecated the following classes in the ``tweakwcs.tpwcs`` module:
+    - ``tweakwcs.tpwcs.TPWCS`` in favor of ``tweakwcs.correctors.WCSCorrector``;
+    - ``tweakwcs.tpwcs.JWSTgWCS`` in favor of
+      ``tweakwcs.correctors.JWSTWCSCorrector``;
+    - ``tweakwcs.tpwcs.FITSWCS`` in favor of
+      ``tweakwcs.correctors.FITSWCSCorrector``. [#170]
+
+- Deprecated ``tweakwcs.matchutils.TPMatch`` class. Use
+  ``tweakwcs.matchutils.XYXYMatch`` instead. [#170]
+
+- Removed ``tanplane_wcs`` argument of the
+  ``WCSGroupCatalog.apply_affine_to_wcs()`` method. ``tanplane_wcs``
+  was deprecated since 0.6.5. It was replaced with ``ref_tpwcs``. [#170]
+
+- Deprecated ``tpwcs`` argument of the ``WCSImageCatalog.__init__()`` as well
+  ``tpwcs`` property of the same class. Use ``corrector`` instead. [#170]
+
+- Deprecated ``tpwcs`` argument of the ``tweakwcs.imalign.fit_wcs()`` in
+  favor of ``corrector``. [#170]
+
 
 0.7.4 (13-April-2022)
 =====================

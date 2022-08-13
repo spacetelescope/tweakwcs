@@ -15,19 +15,13 @@ from copy import deepcopy
 
 import numpy as np
 from astropy import table
-from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.decorators import deprecated, deprecated_renamed_argument
 from spherical_geometry.polygon import SphericalPolygon, MalformedPolygonError
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
 
-from . linearfit import SUPPORTED_FITGEOM_MODES
-
-
-_S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-_C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-
-
+from .linearfit import SUPPORTED_FITGEOM_MODES
 from .wcsutils import planar_rot_3d
-from .tpwcs import TPWCS
+from .correctors import WCSCorrector
 from .linalg import inv
 from .linearfit import iter_linear_fit
 
@@ -37,12 +31,11 @@ __author__ = 'Mihai Cara'
 
 __all__ = ['convex_hull', 'RefCatalog', 'WCSImageCatalog', 'WCSGroupCatalog']
 
-
-# _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
-# _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
-
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+_S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
+_C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 
 def _is_int(n):
@@ -64,7 +57,8 @@ class WCSImageCatalog(object):
 
     """
 
-    def __init__(self, catalog, tpwcs, name=None, group_id=None, meta={}):
+    @deprecated_renamed_argument('tpwcs', 'corrector', since='0.8.0')
+    def __init__(self, catalog, corrector, name=None, group_id=None, meta={}):
         """
         Parameters
         ----------
@@ -73,9 +67,9 @@ class WCSImageCatalog(object):
             ``'y'`` columns which indicate source coordinates (in pixels) in
             the associated image.
 
-        tpwcs: TPWCS
-            ``TPWCS``-derived tangent-plane WCS corrector object associated
-            with the image from which the catalog was derived.
+        corrector: WCSCorrector
+            ``WCSCorrector``-derived tangent-plane WCS corrector object
+            associated with the image from which the catalog was derived.
 
         name: str, None, optional
             Image catalog's name. This is used to identify catalog during
@@ -103,32 +97,61 @@ class WCSImageCatalog(object):
         self.meta = dict(meta)
         self._fit_info = {'status': 'SKIPPED'}
 
-        self.tpwcs = tpwcs
+        self.corrector = corrector
         self.catalog = catalog
 
     @property
+    @deprecated("0.8.0", obj_type='property')
     def tpwcs(self):
-        """ Get :py:class:`TPWCS` WCS. """
-        return self._tpwcs
+        """ Get :py:class:`WCSCorrector` WCS. """
+        return self._corr
 
     @tpwcs.setter
+    @deprecated("0.8.0", obj_type='property')
     def tpwcs(self, tpwcs):
-        """ Get/Set catalog's WCS (a :py:class:`TPWCS`-derived object).
+        """ Get/Set catalog's WCS (a :py:class:`WCSCorrector`-derived object).
 
         .. note::
             Setting the WCS triggers automatic bounding polygon recalculation.
 
         Parameters
         ----------
-        tpwcs: TPWCS
-            ``TPWCS``-derived tangent-plane WCS corrector object associated
-            with the image from which the catalog was extracted.
+        tpwcs: WCSCorrector
+            ``WCSCorrector``-derived tangent-plane WCS corrector object
+            associated with the image from which the catalog was extracted.
 
         """
-        if not isinstance(tpwcs, TPWCS):
+        if not isinstance(tpwcs, WCSCorrector):
             raise TypeError("Unsupported 'tpwcs' type. "
-                            "'tpwcs' must be a subtype of TPWCS.")
-        self._tpwcs = tpwcs
+                            "'tpwcs' must be a subtype of WCSCorrector.")
+        self._corr = tpwcs
+
+        # create spherical polygon bounding the image
+        self.calc_bounding_polygon()
+
+    @property
+    def corrector(self):
+        """ Get :py:class:`WCSCorrector` WCS. """
+        return self._corr
+
+    @corrector.setter
+    def corrector(self, corrector):
+        """ Get/Set catalog's WCS (a :py:class:`WCSCorrector`-derived object).
+
+        .. note::
+            Setting the WCS triggers automatic bounding polygon recalculation.
+
+        Parameters
+        ----------
+        corrector: WCSCorrector
+            ``WCSCorrector``-derived tangent-plane WCS corrector object
+            associated with the image from which the catalog was extracted.
+
+        """
+        if not isinstance(corrector, WCSCorrector):
+            raise TypeError("Unsupported 'corrector' type. "
+                            "'corrector' must be a subtype of WCSCorrector.")
+        self._corr = corrector
 
         # create spherical polygon bounding the image
         self.calc_bounding_polygon()
@@ -218,7 +241,7 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        return self._tpwcs.det_to_world(x, y)
+        return self._corr.det_to_world(x, y)
 
     def world_to_det(self, ra, dec):
         """
@@ -226,35 +249,35 @@ class WCSImageCatalog(object):
         (i.e., including distortions) transformations.
 
         """
-        return self._tpwcs.world_to_det(ra, dec)
+        return self._corr.world_to_det(ra, dec)
 
     def det_to_tanp(self, x, y):
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
         """
-        return self._tpwcs.det_to_tanp(x, y)
+        return self._corr.det_to_tanp(x, y)
 
     def tanp_to_det(self, x, y):
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        return self._tpwcs.tanp_to_det(x, y)
+        return self._corr.tanp_to_det(x, y)
 
     def tanp_to_world(self, x, y):
         """
         Convert tangent plane coordinates to world coordinates.
 
         """
-        return self._tpwcs.tanp_to_world(x, y)
+        return self._corr.tanp_to_world(x, y)
 
     def world_to_tanp(self, ra, dec):
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
         """
-        return self._tpwcs.world_to_tanp(ra, dec)
+        return self._corr.world_to_tanp(ra, dec)
 
     @property
     def polygon(self):
@@ -351,10 +374,10 @@ class WCSImageCatalog(object):
             bounding polygon will contain only vertices of the image.
 
         """
-        if self.tpwcs is None or self.catalog is None:
+        if self.corrector is None or self.catalog is None:
             return
 
-        if self.tpwcs.bounding_box is None:
+        if self.corrector.bounding_box is None:
             # just take max image coordinates from catalogs as bounds:
             lx = -0.5
             ly = -0.5
@@ -362,7 +385,7 @@ class WCSImageCatalog(object):
             hy = max(1, int(np.ceil(np.amax(self._catalog['y'])))) - 0.5
 
         else:
-            ((lx, hx), (ly, hy)) = self.tpwcs.bounding_box
+            ((lx, hx), (ly, hy)) = self.corrector.bounding_box
 
         if stepsize is None:
             nintx = 2
@@ -419,7 +442,7 @@ class WCSImageCatalog(object):
         Compute convex hull that bounds the sources in the catalog.
 
         """
-        if self.tpwcs is None or self.catalog is None:
+        if self.corrector is None or self.catalog is None:
             return
 
         x = self.catalog['x']
@@ -432,7 +455,11 @@ class WCSImageCatalog(object):
             )
 
         elif len(x) > 2:
-            ra, dec = convex_hull(x, y, wcs=self.det_to_world, min_separation=1e-8)
+            ra, dec = convex_hull(
+                x, y,
+                wcs=self.det_to_world,
+                min_separation=1e-8
+            )
             # else, for len(x) in [1, 2], use entire image footprint.
             # TODO: a more robust algorithm should be implemented to deal with
             #       len(x) in [1, 2] cases.
@@ -761,8 +788,8 @@ class WCSGroupCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs: TPWCS
-            A `TPWCS` object that will provide transformations to
+        tanplane_wcs: WCSCorrector
+            A `WCSCorrector` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
@@ -877,8 +904,8 @@ class WCSGroupCatalog(object):
         refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
-        tanplane_wcs: TPWCS
-            A `TPWCS` object that will provide transformations to
+        tanplane_wcs: WCSCorrector
+            A `WCSCorrector` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 
@@ -991,10 +1018,12 @@ class WCSGroupCatalog(object):
         )
 
         # re-compute shifts for the center at (0, 0):
-        fit['shift_ld'] += fit['center_ld'] - np.dot(fit['center_ld'], fit['matrix_ld'].T)
+        fit['shift_ld'] += fit['center_ld'] - np.dot(fit['center_ld'],
+                                                     fit['matrix_ld'].T)
         fit['shift'] = fit['shift_ld'].astype(np.double)
 
-        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']], fit['matrix'].T)
+        xy_fit = fit['shift'] + np.dot(im_xyref[fit['fitmask']],
+                                       fit['matrix'].T)
 
         fit['fit_xy'] = xy_fit
         fit['fit_RA'], fit['fit_DEC'] = tanplane_wcs.tanp_to_world(*(xy_fit.T))
@@ -1027,11 +1056,11 @@ class WCSGroupCatalog(object):
 
         return fit
 
-    @deprecated_renamed_argument('tanplane_wcs', 'ref_tpwcs', since='0.6.5')
     def apply_affine_to_wcs(self, ref_tpwcs, matrix, shift, meta=None):
         """ Applies a general affine transformation to the WCS. """
         for imcat in self:
-            imcat.tpwcs.set_correction(matrix, shift, ref_tpwcs=ref_tpwcs, meta=meta)
+            imcat.corrector.set_correction(matrix, shift, ref_tpwcs=ref_tpwcs,
+                                           meta=meta)
 
     def align_to_ref(self, refcat, ref_tpwcs=None, match=None, minobj=None,
                      fitgeom='rscale', nclip=3, sigma=(3.0, 'rmse'),
@@ -1108,9 +1137,9 @@ class WCSGroupCatalog(object):
         refcat: RefCatalog
             A `RefCatalog` object that contains a catalog of reference sources.
 
-        ref_tpwcs : TPWCS
-            A `TPWCS` object that defines a projection tangent plane to be
-            used for matching and fitting during alignment.
+        ref_tpwcs: WCSCorrector
+            A `WCSCorrector` object that defines a projection tangent plane to
+            be used for matching and fitting during alignment.
 
         match: MatchCatalogs, function, None, optional
             A callable that takes two arguments: a reference catalog and an
@@ -1185,7 +1214,7 @@ class WCSGroupCatalog(object):
             log.debug(f"Setting 'minobj' to {minobj} for fitgeom='{fitgeom}'")
 
         if ref_tpwcs is None:
-            ref_tpwcs = deepcopy(self._images[0].tpwcs)
+            ref_tpwcs = deepcopy(self._images[0].corrector)
 
         self.calc_tanp_xy(tanplane_wcs=ref_tpwcs)
         refcat.calc_tanp_xy(tanplane_wcs=ref_tpwcs)
@@ -1456,8 +1485,10 @@ class RefCatalog(object):
             # one point. build a small box around it:
             tol = 0.5 * self._footprint_tol
 
-            xv = [xv[0] - tol, xv[0] - tol, xv[0] + tol, xv[0] + tol, xv[0] - tol]
-            yv = [yv[0] - tol, yv[0] + tol, yv[0] + tol, yv[0] - tol, yv[0] - tol]
+            xv = [xv[0] - tol, xv[0] - tol, xv[0] + tol, xv[0] + tol,
+                  xv[0] - tol]
+            yv = [yv[0] - tol, yv[0] + tol, yv[0] + tol, yv[0] - tol,
+                  yv[0] - tol]
 
         elif len(xv) == 2 or len(xv) == 3:
             # two points. build a small box around them:
@@ -1562,8 +1593,8 @@ class RefCatalog(object):
 
         Parameters
         ----------
-        tanplane_wcs: TPWCS
-            A `TPWCS` object that will provide transformations to
+        tanplane_wcs: WCSCorrector
+            A `WCSCorrector` object that will provide transformations to
             the tangent plane to which sources of this catalog a should be
             "projected".
 

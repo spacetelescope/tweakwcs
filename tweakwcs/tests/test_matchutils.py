@@ -17,8 +17,8 @@ from astropy.utils.data import get_pkg_data_filename
 
 import tweakwcs
 from tweakwcs.matchutils import (_xy_2dhist, _estimate_2dhist_shift,
-                                 _find_peak, TPMatch, MatchCatalogs)
-from .helper_tpwcs import DummyTPWCS
+                                 _find_peak, XYXYMatch, MatchCatalogs)
+from .helper_correctors import DummyWCSCorrector
 
 
 _ATOL = 10 * np.finfo(np.array([1.]).dtype).eps
@@ -238,8 +238,8 @@ def test_estimate_2dhist_shift_two_equal_maxima(caplog):
 ])
 def test_tpmatch_bad_pars(searchrad, separation, tolerance):
     with pytest.raises(ValueError):
-        TPMatch(searchrad=searchrad, separation=separation,
-                tolerance=tolerance)
+        XYXYMatch(searchrad=searchrad, separation=separation,
+                  tolerance=tolerance)
 
 
 @pytest.mark.parametrize('refcat, imcat, tp_wcs, exception', [
@@ -256,13 +256,13 @@ def test_tpmatch_bad_pars(searchrad, separation, tolerance):
      None, KeyError),
     (Table([[1], [1]], names=('RA', '-')),
      Table([[1], [1]], names=('TPx', '2')),
-     DummyTPWCS(WCS()), KeyError),
+     DummyWCSCorrector(WCS()), KeyError),
     (Table([[1], [1]], names=('RA', 'DEC')),
      Table([[1], [1]], names=('TPx', '2')),
-     DummyTPWCS(WCS()), KeyError),
+     DummyWCSCorrector(WCS()), KeyError),
 ])
 def test_tpmatch_bad_call_pars(refcat, imcat, tp_wcs, exception):
-    tpmatch = TPMatch()
+    tpmatch = XYXYMatch()
     with pytest.raises(exception):
         tpmatch(refcat, imcat, tp_wcs)
 
@@ -270,11 +270,11 @@ def test_tpmatch_bad_call_pars(refcat, imcat, tp_wcs, exception):
 @pytest.mark.parametrize('tp_wcs, use2dhist', [
     (None, False),
     (None, True),
-    (DummyTPWCS(WCS()), False),
-    (DummyTPWCS(WCS()), True),
+    (DummyWCSCorrector(WCS()), False),
+    (DummyWCSCorrector(WCS()), True),
 ])
 def test_tpmatch(tp_wcs, use2dhist):
-    tpmatch = TPMatch(use2dhist=use2dhist)
+    tpmatch = XYXYMatch(use2dhist=use2dhist)
     if tp_wcs:
         imcat = Table([[1], [1]], names=('x', 'y'), meta={'name': None})
         refcat = Table([[1], [1]], names=('RA', 'DEC'), meta={'name': None})

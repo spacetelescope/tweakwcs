@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import astropy
+from astropy.utils.decorators import deprecated
 
 from stsci.stimage import xyxymatch
 
@@ -18,7 +19,7 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['MatchCatalogs', 'TPMatch']
+__all__ = ['MatchCatalogs', 'XYXYMatch']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -60,7 +61,7 @@ class MatchCatalogs(ABC):
         pass
 
 
-class TPMatch(MatchCatalogs):
+class XYXYMatch(MatchCatalogs):
     """ Catalog source matching in tangent plane. Uses ``xyxymatch``
     algorithm to cross-match sources between this catalog and
     a reference catalog.
@@ -163,7 +164,7 @@ class TPMatch(MatchCatalogs):
             ``refcat``'s tangent plane coordinates. In this case, the ``'x'``
             and ``'y'`` columns in the ``imcat`` catalog will be ignored.
 
-        tp_wcs: TPWCS, None, optional
+        tp_wcs: WCSCorrector, None, optional
             A ``WCS`` that defines a tangent plane onto which both
             reference and image catalog sources can be projected. For this
             reason, ``tp_wcs`` is associated with the image in which sources
@@ -527,3 +528,8 @@ def _find_peak(data, peak_fit_box=5, mask=None):
         coord, fit_status = _center_of_mass(v, d, x1, x2, y1, y2)
 
     return coord, fit_status, fit_slice
+
+
+@deprecated(since='0.8.0', alternative='XYXYMatch')
+class TPMatch(XYXYMatch):
+    pass

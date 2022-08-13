@@ -18,9 +18,10 @@ from astropy.modeling.fitting import LevMarLSQFitter
 if Version(astropy.__version__) >= Version('5.1'):
     from astropy.modeling.fitting import fitter_to_model_params
 else:
-    from astropy.modeling.fitting import _fitter_to_model_params as fitter_to_model_params
+    from astropy.modeling.fitting import (_fitter_to_model_params as
+                                          fitter_to_model_params)
 
-from .linalg import inv
+from . linalg import inv
 from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara, Warren Hack'

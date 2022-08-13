@@ -4,7 +4,7 @@ from astropy import wcs as fitswcs
 from astropy.table import Table
 
 from tweakwcs.linearfit import build_fit_matrix
-from . helper_tpwcs import make_mock_jwst_wcs
+from . helper_correctors import make_mock_jwst_wcs
 
 
 @pytest.fixture(scope='module')
