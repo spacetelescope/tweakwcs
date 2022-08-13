@@ -128,7 +128,7 @@ def _match(x, y):
 def test_multichip_jwst_alignment():
     w1 = _make_gwcs_wcs('data/wfc3_uvis1.hdr')
 
-    imcat1 = tweakwcs.JWSTgWCS(w1, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
+    imcat1 = tweakwcs.JWSTWCSCorrector(w1, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
     imcat1.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis1.cat'),
         format='ascii.csv',
@@ -141,7 +141,7 @@ def test_multichip_jwst_alignment():
     imcat1.meta['name'] = 'ext1'
 
     w2 = _make_gwcs_wcs('data/wfc3_uvis2.hdr')
-    imcat2 = tweakwcs.JWSTgWCS(w2, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
+    imcat2 = tweakwcs.JWSTWCSCorrector(w2, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
     imcat2.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis2.cat'),
         format='ascii.csv',

@@ -14,8 +14,10 @@ except DistributionNotFound:
     # package is not installed
     __version__ = 'UNKNOWN'
 
-from .tpwcs import TPWCS, JWSTgWCS, FITSWCS  # noqa: F401
-from .matchutils import MatchCatalogs, TPMatch  # noqa: F401
+from .correctors import (WCSCorrector, JWSTWCSCorrector,  # noqa: F401
+                         FITSWCSCorrector,  # noqa: F401
+                         TPWCS, JWSTgWCS, FITSWCS)  # noqa: F401
+from .matchutils import MatchCatalogs, XYXYMatch, TPMatch  # noqa: F401
 from .imalign import fit_wcs, align_wcs  # noqa: F401
 from .wcsimage import (convex_hull, RefCatalog, WCSImageCatalog,  # noqa: F401
                        WCSGroupCatalog)  # noqa: F401

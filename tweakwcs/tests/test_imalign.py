@@ -14,14 +14,14 @@ from astropy.table import Table
 
 from tweakwcs.linearfit import build_fit_matrix
 from tweakwcs.imalign import fit_wcs, align_wcs, max_overlap_pair
-from tweakwcs import FITSWCS
+from tweakwcs import FITSWCSCorrector
 
 
 _ATOL = 1000 * np.finfo(np.array([1.]).dtype).eps
 
 
 def test_fit_wcs_empty_cat(empty_refcat, empty_imcat, mock_fits_wcs):
-    tpwcs = FITSWCS(
+    tpwcs = FITSWCSCorrector(
         mock_fits_wcs,
         meta={'catalog': Table([[], []], names=('x', 'y')), 'group_id': 1}
     )
@@ -36,31 +36,31 @@ def test_fit_drop_empty(mock_fits_wcs):
     t0 = Table([[], []], names=('x', 'y'))
     t1 = Table([[1], [3]], names=('x', 'y'))
     wcscats = [
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t0.copy(), 'group_id': 1}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t1.copy(), 'group_id': 2}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t0.copy(), 'group_id': 2}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t0.copy(), 'group_id': 3}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t0.copy(), 'group_id': 3}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t1.copy(), 'group_id': 4}
         ),
-        FITSWCS(
+        FITSWCSCorrector(
             copy.deepcopy(mock_fits_wcs),
             meta={'catalog': t1.copy(), 'group_id': 4}
         )
@@ -89,7 +89,7 @@ def test_fit_drop_empty(mock_fits_wcs):
 
 
 def test_fit_wcs_missing_req_col_names(empty_refcat, mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     imcat = Table([[], []], names=('x', 'weird'))
     with pytest.raises(ValueError) as e:
         fit_wcs(empty_refcat, imcat, tpwcs)
@@ -98,7 +98,7 @@ def test_fit_wcs_missing_req_col_names(empty_refcat, mock_fits_wcs):
 
 
 def test_fit_wcs_1_image_source_empty_ref(empty_refcat, mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     imcat = Table([[1], [2]], names=('x', 'y'))
     with pytest.raises(ValueError) as e:
         fit_wcs(empty_refcat, imcat, tpwcs)
@@ -107,8 +107,8 @@ def test_fit_wcs_1_image_source_empty_ref(empty_refcat, mock_fits_wcs):
 
 
 def test_fit_wcs_malformed_meta(mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
-    tpwcs._meta = None  # bad
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    corr._meta = None  # bad
 
     x = list(range(10))
     y = [10 * random.random() for _ in range(10)]
@@ -117,12 +117,12 @@ def test_fit_wcs_malformed_meta(mock_fits_wcs):
     refcat = Table([ra, dec], names=('RA', 'DEC'))
 
     with pytest.raises(AttributeError) as e:
-        tpwcs = fit_wcs(refcat, imcat, tpwcs, fitgeom='shift')
-    assert e.value.args[0] == "Unable to set/modify tpwcs.meta attribute."
+        corr = fit_wcs(refcat, imcat, corr, fitgeom='shift')
+    assert e.value.args[0] == "Unable to set/modify corrector.meta attribute."
 
 
 def test_fit_wcs_unsupported_fitgeom(mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     x = list(range(10))
     y = [10 * random.random() for _ in range(10)]
     imcat = Table([x, y], names=('x', 'y'))
@@ -141,7 +141,7 @@ def test_fit_wcs_unsupported_fitgeom(mock_fits_wcs):
     ([1, 10, 20], [1, 20, 10], 'general'),
 ])
 def test_fit_wcs_minsrc_img_ref(mock_fits_wcs, x, y, fitgeom):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     imcat = Table([x, y], names=('x', 'y'))
     ra, dec = mock_fits_wcs.all_pix2world(x, y, 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
@@ -157,7 +157,7 @@ def test_fit_wcs_minsrc_img_ref(mock_fits_wcs, x, y, fitgeom):
 def test_fit_wcs_less_than_minsrc(mock_fits_wcs):
     x = [1, 20]
     y = [1, 20]
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     imcat = Table([x, y], names=('x', 'y'))
     ra, dec = mock_fits_wcs.all_pix2world(x, y, 0)
     refcat = Table([ra, dec], names=('RA', 'DEC'))
@@ -166,7 +166,7 @@ def test_fit_wcs_less_than_minsrc(mock_fits_wcs):
 
 
 def test_align_wcs_tpwcs_missing_cat(mock_fits_wcs):
-    tpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs)
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs)
     assert (e.value.args[0] == "Each object in 'wcscat' must have a valid "
@@ -176,23 +176,23 @@ def test_align_wcs_tpwcs_missing_cat(mock_fits_wcs):
 def test_align_wcs_tpwcs_type(mock_fits_wcs):
     imcat = Table([[1, 2, 3, 4], [0, 3, 1, 5]], names=('x', 'y'))
 
-    class WrongTPWCS:
+    class WrongWCSCorrector:
         def __init__(self, wcs):
             self.wcs = wcs
             self.meta = {'catalog': imcat}
 
-    err = ("Input 'wcscat' must be either a single TPWCS-derived "
-           " object or a list of TPWCS-derived objects.")
+    err = ("Input 'wcscat' must be either a single WCSCorrector-derived "
+           "object or a list of WCSCorrector-derived objects.")
 
-    tpwcs = WrongTPWCS(mock_fits_wcs)
+    tpwcs = WrongWCSCorrector(mock_fits_wcs)
 
     with pytest.raises(TypeError) as e:
         align_wcs(tpwcs)
-    assert (e.value.args[0] == err)
+    assert e.value.args[0] == err
 
     with pytest.raises(TypeError) as e:
         align_wcs([tpwcs, tpwcs])
-    assert (e.value.args[0] == err)
+    assert e.value.args[0] == err
 
 
 @pytest.mark.parametrize('shift, rot, scale, fitgeom, weighted', [
@@ -219,7 +219,7 @@ def test_align_wcs_simple_ref_image_general(shift, rot, scale, fitgeom,
     else:
         names = ('RA', 'DEC')
     refcat = Table(radec, names=names)
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
     status = align_wcs(tpwcs, refcat, fitgeom=fitgeom, match=None)
 
     assert status
@@ -243,8 +243,8 @@ def test_align_wcs_simple_twpwcs_ref(mock_fits_wcs):
     xyr = np.dot(xy, m.T) + shift
     imcat = Table(xy, names=('x', 'y'))
     refcat = Table(xyr, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
-    reftpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': refcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
+    reftpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': refcat})
     status = align_wcs(tpwcs, reftpwcs, ref_tpwcs=tpwcs,
                        fitgeom='general', match=None)
 
@@ -262,18 +262,18 @@ def test_align_wcs_simple_twpwcs_ref(mock_fits_wcs):
 def test_align_wcs_tpwcs_refcat_must_have_catalog(mock_fits_wcs):
     xy = np.array([[1, 0], [2, 3], [3, 1], [4, 5]])
     imcat = Table(xy, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
-    reftpwcs = FITSWCS(mock_fits_wcs)
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
+    reftpwcs = FITSWCSCorrector(mock_fits_wcs)
 
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs, refcat=reftpwcs)
-    assert (e.value.args[0] == "Reference 'TPWCS' must contain a catalog.")
+    assert e.value.args[0] == "Reference 'WCSCorrector' must contain a catalog."
 
 
 def test_align_wcs_unknown_fitgeom(mock_fits_wcs):
     xy = np.array([[1, 0], [2, 3], [3, 1], [4, 5]])
     imcat = Table(xy, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
 
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs, fitgeom='unknown')
@@ -285,7 +285,7 @@ def test_align_wcs_no_radec_in_refcat(mock_fits_wcs):
     xy = np.array([[1, 0], [2, 3], [3, 1], [4, 5]])
     imcat = Table(xy, names=('x', 'y'))
     refcat = Table(xy, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
 
     with pytest.raises(KeyError) as e:
         align_wcs(tpwcs, refcat, fitgeom='shift', match=None)
@@ -296,12 +296,13 @@ def test_align_wcs_no_radec_in_refcat(mock_fits_wcs):
 def test_align_wcs_wrong_refcat_type(mock_fits_wcs):
     xy = np.array([[1, 0], [2, 3], [3, 1], [4, 5]])
     imcat = Table(xy, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
 
     with pytest.raises(TypeError) as e:
         align_wcs(tpwcs, refcat=xy, fitgeom='shift', match=None)
     assert (e.value.args[0] == "Unsupported 'refcat' type. Supported 'refcat' "
-            "types are 'tweakwcs.tpwcs.TPWCS' and 'astropy.table.Table'")
+            "types are 'tweakwcs.correctors.WCSCorrector' and "
+            "'astropy.table.Table'")
 
 
 @pytest.mark.parametrize('enforce', [True, False])
@@ -316,9 +317,9 @@ def test_align_wcs_refcat_from_imcat(mock_fits_wcs, enforce):
     xyr = np.dot(xy - crpix, m) + crpix + shift
     imcat = Table(xy, names=('x', 'y'))
     refcat = Table(xyr, names=('x', 'y'))
-    tpwcs1 = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs1 = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
     tpwcs2 = copy.deepcopy(tpwcs1)
-    reftpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': refcat})
+    reftpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': refcat})
 
     input_catalogs = [reftpwcs, tpwcs1, tpwcs2]
     status = align_wcs(
@@ -346,8 +347,8 @@ def test_align_wcs_minobj(mock_fits_wcs):
     xyr = np.dot(xy - crpix, m) + crpix + shift
     imcat = Table(xy, names=('x', 'y'))
     refcat = Table(xyr, names=('x', 'y'))
-    tpwcs1 = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
-    reftpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': refcat})
+    tpwcs1 = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
+    reftpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': refcat})
 
     status = align_wcs(
         [reftpwcs, tpwcs1], refcat=None, fitgeom='general', minobj=200,
@@ -391,8 +392,8 @@ def test_multi_image_set(mock_fits_wcs):
 
     wcsref = copy.deepcopy(mock_fits_wcs)
     refcat = Table(xyref, names=('x', 'y'))
-    ref_img_tpwcs = FITSWCS(wcsref, meta={'catalog': refcat,
-                                          'name': 'ref_img_tpwcs'})
+    ref_img_tpwcs = FITSWCSCorrector(wcsref, meta={'catalog': refcat,
+                                                   'name': 'ref_img_tpwcs'})
 
     # single overlap catalog sources:
     wcsim1 = copy.deepcopy(mock_fits_wcs)
@@ -405,14 +406,14 @@ def test_multi_image_set(mock_fits_wcs):
     xyim1[750:, :] += 512
 
     imcat = Table(xyim1, names=('x', 'y'))
-    im1_tpwcs = FITSWCS(wcsim1, meta={'catalog': imcat, 'name': 'im1_tpwcs'})
+    im1_tpwcs = FITSWCSCorrector(wcsim1, meta={'catalog': imcat, 'name': 'im1_tpwcs'})
 
     # non-overlaping image:
     wcsim2 = copy.deepcopy(mock_fits_wcs)
     xyim2 = xyim1.copy()
     xyim2[:, 0] += 2000.0
     imcat = Table(xyim2, names=('x', 'y'))
-    im2_tpwcs = FITSWCS(wcsim2, meta={'catalog': imcat, 'name': 'im2_tpwcs'})
+    im2_tpwcs = FITSWCSCorrector(wcsim2, meta={'catalog': imcat, 'name': 'im2_tpwcs'})
 
     # grouped images overlap reference catalog sources:
     wcsim3 = copy.deepcopy(mock_fits_wcs)
@@ -424,7 +425,7 @@ def test_multi_image_set(mock_fits_wcs):
     xyim3[500:, 1] -= 512
 
     imcat = Table(xyim3, names=('x', 'y'))
-    im3_tpwcs = FITSWCS(wcsim3, meta={
+    im3_tpwcs = FITSWCSCorrector(wcsim3, meta={
         'catalog': imcat, 'group_id': 'group1', 'name': 'im3_tpwcs'
     })
 
@@ -432,7 +433,7 @@ def test_multi_image_set(mock_fits_wcs):
     xyim4 = (512, -512) + 1024 * np.vstack((np.random.random((1000, 2)),
                                             corners))
     imcat = Table(xyim4, names=('x', 'y'))
-    im4_tpwcs = FITSWCS(wcsim4, meta={  # noqa: F841
+    im4_tpwcs = FITSWCSCorrector(wcsim4, meta={  # noqa: F841
         'catalog': imcat, 'group_id': 'group1', 'name': 'im4_tpwcs'
     })
 
@@ -440,7 +441,7 @@ def test_multi_image_set(mock_fits_wcs):
     xyim5 = (512, -512 - 1024) + 1024 * np.vstack((np.random.random((1000, 2)),
                                                    corners))
     imcat = Table(xyim5, names=('x', 'y'))
-    im5_tpwcs = FITSWCS(wcsim5, meta={
+    im5_tpwcs = FITSWCSCorrector(wcsim5, meta={
         'catalog': imcat, 'group_id': 'group1', 'name': 'im5_tpwcs'
     })
 
@@ -469,7 +470,7 @@ def test_max_overlap_pair():
 def test_align_wcs_1im_no_ref(mock_fits_wcs):
     xy = np.array([[1, 0], [2, 3], [3, 1], [4, 5]])
     imcat = Table(xy, names=('x', 'y'))
-    tpwcs = FITSWCS(mock_fits_wcs, meta={'catalog': imcat})
+    tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
 
     with pytest.raises(ValueError) as e:
         align_wcs(tpwcs, refcat=None, fitgeom='shift', match=None)

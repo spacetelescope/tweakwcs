@@ -12,14 +12,14 @@ from astropy import coordinates as coord
 from astropy import units as u
 import gwcs
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-from tweakwcs.tpwcs import TPWCS, JWSTgWCS
+from tweakwcs.correctors import WCSCorrector, JWSTWCSCorrector
 
 
 _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
 _C2S = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
 
-class DummyTPWCS(TPWCS):
+class DummyWCSCorrector(WCSCorrector):
     def set_correction(self, matrix=[[1, 0], [0, 1]], shift=[0, 0],
                        ref_tpwcs=None, meta=None, **kwargs):
         super().set_correction(matrix=matrix, shift=shift,
@@ -55,17 +55,17 @@ def rot_mat3d(angle, axis):
 
 def create_DetToV2V3(v2ref=0.0, v3ref=0.0, roll=0.0,
                      cd=[[1.0, 0.0], [0.0, 1.0]], crpix=[0, 0]):
-    tpcorr = JWSTgWCS._tpcorr_init(v2_ref=v2ref, v3_ref=v3ref, roll_ref=roll)
+    tpcorr = JWSTWCSCorrector._tpcorr_init(v2_ref=v2ref, v3_ref=v3ref, roll_ref=roll)
 
     afinv = AffineTransformation2D(cd, -np.dot(cd, crpix)).inverse
 
-    JWSTgWCS._tpcorr_combine_affines(
+    JWSTWCSCorrector._tpcorr_combine_affines(
         tpcorr,
         afinv.matrix.value,
         afinv.translation.value
     )
 
-    p = JWSTgWCS._v2v3_to_tpcorr_from_full(tpcorr)
+    p = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(tpcorr)
     partial_tpcorr = p.inverse
     partial_tpcorr.inverse = p
 

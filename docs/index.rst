@@ -4,7 +4,7 @@ Welcome to tweakwcs documentation!
 ``tweakwcs`` is a package that provides core algorithms for computing and
 applying corrections to ``WCS`` objects such as to minimize mismatch between
 image and reference catalogs. Currently only aligning images with ``FITS WCS``
-and ``JWST gWCS`` are supported.
+and ``JWST GWCS`` are supported.
 
 .. moduleauthor:: Mihai Cara <help@stsci.edu>
 
@@ -15,7 +15,7 @@ Content
    :maxdepth: 2
 
    source/imalign
-   source/tpwcs
+   source/correctors
    source/matchutils
    source/wcsimage
    source/linearfit

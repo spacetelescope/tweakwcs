@@ -31,7 +31,7 @@ _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
 
 
 def test_test_transform_selector():
-    assert(set(_TRANSFORM_SELECTOR) == set(linearfit.SUPPORTED_FITGEOM_MODES))
+    assert set(_TRANSFORM_SELECTOR) == set(linearfit.SUPPORTED_FITGEOM_MODES)
 
 
 @pytest.fixture(scope="module")

@@ -26,7 +26,7 @@ def _match(x, y):
 def test_multichip_fitswcs_alignment():
     h1 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis1.hdr'))
     w1 = wcs.WCS(h1)
-    imcat1 = tweakwcs.FITSWCS(w1)
+    imcat1 = tweakwcs.FITSWCSCorrector(w1)
     imcat1.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis1.cat'),
         format='ascii.csv',
@@ -38,7 +38,7 @@ def test_multichip_fitswcs_alignment():
 
     h2 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis2.hdr'))
     w2 = wcs.WCS(h2)
-    imcat2 = tweakwcs.FITSWCS(w2)
+    imcat2 = tweakwcs.FITSWCSCorrector(w2)
     imcat2.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis2.cat'),
         format='ascii.csv',
@@ -124,7 +124,7 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, dra, ddec):
     # for alignment. [#125]
     h1 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis1.hdr'))
     w1 = wcs.WCS(h1)
-    imcat1 = tweakwcs.FITSWCS(w1)
+    imcat1 = tweakwcs.FITSWCSCorrector(w1)
     imcat1.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis1.cat'),
         format='ascii.csv',
@@ -136,7 +136,7 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, dra, ddec):
 
     h2 = fits.Header.fromfile(get_pkg_data_filename('data/wfc3_uvis2.hdr'))
     w2 = wcs.WCS(h2)
-    imcat2 = tweakwcs.FITSWCS(w2)
+    imcat2 = tweakwcs.FITSWCSCorrector(w2)
     imcat2.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis2.cat'),
         format='ascii.csv',
@@ -162,7 +162,7 @@ def test_different_ref_tpwcs_fitswcs_alignment(wcsno, refscale, dra, ddec):
     rotm = tweakwcs.linearfit.build_fit_matrix(*refscale)
     refwcs.wcs.cd = np.dot(refwcs.wcs.cd, rotm)
     refwcs.wcs.set()
-    ref_tpwcs = tweakwcs.FITSWCS(refwcs)
+    ref_tpwcs = tweakwcs.FITSWCSCorrector(refwcs)
 
     tweakwcs.align_wcs([imcat1, imcat2], refcat, ref_tpwcs=ref_tpwcs,
                        match=_match, nclip=None, sigma=3, fitgeom='general')

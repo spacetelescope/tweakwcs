@@ -9,19 +9,17 @@ image catalogs "align" to the reference catalog *on the sky*.
 :License: :doc:`LICENSE`
 
 """
-# STDLIB
 import logging
 from datetime import datetime
 import collections
 
-# THIRD PARTY
 import numpy as np
 import astropy
+from astropy.utils.decorators import deprecated_renamed_argument
 
-# LOCAL
 from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
-from . tpwcs import TPWCS
-from . matchutils import TPMatch
+from . correctors import WCSCorrector
+from . matchutils import XYXYMatch
 from . linearfit import SUPPORTED_FITGEOM_MODES, _SUPPORTED_FITGEOM_EN_STR
 
 from . import __version__
@@ -30,13 +28,13 @@ __author__ = 'Mihai Cara'
 
 __all__ = ['fit_wcs', 'align_wcs']
 
-
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
-            sigma=(3.0, 'rmse'), clip_accum=False):
+@deprecated_renamed_argument('tpwcs', 'corrector', since='0.8.0')
+def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
+            nclip=3, sigma=(3.0, 'rmse'), clip_accum=False):
     """ "Tweak" **a single** image's ``WCS`` by fitting image catalog to a
     reference catalog. This is a simplified version of `align_wcs` that does
     not perform matching and is limited to the fitting part.
@@ -48,7 +46,7 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         with the same indices in both catalogs correspond to the same source.
 
     .. warning::
-        If ``tpwcs.meta`` dictionary contains ``'catalog'`` keyword,
+        If ``corrector.meta`` dictionary contains ``'catalog'`` keyword,
         it will be ignored.
 
     Parameters
@@ -69,17 +67,17 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         the catalog is the ``'weight'`` column, which when present, will be
         used in fitting. See ``Notes`` section for further details.
 
-    tpwcs: TPWCS
+    corrector: WCSCorrector
         A ``WCS`` associated with the image from which the catalog was derived.
-        This ``TPWCS``-subclassed WCS corrector object must also define
-        a tangent plane that will be used for fitting the two catalogs'
+        This ``WCSCorrector``-subclassed WCS corrector object must also
+        define a tangent plane that will be used for fitting the two catalogs'
         sources and in which WCS corrections will be applied.
 
-    ref_tpwcs: TPWCS, None, optional
-        A reference WCS of the type ``TPWCS`` that provides the tangent
-        plane in which matching will be performed and corrections will be
-        defined. When not provided (i.e., set to `None`), reference tangent
-        plane will be the same as defined by ``tpwcs`` argument.
+    ref_tpwcs: WCSCorrector, None, optional
+        A reference WCS of the type ``WCSCorrector`` that provides the
+        tangent plane in which matching will be performed and corrections will
+        be defined. When not provided (i.e., set to `None`), reference tangent
+        plane will be the same as defined by ``corrector`` argument.
 
     fitgeom: {'shift', 'rshift', 'rscale', 'general'}, optional
         The fitting geometry to be used in fitting the matched object lists.
@@ -114,7 +112,7 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
 
     Returns
     -------
-    twwcs: TPWCS
+    twwcs: WCSCorrector
         "Tweaked" (aligned) ``WCS`` that contains tangent-plane corrections
         so that reference and image catalog sources better align in the tangent
         plane and therefore on the sky as well.
@@ -154,8 +152,8 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         ``[0.25,0.25,0.25,0.25,0.5,0.5]``.
 
     Upon **successful** completion, this function will set the ``'fit_info'``
-    key value of the ``meta`` attribute of the returned ``TPWCS`` object.
-    ``'fit_info'`` is a dictionary with the following items:
+    key value of the ``meta`` attribute of the returned ``WCSCorrector``
+    object. ``'fit_info'`` is a dictionary with the following items:
 
         * **'shift'**: A ``numpy.ndarray`` with two components of the
           computed shift.
@@ -238,18 +236,19 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
 
     try:
         # Attempt to set initial status to FAILED.
-        tpwcs.meta['fit_info'] = {'status': 'FAILED: Unknown error'}
+        corrector.meta['fit_info'] = {'status': 'FAILED: Unknown error'}
     except Exception:
-        raise AttributeError("Unable to set/modify tpwcs.meta attribute.")
+        raise AttributeError("Unable to set/modify corrector.meta attribute.")
 
     # check fitgeom:
     fitgeom = fitgeom.lower()
     if fitgeom not in SUPPORTED_FITGEOM_MODES:
         raise ValueError(
-            f"Unsupported 'fitgeom'. Valid values are: {_SUPPORTED_FITGEOM_EN_STR:s}"
+            "Unsupported 'fitgeom'. Valid values are: "
+            f"{_SUPPORTED_FITGEOM_EN_STR:s}"
         )
 
-    wimcat = WCSImageCatalog(imcat, tpwcs,
+    wimcat = WCSImageCatalog(imcat, corrector,
                              name=imcat.meta.get('name', 'Unnamed'))
     wgcat = WCSGroupCatalog(wimcat, name=imcat.meta.get('name', 'Unnamed'))
     wrefcat = RefCatalog(refcat, name=imcat.meta.get('name', 'Unnamed'))
@@ -265,7 +264,7 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
         clip_accum=clip_accum
     )
 
-    tpwcs.meta['fit_info'] = wimcat.fit_info
+    corrector.meta['fit_info'] = wimcat.fit_info
     if not succes:
         log.warning("Failed to align catalog '{}'.".format(wgcat.name))
 
@@ -278,11 +277,11 @@ def fit_wcs(refcat, imcat, tpwcs, ref_tpwcs=None, fitgeom='general', nclip=3,
              .format(__name__, function_name, runtime_end - runtime_begin))
     log.info(" ")
 
-    return wgcat[0].tpwcs
+    return wgcat[0].corrector
 
 
 def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
-              expand_refcat=False, minobj=None, match=TPMatch(),
+              expand_refcat=False, minobj=None, match=XYXYMatch(),
               fitgeom='general', nclip=3, sigma=(3.0, 'rmse'),
               clip_accum=False):
     r"""
@@ -323,9 +322,9 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
     Parameters
     ----------
-    wcscat: tweakwcs.tpwcs.TPWCS, list of tweakwcs.tpwcs.TPWCS
-        A list of all `~tweakwcs.tpwcs.TPWCS`-derived WCS correctors whose
-        ``meta`` dictionary **must** contain ``'catalog'``
+    wcscat: tweakwcs.correctors.WCSCorrector, list of tweakwcs.correctors.WCSCorrector
+        A list of all `~tweakwcs.correctors.WCSCorrector`-derived WCS
+        correctors whose ``meta`` dictionary **must** contain ``'catalog'``
         item with a non-empty table value of type `astropy.table.Table`.
         This catalog must contain ``'x'`` and ``'y'`` columns which indicate
         source coordinates (in pixels) in the associated image. An optional
@@ -347,8 +346,9 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
             See **Notes** section for more details.
 
         .. warning::
-            This function modifies the WCS of ``TPWCS`` objects by calling
-            their :py:meth:`~tweakwcs.tpwcs.TPWCS.set_correction` method.
+            This function modifies the WCS of ``WCSCorrector`` objects by
+            calling their
+            :py:meth:`~tweakwcs.correctors.WCSCorrector.set_correction` method.
 
     refcat: astropy.table.Table, optional
         A reference source catalog. The catalog must contain ``'RA'`` and
@@ -357,11 +357,11 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         the ``'weight'`` column, which when present, will be used in fitting.
         See ``Notes`` section for further details.
 
-    ref_tpwcs: TPWCS, None, optional
-        A reference WCS of the type ``TPWCS`` that provides the tangent
+    ref_tpwcs: WCSCorrector, None, optional
+        A reference WCS of the type ``WCSCorrector`` that provides the tangent
         plane in which matching will be performed and corrections will be
         defined. When not provided (i.e., set to `None`), reference tangent
-        plane will be defined from the first ``TPWCS`` object
+        plane will be defined from the first ``WCSCorrector`` object
         *in the re-ordered* (if ``enforce_user_order`` was
         set to `True`) input list ``wcscat``.
 
@@ -486,18 +486,19 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
     Upon completion, this function will add ``'fit_info'``
     item (itself a dictionary) to input object's ``meta`` dictionary.
-    If input objects are `~tweakwcs.tpwcs.TPWCS` WCS correctors, then
-    ``TPWCS.meta['fit_info']`` will be set to a dictionary containing
-    fit information.
+    If input objects are `~tweakwcs.correctors.WCSCorrector` WCS correctors,
+    then ``WCSCorrector.meta['fit_info']`` will be set to a dictionary
+    containing fit information.
 
     .. note::
-        For `~tweakwcs.tpwcs.TPWCS` that are aligned in a group,
+        For `~tweakwcs.correctors.WCSCorrector` that are aligned in a group,
         the ``'matrix'`` and ``'shift'`` items in the ``'fit_info'``
         dictionary may differ from
-        the values of the same items in ``TPWCS.meta`` dictionary. This is
-        normal since WCS corrections (in `~tweakwcs.tpwcs.TPWCS`) are applied
-        in the image's WCS plane while fit may be performed in a slightly
-        different tangent plane.
+        the values of the same items in ``WCSCorrector.meta`` dictionary.
+        This is normal since WCS corrections
+        (in `~tweakwcs.correctors.WCSCorrector`) are applied in the image's
+        WCS plane while fit may be performed in a slightly different tangent
+        plane.
 
     """
     function_name = align_wcs.__name__
@@ -512,16 +513,17 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
     log.info(" ")
 
     # Check that type of `wcscat` is correct and set initial status to FAILED:
-    if isinstance(wcscat, TPWCS):
+    if isinstance(wcscat, WCSCorrector):
         wcscat = [wcscat]
         start = 1
     else:
         start = 0
 
-    if not (hasattr(wcscat, '__iter__') and all(isinstance(wcat, TPWCS)
+    if not (hasattr(wcscat, '__iter__') and all(isinstance(wcat, WCSCorrector)
                                                 for wcat in wcscat[start:])):
-        raise TypeError("Input 'wcscat' must be either a single TPWCS-derived "
-                        " object or a list of TPWCS-derived objects.")
+        raise TypeError("Input 'wcscat' must be either a single "
+                        "WCSCorrector-derived object or a list of "
+                        "WCSCorrector-derived objects.")
 
     wcs_im_cats = []
     for wcat in wcscat:
@@ -531,7 +533,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
         wcs_im_cat = WCSImageCatalog(
             catalog=wcat.meta['catalog'],
-            tpwcs=wcat,
+            corrector=wcat,
             name=wcat.meta.get('name', 'Unknown'),
             group_id=wcat.meta.get('group_id', None)
         )
@@ -547,14 +549,15 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
             log.debug(f"Setting 'minobj' to {minobj} for fitgeom='{fitgeom}'")
     except KeyError:
         raise ValueError(
-            f"Unsupported 'fitgeom'. Valid values are: {_SUPPORTED_FITGEOM_EN_STR:s}"
+            "Unsupported 'fitgeom'. Valid values are: "
+            f"{_SUPPORTED_FITGEOM_EN_STR:s}"
         )
 
     # process reference catalog or image if provided:
     if refcat is not None:
-        if isinstance(refcat, TPWCS):
+        if isinstance(refcat, WCSCorrector):
             if 'catalog' not in refcat.meta:
-                raise ValueError("Reference 'TPWCS' must contain a "
+                raise ValueError("Reference 'WCSCorrector' must contain a "
                                  "catalog.")
 
             rcat = refcat.meta['catalog'].copy()
@@ -581,7 +584,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
         else:
             raise TypeError("Unsupported 'refcat' type. Supported 'refcat' "
-                            "types are 'tweakwcs.tpwcs.TPWCS' and "
+                            "types are 'tweakwcs.correctors.WCSCorrector' and "
                             "'astropy.table.Table'")
 
     # find group ID and assign images to groups:
@@ -608,7 +611,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
                             "source catalog".format(group_id))
 
                 for wcat in wcatalogs:
-                    wcat.tpwcs.meta['fit_info'] = {
+                    wcat.corrector.meta['fit_info'] = {
                         'status': 'FAILED: empty source catalog'
                     }
 
@@ -635,7 +638,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         refcat = RefCatalog(ref_imcat.catalog, name=ref_imcat[0].name)
 
         for wcat in ref_imcat:
-            wcat.tpwcs.meta['fit_info'] = {'status': 'REFERENCE'}
+            wcat.corrector.meta['fit_info'] = {'status': 'REFERENCE'}
 
     else:
         # find the first image to be aligned:
@@ -661,7 +664,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         )
 
         for wcat in current_wcat:
-            wcat.tpwcs.meta['fit_info'] = wcat.fit_info
+            wcat.corrector.meta['fit_info'] = wcat.fit_info
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:
