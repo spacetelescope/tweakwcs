@@ -7,7 +7,7 @@ Release Notes
 .. 0.8.1 (unreleased)
    ==================
 
-0.8.0 (08-August-2022)
+0.8.0 (25-August-2022)
 ======================
 
 - Exposed in top-level functions parameter ``clip_accum`` that controls
