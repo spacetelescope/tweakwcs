@@ -10,7 +10,7 @@ import pytest
 import tweakwcs
 
 
-def _match(x, y):
+def _match(x, y, tp_pscale, tp_units):
     lenx = len(x)
     leny = len(y)
     if lenx == leny:

@@ -848,7 +848,27 @@ class WCSGroupCatalog(object):
                 raise RuntimeError("'calc_tanp_xy()' should have been run "
                                    "prior to match2ref()")
 
-            mref_idx, minput_idx = match(refcat.catalog, self._catalog)
+            try:
+                if self._images:
+                    tp_pscale = self._images[0].corrector.tanp_center_pixel_scale
+                else:
+                    tp_pscale = 1.0
+
+            except NotImplementedError:
+                tp_pscale = 1.0
+
+            finally:
+                if self._images:
+                    tp_units = self._images[0].corrector.units
+                else:
+                    tp_units = 'tangent plane units'
+
+            mref_idx, minput_idx = match(
+                refcat.catalog,
+                self._catalog,
+                tp_pscale=tp_pscale,
+                tp_units=tp_units
+            )
             nmatches = len(mref_idx)
 
         # matched_ref_id:

@@ -4,8 +4,18 @@
 Release Notes
 =============
 
-.. 0.8.1 (unreleased)
+.. 0.8.2 (unreleased)
    ==================
+
+0.8.1 (unreleased)
+==================
+
+- Fixed a bug in the ``XYXYMatch`` due to which bin size for the 2D histogram
+  pre-match alignment did not account for the pixel scale in the tangent plane.
+  This required a change in the API of ``XYXYMatch.__call__`` which now
+  _must_ have ``tp_pscale`` as input and also inputs catalogs now _must_
+  contain ``'TPx'`` and ``'TPy'`` columns. [#173]
+
 
 0.8.0 (25-August-2022)
 ======================
