@@ -7,11 +7,13 @@ of shifts based on 2D histograms.
 
 """
 import logging
+import warnings
 from abc import ABC, abstractmethod
 
 import numpy as np
 import astropy
 from astropy.utils.decorators import deprecated
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from stsci.stimage import xyxymatch
 
@@ -141,7 +143,7 @@ class XYXYMatch(MatchCatalogs):
         self._xoffset = float(xoffset)
         self._yoffset = float(yoffset)
 
-    def __call__(self, refcat, imcat, tp_pscale, tp_units, **kwargs):
+    def __call__(self, refcat, imcat, tp_pscale=1.0, tp_units=None, **kwargs):
         r""" Performs catalog matching.
 
         Parameters
@@ -195,18 +197,47 @@ class XYXYMatch(MatchCatalogs):
             raise ValueError("Image catalog must contain at least one "
                              "source.")
 
-        if 'TPx' not in refcat.colnames or 'TPy' not in refcat.colnames:
-            raise KeyError(
-                "'refcat' must contain both 'TPx' and 'TPy' columns."
+        if 'tp_wcs' in kwargs:
+            warnings.warn(
+                "Argument 'tp_wcs' has been deprecated since version 0.8.1. "
+                "Please use 'tp_pscale' instead and populate 'TPx' and 'TPy' "
+                "columns of input catalogs.",
+                AstropyDeprecationWarning
             )
 
-        if 'TPx' not in imcat.colnames or 'TPy' not in imcat.colnames:
-            raise KeyError(
-                "'imcat' must contain both 'TPx' and 'TPy' columns."
-            )
+        tp_wcs = kwargs.get('tp_wcs')
 
-        imxy = np.asarray([imcat['TPx'], imcat['TPy']]).T
-        refxy = np.asarray([refcat['TPx'], refcat['TPy']]).T
+        if tp_wcs is None:
+            if 'TPx' not in refcat.colnames or 'TPy' not in refcat.colnames:
+                raise KeyError("When tangent plane WCS is not provided, "
+                               "'refcat' must contain both 'TPx' and 'TPy' "
+                               "columns.")
+
+            if 'TPx' not in imcat.colnames or 'TPy' not in imcat.colnames:
+                raise KeyError("When tangent plane WCS is not provided, "
+                               "'imcat' must contain both 'TPx' and 'TPy' "
+                               "columns.")
+
+            imxy = np.asarray([imcat['TPx'], imcat['TPy']]).T
+            refxy = np.asarray([refcat['TPx'], refcat['TPy']]).T
+
+        else:
+            if 'RA' not in refcat.colnames or 'DEC' not in refcat.colnames:
+                raise KeyError("When tangent plane WCS is provided,  'refcat' "
+                               "must contain both 'RA' and 'DEC' columns.")
+
+            if 'x' not in imcat.colnames or 'y' not in imcat.colnames:
+                raise KeyError("When tangent plane WCS is provided,  'imcat' "
+                               "must contain both 'x' and 'y' columns.")
+
+            # compute x & y in the tangent plane provided by tp_wcs:
+            imxy = np.asarray(
+                tp_wcs.det_to_tanp(imcat['x'], imcat['y'])
+            ).T
+
+            refxy = np.asarray(
+                tp_wcs.world_to_tanp(refcat['RA'], refcat['DEC'])
+            ).T
 
         imcat_name = imcat.meta.get('name', 'Unnamed')
         if imcat_name is None:

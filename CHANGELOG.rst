@@ -16,6 +16,9 @@ Release Notes
   _must_ have ``tp_pscale`` as input and also inputs catalogs now _must_
   contain ``'TPx'`` and ``'TPy'`` columns. [#173]
 
+- Deprecated ``'tp_wcs'`` argument of the ``XYXYMatch.__call__()`` method.
+  Use ``'tp_pscale'`` instead. [#173]
+
 
 0.8.0 (25-August-2022)
 ======================

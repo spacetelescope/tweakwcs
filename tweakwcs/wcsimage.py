@@ -867,7 +867,8 @@ class WCSGroupCatalog(object):
                 refcat.catalog,
                 self._catalog,
                 tp_pscale=tp_pscale,
-                tp_units=tp_units
+                tp_units=tp_units,
+                tp_wcs=self._images[0].corrector
             )
             nmatches = len(mref_idx)
 
