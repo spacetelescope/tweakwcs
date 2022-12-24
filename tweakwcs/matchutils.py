@@ -7,11 +7,13 @@ of shifts based on 2D histograms.
 
 """
 import logging
+import warnings
 from abc import ABC, abstractmethod
 
 import numpy as np
 import astropy
 from astropy.utils.decorators import deprecated
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from stsci.stimage import xyxymatch
 
@@ -33,7 +35,7 @@ class MatchCatalogs(ABC):
         """
 
     @abstractmethod
-    def __call__(self, refcat, imcat):
+    def __call__(self, refcat, imcat, **kwargs):
         """ Performs catalog matching.
 
         Parameters
@@ -50,6 +52,9 @@ class MatchCatalogs(ABC):
             ``'TPx'`` and ``'TPy'`` columns that provide undistorted
             (distortion-correction applied) source coordinates coordinate
             system common (shared) with the image catalog ``refcat``.
+
+        **kwargs : dict
+            Any keyword arguments for ``__call__`` specific to subclass.
 
         Returns
         -------
@@ -138,41 +143,35 @@ class XYXYMatch(MatchCatalogs):
         self._xoffset = float(xoffset)
         self._yoffset = float(yoffset)
 
-    def __call__(self, refcat, imcat, tp_wcs=None):
+    def __call__(self, refcat, imcat, tp_pscale=1.0, tp_units=None, **kwargs):
         r""" Performs catalog matching.
 
         Parameters
         ----------
 
         refcat: astropy.table.Table
-            A reference source catalog. When a tangent-plane ``WCS`` is
-            provided through ``tp_wcs``, the catalog must contain ``'RA'`` and
-            ``'DEC'`` columns which indicate reference source world
-            coordinates (in degrees). Alternatively, when ``tp_wcs`` is `None`,
-            reference catalog must contain ``'TPx'`` and ``'TPy'`` columns that
-            provide undistorted (distortion-correction applied) source
-            coordinates in some *tangent plane*. In this case, the ``'RA'``
-            and ``'DEC'`` columns in the ``refcat`` catalog will be ignored.
+            A reference source catalog. Reference catalog must contain
+            ``'TPx'`` and ``'TPy'`` columns that provide undistorted
+            (distortion-correction applied) source coordinates in some
+            *tangent plane*. The ``'RA'`` and ``'DEC'`` columns in the
+            ``refcat`` catalog will be ignored.
 
         imcat: astropy.table.Table
-            Source catalog associated with an image. Must contain ``'x'`` and
-            ``'y'`` columns which indicate source coordinates (in pixels) in
-            the associated image. Alternatively, when ``tp_wcs`` is `None`,
-            catalog must contain ``'TPx'`` and ``'TPy'`` columns that
-            provide undistorted (distortion-correction applied) source
+            Source catalog associated with an image. The catalog must contain
+            ``'TPx'`` and ``'TPy'`` columns that provide undistorted
+            (distortion-correction applied) source
             coordinates in **the same**\ *tangent plane* used to define
             ``refcat``'s tangent plane coordinates. In this case, the ``'x'``
             and ``'y'`` columns in the ``imcat`` catalog will be ignored.
 
-        tp_wcs: WCSCorrector, None, optional
-            A ``WCS`` that defines a tangent plane onto which both
-            reference and image catalog sources can be projected. For this
-            reason, ``tp_wcs`` is associated with the image in which sources
-            from the ``imcat`` catalog were found in the sense that ``tp_wcs``
-            must be able to map image coordinates ``'x'`` and ``'y'`` from the
-            ``imcat`` catalog to the tangent plane. When ``tp_wcs`` is
-            provided, the ``'TPx'`` and ``'TPy'`` columns in both ``imcat`` and
-            ``refcat`` catalogs will be ignored (if present).
+        tp_pscale: float
+            Pixel scale: size of an image pixel in the tangent plane.
+            Pixel scale is in the same units as the coordinates of the tangent
+            plane. Pixel scale is used to compute bin size used for
+            initial 2D histogram alignment performed before matching.
+
+        tp_units: str
+            Units of the tangent plane coordinates.
 
         Returns
         -------
@@ -197,6 +196,16 @@ class XYXYMatch(MatchCatalogs):
         if not imcat:
             raise ValueError("Image catalog must contain at least one "
                              "source.")
+
+        if 'tp_wcs' in kwargs:
+            warnings.warn(
+                "Argument 'tp_wcs' has been deprecated since version 0.8.1. "
+                "Please use 'tp_pscale' instead and populate 'TPx' and 'TPy' "
+                "columns of input catalogs.",
+                AstropyDeprecationWarning
+            )
+
+        tp_wcs = kwargs.get('tp_wcs')
 
         if tp_wcs is None:
             if 'TPx' not in refcat.colnames or 'TPy' not in refcat.colnames:
@@ -242,27 +251,26 @@ class XYXYMatch(MatchCatalogs):
                  "reference '{:s}' catalog."
                  .format(imcat_name, refcat_name))
 
-        ps = 1.0 if tp_wcs is None else tp_wcs.tanp_center_pixel_scale
-
         if self._use2dhist:
             # Determine xyoff (X,Y offset) and tolerance
             # to be used with xyxymatch:
-            zpxoff, zpyoff = _estimate_2dhist_shift(
-                imxy / ps,
-                refxy / ps,
-                searchrad=self._searchrad
+            xyoff = _estimate_2dhist_shift(
+                imxy,
+                refxy,
+                searchrad=self._searchrad,
+                pscale=tp_pscale,
+                units=tp_units
             )
-            xyoff = (zpxoff * ps, zpyoff * ps)
 
         else:
-            xyoff = (self._xoffset * ps, self._yoffset * ps)
+            xyoff = (self._xoffset, self._yoffset)
 
         matches = xyxymatch(
             imxy,
             refxy,
             origin=xyoff,
-            tolerance=ps * self._tolerance,
-            separation=ps * self._separation
+            tolerance=self._tolerance,
+            separation=self._separation
         )
 
         return matches['ref_idx'], matches['input_idx']
@@ -281,43 +289,57 @@ def _xy_2dhist(imgxy, refxy, r):
     return h[0].T
 
 
-def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
+def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0, pscale=1.0, units=None):
     """ Create a 2D matrix-histogram which contains the delta between each
         XY position and each UV position. Then estimate initial offset
         between catalogs.
+
+        ``pscale`` is used to make bins of size approximately equal to
+        image pixel.
+
     """
     log.info("Computing initial guess for X and Y shifts...")
+    if units is None:
+        units = 'tangent plane units'
 
     # create ZP matrix
-    zpmat = _xy_2dhist(imgxy, refxy, r=searchrad)
+    zpmat = _xy_2dhist(imgxy / pscale, refxy / pscale, r=searchrad / pscale)
 
     nonzeros = np.count_nonzero(zpmat)
     if nonzeros == 0:
         # no matches within search radius. Return (0, 0):
-        log.warning("No matches found within a search radius of {:g} pixels."
-                    .format(searchrad))
+        log.warning(
+            f"No matches found within a search radius of {searchrad:g} ({units})."
+        )
         return 0.0, 0.0
 
     elif nonzeros == 1:
         # only one non-zero bin:
         yp, xp = np.unravel_index(np.argmax(zpmat), zpmat.shape)
         maxval = zpmat[yp, xp]
-        xp -= searchrad
-        yp -= searchrad
-        log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
-                 "based on a single non-zero bin and {} matches"
-                 .format(xp, yp, int(maxval)))
+        xp = pscale * xp - searchrad
+        yp = pscale * yp - searchrad
+
+        log.info(
+            f"Found initial X and Y shifts of {xp:.4g}, {yp:.4g} ({units}) "
+            f"based on a single non-zero bin and {int(maxval):d} matches."
+        )
         return xp, yp
 
-    (xp, yp), fit_status, fit_sl = _find_peak(zpmat, peak_fit_box=5,
-                                              mask=zpmat > 0)
+    (xp, yp), fit_status, fit_sl = _find_peak(
+        zpmat,
+        peak_fit_box=5,
+        mask=zpmat > 0
+    )
+
     if fit_status.startswith('ERROR'):
-        log.warning("No valid shift found within a search radius of {:g} "
-                    "pixels.".format(searchrad))
+        log.warning(
+            f"No valid shift found within a search radius of {searchrad:g} {units}."
+        )
         return 0.0, 0.0
 
-    xp -= searchrad
-    yp -= searchrad
+    xp = pscale * xp - searchrad
+    yp = pscale * yp - searchrad
 
     if fit_status == 'WARNING:EDGE':
         log.info("Found peak in the 2D histogram lies at the edge of the "
@@ -334,16 +356,18 @@ def _estimate_2dhist_shift(imgxy, refxy, searchrad=3.0):
     if bkg > 0:  # pragma: no branch
         bkg = zpmat[zpmat_mask].mean()
         sig = maxval / np.sqrt(bkg)
-        log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
-                 "with significance of {:.4g} and {:d} matches."
-                 .format(xp, yp, sig, flux))
+        log.info(
+            f"Found initial X and Y shifts of {xp:.4g}, {yp:.4g} ({units}) "
+            f"with significance of {sig:.4g} and {flux:d} matches."
+        )
 
     else:
         log.warning("Unable to estimate significance of the detection of the "
                     "initial shift.")
-        log.info("Found initial X and Y shifts of {:.4g}, {:.4g} "
-                 "with {:d} matches."
-                 .format(xp, yp, flux))
+        log.info(
+            f"Found initial X and Y shifts of {xp:.4g}, {yp:.4g} ({units}) "
+            f"with {flux:d} matches."
+        )
 
     return xp, yp
 

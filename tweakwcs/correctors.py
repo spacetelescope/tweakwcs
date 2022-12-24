@@ -74,6 +74,7 @@ class WCSCorrector(ABC):
     and for managing tangent-plane corrections.
 
     """
+    units = None
 
     def __init__(self, wcs, meta=None):
         """
@@ -278,6 +279,8 @@ class FITSWCSCorrector(WCSCorrector):
         supported.
 
     """
+    units = 'pixel'
+
     def __init__(self, wcs, meta=None):
         """
         Parameters
@@ -557,6 +560,8 @@ class JWSTWCSCorrector(WCSCorrector):
     tangent-plane corrections.
 
     """
+    units = 'arcsec'
+
     def __init__(self, wcs, wcsinfo, meta=None):
         """
         Parameters

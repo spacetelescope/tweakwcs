@@ -199,14 +199,14 @@ def test_estimate_2dhist_shift_one_bin(shift):
     imgxy = np.zeros((1, 2))
     refxy = imgxy - shift
     expected = 2 * (0 if shift > 3 else shift, )
-    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == expected
+    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3, pscale=1.0) == expected
 
 
 def test_estimate_2dhist_shift_edge():
     imgxy = np.array([[0, 0], [0, 1], [3, 4], [7, 8]])
     shifts = np.array([[3, 0], [3, 0], [1, 2], [0, 1]])
     refxy = imgxy - shifts
-    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (3.0, 0.0)
+    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3, pscale=1.0) == (3.0, 0.0)
 
 
 def test_estimate_2dhist_shift_fit_failed(monkeypatch):
@@ -218,15 +218,15 @@ def test_estimate_2dhist_shift_fit_failed(monkeypatch):
     imgxy = np.array([[0, 0], [0, 1], [3, 4], [7, 8]])
     shifts = np.array([[3, 0], [3, 0], [1, 2], [0, 1]])
     refxy = imgxy - shifts
-    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (0.0, 0.0)
+    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3, pscale=1.0) == (0.0, 0.0)
 
 
 def test_estimate_2dhist_shift_two_equal_maxima(caplog):
     imgxy = np.array([[0, 1], [0, 1]])
     refxy = np.array([[1, 0], [0, 2]])
-    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3) == (-0.5, 0.0)
+    assert _estimate_2dhist_shift(imgxy, refxy, searchrad=3, pscale=1.0) == (-0.5, 0.0)
     assert (caplog.record_tuples[-1][2] == "Found initial X and Y shifts of "
-            "-0.5, 0 with 4 matches." and
+            "-0.5, 0 (tangent plane units) with 4 matches." and
             caplog.record_tuples[-1][1] == logging.INFO)
     assert (caplog.record_tuples[-2][2] == "Unable to estimate significance "
             "of the detection of the initial shift." and
@@ -262,9 +262,15 @@ def test_tpmatch_bad_pars(searchrad, separation, tolerance):
      DummyWCSCorrector(WCS()), KeyError),
 ])
 def test_tpmatch_bad_call_pars(refcat, imcat, tp_wcs, exception):
+    tp_pscale = tp_wcs.tanp_center_pixel_scale if tp_wcs else 1.0
     tpmatch = XYXYMatch()
     with pytest.raises(exception):
-        tpmatch(refcat, imcat, tp_wcs)
+        tpmatch(
+            refcat,
+            imcat,
+            tp_pscale=tp_pscale,
+            tp_units=None if tp_wcs is None else tp_wcs.units
+        )
 
 
 @pytest.mark.parametrize('tp_wcs, use2dhist', [
@@ -275,14 +281,16 @@ def test_tpmatch_bad_call_pars(refcat, imcat, tp_wcs, exception):
 ])
 def test_tpmatch(tp_wcs, use2dhist):
     tpmatch = XYXYMatch(use2dhist=use2dhist)
-    if tp_wcs:
-        imcat = Table([[1], [1]], names=('x', 'y'), meta={'name': None})
-        refcat = Table([[1], [1]], names=('RA', 'DEC'), meta={'name': None})
-    else:
-        refcat = Table([[1], [1]], names=('TPx', 'TPy'), meta={'name': None})
-        imcat = Table([[1], [1]], names=('TPx', 'TPy'), meta={'name': None})
+    refcat = Table([[1], [1]], names=('TPx', 'TPy'), meta={'name': None})
+    imcat = Table([[1], [1]], names=('TPx', 'TPy'), meta={'name': None})
 
-    tpmatch(refcat, imcat, tp_wcs)
+    tp_pscale = tp_wcs.tanp_center_pixel_scale if tp_wcs else 1.0
+    tpmatch(
+        refcat,
+        imcat,
+        tp_pscale=tp_pscale,
+        tp_units=None if tp_wcs is None else tp_wcs.units
+    )
 
 
 def test_match_catalogs_abc():
