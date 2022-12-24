@@ -236,6 +236,24 @@ def test_wcsgroupcat_update_bb_no_images(mock_fits_wcs, rect_imcat):
     assert len(g.polygon) == 0
 
 
+def test_wcsgroupcat_empty_cat(mock_fits_wcs, rect_imcat):
+    imcat = Table([[], [], [], []], names=('x', 'y', 'TPx', 'TPy'))
+    corr = FITSWCSCorrector(mock_fits_wcs)
+
+    ra, dec = mock_fits_wcs.all_pix2world(rect_imcat.catalog['x'],
+                                          rect_imcat.catalog['y'], 0)
+    refcat = Table([ra, dec], names=('RA', 'DEC'))
+    ref = RefCatalog(refcat)
+
+    w = WCSImageCatalog(imcat, corr)
+    ref.calc_tanp_xy(tanplane_wcs=rect_imcat.corrector)
+    g = WCSGroupCatalog([w])
+    g.calc_tanp_xy(tanplane_wcs=rect_imcat.corrector)
+
+    nmatches, *_ = g.match2ref(ref, match=XYXYMatch())
+    assert nmatches == 0
+
+
 def test_wcsgroupcat_create_group_catalog(mock_fits_wcs, rect_imcat):
     w1 = copy.deepcopy(rect_imcat)
     w2 = copy.deepcopy(rect_imcat)
