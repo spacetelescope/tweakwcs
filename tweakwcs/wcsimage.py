@@ -825,6 +825,20 @@ class WCSGroupCatalog(object):
             ``'TPy'`` that represent the source coordinates in some common
             (to both catalogs) coordinate system.
 
+        Returns
+        -------
+
+        nmatches: int
+            Number of found matches.
+
+        mref_idx: numpy.ndarray
+            Integer array indicating indices of sources in the reference
+            catalog that were matched to sources in group's ``catalog``.
+
+        minput_idx: numpy.ndarray
+            Integer array indicating indices of sources in group's ``catalog``
+            that were matched to sources in the reference catalog.
+
         """
         colnames = self._catalog.colnames
         catlen = len(self._catalog)
@@ -848,20 +862,15 @@ class WCSGroupCatalog(object):
                 raise RuntimeError("'calc_tanp_xy()' should have been run "
                                    "prior to match2ref()")
 
-            try:
-                if self._images:
-                    tp_pscale = self._images[0].corrector.tanp_center_pixel_scale
-                else:
-                    tp_pscale = 1.0
+            if catlen == 0:
+                return 0, np.array([], dtype=int), np.array([], dtype=int)
 
+            try:
+                tp_pscale = self._images[0].corrector.tanp_center_pixel_scale
             except NotImplementedError:
                 tp_pscale = 1.0
-
             finally:
-                if self._images:
-                    tp_units = self._images[0].corrector.units
-                else:
-                    tp_units = 'tangent plane units'
+                tp_units = self._images[0].corrector.units
 
             mref_idx, minput_idx = match(
                 refcat.catalog,
