@@ -166,7 +166,7 @@ def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
     object. ``'fit_info'`` is a dictionary with the following items:
 
         * **'shift'**: A ``numpy.ndarray`` with two components of the
-          computed shift.
+          computed shift. Note: shift is in units of the *tangent plane*.
 
         * **'matrix'**: A ``2x2`` ``numpy.ndarray`` with the computed
           generalized rotation matrix.
