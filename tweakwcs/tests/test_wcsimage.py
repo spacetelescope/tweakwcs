@@ -19,6 +19,23 @@ from astropy.utils.data import get_pkg_data_filename
 _ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
 
 
+def _same_spherical_polygons(p1, p2):
+    p1 = np.array(list(p1.points), dtype=float)
+    p2 = np.array(list(p2.points), dtype=float)
+
+    if p1.shape != p2.shape:
+        return False
+
+    idx = np.argmin(np.linalg.norm(p1[0] - p2, axis=1))
+
+    if idx > 0:
+        p1 = p1[:-1]
+        p2 = p2[:-1]
+        p2 = np.roll(p2, -idx, axis=0)
+
+    return np.allclose(p1, p2, atol=_ATOL, rtol=0)
+
+
 @pytest.fixture
 def rect_cat(scope='function'):
     x = np.array([0.0, 0.0, 10.0, 10.0, 0.0]) - 5
@@ -290,6 +307,25 @@ def test_wcsgroupcat_create_group_catalog(mock_fits_wcs, rect_imcat):
     for im in g:
         im._name = None
     assert not g.create_group_catalog()
+
+
+def test_wcsgroupcat_bb_policy(rect_imcat):
+    w1 = copy.deepcopy(rect_imcat)
+    w2 = copy.deepcopy(rect_imcat)
+    g = WCSGroupCatalog([w1, w2], bb_policy='exact')
+
+    # test approximation to bounding boxes using convex hull:
+    g_approx_bb = WCSGroupCatalog([w1, w2], bb_policy='auto')
+    assert _same_spherical_polygons(g.polygon, g_approx_bb.polygon)
+
+    g_approx_bb = WCSGroupCatalog([w1, w2], bb_policy=0)
+    assert _same_spherical_polygons(g.polygon, g_approx_bb.polygon)
+
+    with pytest.raises(ValueError) as e:
+        WCSGroupCatalog([w1, w2], bb_policy='wrong')
+    assert e.value.args[0].startswith(
+        "'bb_policy' must be either 'auto', 'exact'"
+    )
 
 
 def test_wcsgroupcat_recalc_catalog_radec(mock_fits_wcs, rect_imcat):

@@ -4,8 +4,18 @@
 Release Notes
 =============
 
-.. 0.8.2 (unreleased)
+.. 0.8.3 (unreleased)
    ==================
+
+0.8.2 (13-April-2023)
+=====================
+
+- Added ``bb_policy`` argument to the ``WCSGroupCatalog`` to control when
+  to switch to an aproximate method of computing of the bounding polygon of
+  a group of images. The default value is set to 50. Also added equivalent
+  ``group_bb_policy`` argument to both ``fit_wcs`` and ``align_wcs``
+  functions. [#176]
+
 
 0.8.1 (23-December-2022)
 ========================

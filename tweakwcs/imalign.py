@@ -34,7 +34,8 @@ log.setLevel(logging.DEBUG)
 
 @deprecated_renamed_argument('tpwcs', 'corrector', since='0.8.0')
 def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
-            nclip=3, sigma=(3.0, 'rmse'), clip_accum=False):
+            nclip=3, sigma=(3.0, 'rmse'), clip_accum=False,
+            group_bb_policy='auto'):
     """ "Tweak" **a single** image's ``WCS`` by fitting image catalog to a
     reference catalog. This is a simplified version of `align_wcs` that does
     not perform matching and is limited to the fitting part.
@@ -109,6 +110,15 @@ def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
         the pool of available position for the fit. By default the list of
         "bad" source positions is purged at each iteration. This parameter
         is ignored when ``nclip`` is either `None` or 0.
+
+    group_bb_policy: int, {'exact', 'auto'}
+        Describes how to compute the bounding polygon of the group.
+        ``'exact'`` will compute the exact union of bounding boxes of
+        input ``images``. An integer number will *approximate* the bounding
+        box using convex hull if the number of input ``images``
+        is exceeds the value of ``group_bb_policy`` and it will switch to exact
+        computations (using unions) otherwise. ``'auto'`` is the same as
+        setting threshold to 50.
 
     Returns
     -------
@@ -250,7 +260,11 @@ def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
 
     wimcat = WCSImageCatalog(imcat, corrector,
                              name=imcat.meta.get('name', 'Unnamed'))
-    wgcat = WCSGroupCatalog(wimcat, name=imcat.meta.get('name', 'Unnamed'))
+    wgcat = WCSGroupCatalog(
+        wimcat,
+        name=imcat.meta.get('name', 'Unnamed'),
+        bb_policy=group_bb_policy
+    )
     wrefcat = RefCatalog(refcat, name=imcat.meta.get('name', 'Unnamed'))
 
     succes = wgcat.align_to_ref(
@@ -283,7 +297,7 @@ def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
 def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
               expand_refcat=False, minobj=None, match=XYXYMatch(),
               fitgeom='general', nclip=3, sigma=(3.0, 'rmse'),
-              clip_accum=False):
+              clip_accum=False, group_bb_policy='auto'):
     r"""
     Align (groups of) image catalogs by adjusting the parameters of their
     WCS based on fits between matched sources in these catalogs and a reference
@@ -431,6 +445,15 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         the pool of available position for the fit. By default the list of
         "bad" source positions is purged at each iteration. This parameter
         is ignored when ``nclip`` is either `None` or 0.
+
+    group_bb_policy: int, {'exact', 'auto'}
+        Describes how to compute the bounding polygon of the group.
+        ``'exact'`` will compute the exact union of bounding boxes of
+        input ``images``. An integer number will *approximate* the bounding
+        box using convex hull if the number of input ``images``
+        is exceeds the value of ``group_bb_policy`` and it will switch to exact
+        computations (using unions) otherwise. ``'auto'`` is the same as
+        setting threshold to 50.
 
     Returns
     -------
@@ -598,13 +621,18 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         if group_id is None:
             for wcat in wcatalogs:
                 wcs_gcat.append(
-                    WCSGroupCatalog(wcat, name='GROUP ID: None')
+                    WCSGroupCatalog(
+                        wcat,
+                        name='GROUP ID: None',
+                        bb_policy=group_bb_policy
+                    )
                 )
 
         else:
             gcat = WCSGroupCatalog(
                 wcatalogs,
-                name='GROUP ID: {}'.format(group_id)
+                name='GROUP ID: {}'.format(group_id),
+                bb_policy=group_bb_policy
             )
             if not len(gcat.catalog):
                 log.warning("Group with ID '{}' will not be aligned: empty "
