@@ -1196,7 +1196,8 @@ class WCSGroupCatalog(object):
             * **'fitgeom'**: the value of the ``fitgeom`` argument
             * **'eff_minobj'**: effective value of the ``minobj`` parameter
             * **'matrix'**: computed rotation matrix
-            * **'shift'**: shift (offset) along X- and Y-axis
+            * **'shift'**: shift (offset) along X- and Y-axis in units of the
+              *tangent plane* coordinates.
             * **'rot'**: A tuple of ``(rotx, roty)`` - the rotation angles with
               regard to the ``X`` and ``Y`` axes.
             * **'<rot>'**: *Arithmetic mean* of the angles of rotation around
@@ -1250,6 +1251,12 @@ class WCSGroupCatalog(object):
             simply indicates that alignment algortithm has completed without
             errors. Use other fields to evaluate alignment: fit ``RMSE``
             and ``MAE`` values, number of matched sources, etc.
+
+        .. note::
+            Many quantities in ``fit_info`` are in units of the *tangent plane*
+            coordinates, e.g., ``shift``, ``rmse``, ``std``, ``mae``. See
+            specific ``WCSCorrector`` in `~tweakwcs.correctors` for the units
+            of the tangent plane.
 
         Parameters
         ----------

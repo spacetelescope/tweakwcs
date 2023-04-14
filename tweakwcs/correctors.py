@@ -271,7 +271,8 @@ class WCSCorrector(ABC):
 
 class FITSWCSCorrector(WCSCorrector):
     """ A class for holding ``FITS`` ``WCS`` information and for managing
-    tangent-plane corrections.
+    tangent-plane corrections. The units of the tangent plane of this
+    corrector are same as detector coordinates.
 
     .. note::
         Currently only WCS objects that have ``CPDIS``, ``DET2IM``, and ``SIP``
@@ -557,7 +558,9 @@ def _get_submodel(model, name):
 
 class JWSTWCSCorrector(WCSCorrector):
     """ A class for holding ``JWST`` ``gWCS`` information and for managing
-    tangent-plane corrections.
+    tangent-plane corrections. The units of the tangent plane of this
+    corrector are ``arcsec`` and the axes are not along parallel to the
+    axes of the detector's coordinate system.
 
     """
     units = 'arcsec'
