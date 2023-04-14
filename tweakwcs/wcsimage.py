@@ -8,10 +8,11 @@ source catalogs.
 :License: :doc:`LICENSE`
 
 """
-import os
+from copy import deepcopy
 import logging
 import numbers
-from copy import deepcopy
+import os
+import sys
 
 import numpy as np
 from astropy import table
@@ -99,6 +100,13 @@ class WCSImageCatalog(object):
 
         self.corrector = corrector
         self.catalog = catalog
+        self._poly_area = None
+
+    @property
+    def poly_area(self):
+        """ Area of the bounding polygon (in srad).
+        """
+        return self._poly_area
 
     @property
     @deprecated("0.8.0", obj_type='property')
@@ -386,43 +394,44 @@ class WCSImageCatalog(object):
 
         else:
             ((lx, hx), (ly, hy)) = self.corrector.bounding_box
+            # shrink BB so that we do not get NaNs due to rounding
+            # issues (pixels on the edge could outside the box)
+            lx += 0.5
+            hx -= 0.5
+            ly += 0.5
+            hy -= 0.5
 
         if stepsize is None:
-            nintx = 2
-            ninty = 2
+            nintx = 3
+            ninty = 3
         else:
             nintx = max(2, int(np.ceil((hx - lx) / stepsize)))
             ninty = max(2, int(np.ceil((hy - ly) / stepsize)))
 
-        xs = np.linspace(lx, hx, nintx, dtype=np.double)
-        ys = np.linspace(ly, hy, ninty, dtype=np.double)[1:-1]
+        xs = np.linspace(lx, hx, nintx + 1, dtype=np.double)
+        ys = np.linspace(ly, hy, ninty + 1, dtype=np.double)[1:-1]
         nptx = xs.size
         npty = ys.size
 
-        npts = 2 * (nptx + npty)
+        # bottom
+        borderx = [x for x in xs]
+        bordery = nptx * [ly]
 
-        borderx = np.empty((npts + 1,), dtype=np.double)
-        bordery = np.empty((npts + 1,), dtype=np.double)
+        # right
+        borderx.extend(npty * [hx])
+        bordery.extend(ys)
 
-        # "bottom" points:
-        borderx[:nptx] = xs
-        bordery[:nptx] = ly
-        # "right"
-        sl = np.s_[nptx:nptx + npty]
-        borderx[sl] = hx
-        bordery[sl] = ys
-        # "top"
-        sl = np.s_[nptx + npty:2 * nptx + npty]
-        borderx[sl] = xs[::-1]
-        bordery[sl] = hy
-        # "left"
-        sl = np.s_[2 * nptx + npty:-1]
-        borderx[sl] = lx
-        bordery[sl] = ys[::-1]
+        # top:
+        borderx.extend(xs[::-1])
+        bordery.extend(nptx * [hy])
 
-        # close polygon:
-        borderx[-1] = borderx[0]
-        bordery[-1] = bordery[0]
+        # left:
+        borderx.extend(npty * [lx])
+        bordery.extend(ys[::-1])
+
+        # close:
+        borderx.append(borderx[0])
+        bordery.append(bordery[0])
 
         ra, dec = self.det_to_world(borderx, bordery)
         # TODO: for strange reasons, occasionally ra[0] != ra[-1] and/or
@@ -458,7 +467,7 @@ class WCSImageCatalog(object):
             ra, dec = convex_hull(
                 x, y,
                 wcs=self.det_to_world,
-                min_separation=1e-8
+                min_separation=1e-11
             )
             # else, for len(x) in [1, 2], use entire image footprint.
             # TODO: a more robust algorithm should be implemented to deal with
@@ -484,7 +493,7 @@ class WCSImageCatalog(object):
     @property
     def bb_radec(self):
         """
-        Get a 2xN `numpy.ndarray` of RA and DEC of the vertices of the
+        Get a tuple of `numpy.ndarray` of RA and DEC of the vertices of the
         bounding polygon.
 
         """
@@ -499,7 +508,9 @@ class WCSGroupCatalog(object):
 
     """
 
-    def __init__(self, images, name=None):
+    bb_approx_threshold = 50
+
+    def __init__(self, images, name=None, bb_policy='auto'):
         """
         Parameters
         ----------
@@ -509,8 +520,20 @@ class WCSGroupCatalog(object):
         name: str, None, optional
             Name of the group.
 
+        bb_policy: int, {'exact', 'auto'}
+            Describes how to compute the bounding polygon of the group.
+            ``'exact'`` will compute the exact union of bounding boxes of
+            input ``images``. An integer number will *approximate* the bounding
+            box using convex hull if the number of input ``images``
+            is exceeds the value of ``bb_policy`` and it will switch to exact
+            computations (using unions) otherwise. ``'auto'`` is the same as
+            setting threshold to 50.
+
         """
         self._catalog = None
+        self._name = name
+        self._poly_area = None
+        self.bb_policy = bb_policy
 
         if isinstance(images, WCSImageCatalog):
             self._images = [images]
@@ -537,9 +560,14 @@ class WCSGroupCatalog(object):
                             "'WCSImageCatalog' object or a list of "
                             "'WCSImageCatalog' objects")
 
-        self._name = name
         self._catalog = self.create_group_catalog()
         self.update_bounding_polygon()
+
+    @property
+    def poly_area(self):
+        """ Area of the bounding polygon (in srad).
+        """
+        return self._poly_area
 
     @property
     def name(self):
@@ -550,6 +578,29 @@ class WCSGroupCatalog(object):
     @name.setter
     def name(self, name):
         self._name = name
+
+    @property
+    def bb_policy(self):
+        """ Get/set :py:class:`WCSImageCatalog` policy for switching to
+        approximate computation of group's bounding box.
+        """
+        return self._bb_policy
+
+    @bb_policy.setter
+    def bb_policy(self, bb_policy):
+        if bb_policy == 'auto':
+            self._bb_threshold = WCSGroupCatalog.bb_approx_threshold
+        elif bb_policy == 'exact':
+            self._bb_threshold = sys.maxsize
+        elif _is_int(bb_policy) and bb_policy >= 0:
+            self._bb_threshold = bb_policy
+        else:
+            raise ValueError(
+                "'bb_policy' must be either 'auto', 'exact', or "
+                "a non-negative integer number."
+            )
+
+        self._bb_policy = bb_policy
 
     @property
     def polygon(self):
@@ -608,10 +659,47 @@ class WCSGroupCatalog(object):
         """
         return sum(im._guarded_intersection_area(wcsim) for im in self._images)
 
+    def _aproximate_bb(self):
+        if not self._images:
+            return
+
+        tanplane_wcs = deepcopy(self._images[0].corrector)
+        tanplane_wcs.wcs.bounding_box = None
+
+        tpx = []
+        tpy = []
+
+        for im in self._images:
+            if im.corrector is None or im.bb_radec is None:
+                return
+
+            r, d = im.bb_radec
+            tx, ty = tanplane_wcs.world_to_tanp(r, d)
+            tpx.extend(tx)
+            tpy.extend(ty)
+
+        ra, dec = convex_hull(
+            tpx,
+            tpy,
+            wcs=tanplane_wcs.tanp_to_world,
+            min_separation=1e-11
+        )
+
+        self.img_bounding_ra = ra
+        self.img_bounding_dec = dec
+        self._bb_radec = (ra, dec)
+        self._polygon = SphericalPolygon.from_radec(ra, dec)
+        self._poly_area = np.fabs(self._polygon.area())
+
     def update_bounding_polygon(self):
         """ Recompute bounding polygons of the member images.
         """
+        if len(self._images) > self._bb_threshold:
+            self._aproximate_bb()
+            return
+
         polygons = [im.polygon for im in self._images]
+
         if polygons:
             try:
                 self._polygon = SphericalPolygon.multi_union(polygons)
@@ -626,6 +714,8 @@ class WCSGroupCatalog(object):
 
         else:
             self._polygon = SphericalPolygon([])
+
+        self._poly_area = np.fabs(self._polygon.area())
 
     def __len__(self):
         return len(self._images)
