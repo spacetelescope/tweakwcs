@@ -66,7 +66,7 @@ PACKAGE_DATA = {
 }
 
 INSTALL_REQUIRES = [
-    'numpy',
+    'numpy>=1.21',
     'astropy>=5.0.4',
     'gwcs>=0.14.0',
     'stsci.stimage',
