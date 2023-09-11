@@ -474,9 +474,9 @@ class FITSWCSCorrector(WCSCorrector):
             ra = np.atleast_1d(ra)
             dec = np.atleast_1d(dec)
         x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
-        if not ndim:
-            x = float(x)
-            y = float(y)
+        if not ndim and x.size == 1:
+            x = float(x[0])
+            y = float(y[0])
         return x, y
 
     def world_to_tanp(self, ra, dec):

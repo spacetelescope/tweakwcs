@@ -26,7 +26,7 @@ _TRANSFORM_SELECTOR = {
 }
 
 _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
-    np.finfo(None).eps
+    np.finfo(np.float64).eps
 )
 
 
