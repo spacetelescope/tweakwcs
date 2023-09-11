@@ -54,26 +54,6 @@ def _is_longdouble_lte_flt_type(flt_type=np.double):
     return lte_flt
 
 
-def _find_max_linalg_type():
-    max_type = None
-    for np_type in np.sctypes['float'][::-1]:  # pragma: no branch
-        try:
-            r = np.linalg.inv(np.identity(2, dtype=np_type))
-            max_type = np_type
-            eps = 100 * np.finfo(max_type).eps
-            if np.max(np.abs(r - np.identity(2, dtype=np_type))) > eps:  # pragma: no branch
-                log.warning('Loss of accuracy during matrix inversion.')
-            break
-        except TypeError:
-            continue
-
-
-_USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.double)
-_MAX_LINALG_TYPE = _find_max_linalg_type()
-if _MAX_LINALG_TYPE is None:
-    _USE_NUMPY_LINALG_INV = False  # pragma: no cover
-
-
 def inv(m):
     """ This function computes inverse matrix using Gauss-Jordan elimination
     with full pivoting. Computations are performed using ``numpy.longdouble``
@@ -95,13 +75,6 @@ def inv(m):
 
     """
     # check that matrix is square:
-    if _USE_NUMPY_LINALG_INV:
-        invm = np.linalg.inv(np.array(m, dtype=_MAX_LINALG_TYPE))
-        # detect singularity:
-        if not np.all(np.isfinite(invm)):
-            raise np.linalg.LinAlgError('Singular matrix.')
-        return invm
-
     m = np.array(m, dtype=np.longdouble)
     if len(m.shape) != 2 or m.shape[0] != m.shape[1]:
         raise np.linalg.LinAlgError("Input matrix must be a square matrix.")

@@ -30,81 +30,34 @@ def test_inv_order2():
     scale2 = 0.7 + 0.6 * np.random.random()
     a = linearfit.build_fit_matrix((angle1, angle2), (scale1, scale2))
 
-    # invert using numpy.linalg:
-    use_numpy = linalg._USE_NUMPY_LINALG_INV
-    linalg._USE_NUMPY_LINALG_INV = True
+    x = linalg.inv(a)
+    r = np.identity(2) - np.dot(a, x)
 
-    try:
-        x = linalg.inv(a)
-        r = np.identity(2) - np.dot(a, x)
-
-        # Use Morris Newman's formula to asses the quality of the inversion
-        # (see https://nvlpubs.nist.gov/nistpubs/jres/78B/jresv78Bn2p65_A1b.pdf
-        #  January 3, 1974).
-        err = 2.0 * np.abs(np.dot(x, r)).max() / (1.0 - np.abs(r).max())
-        assert err < feps
-
-    finally:
-        linalg._USE_NUMPY_LINALG_INV = use_numpy
-
-    # invert using tweakwcs.linalg:
-    linalg._USE_NUMPY_LINALG_INV = False
-
-    try:
-        x = linalg.inv(a)
-        r = np.identity(2) - np.dot(a, x)
-
-        # Use Morris Newman's formula to asses the quality of the inversion
-        # (see https://nvlpubs.nist.gov/nistpubs/jres/78B/jresv78Bn2p65_A1b.pdf
-        #  January 3, 1974).
-        err = 2.0 * np.abs(np.dot(x, r)).max() / (1.0 - np.abs(r).max())
-        assert err < feps
-
-    finally:
-        linalg._USE_NUMPY_LINALG_INV = use_numpy
+    # Use Morris Newman's formula to asses the quality of the inversion
+    # (see https://nvlpubs.nist.gov/nistpubs/jres/78B/jresv78Bn2p65_A1b.pdf
+    #  January 3, 1974).
+    err = 2.0 * np.abs(np.dot(x, r)).max() / (1.0 - np.abs(r).max())
+    assert err < feps
 
 
-@pytest.mark.parametrize('use_numpy_inv', [True, False])
-def test_inv_nonsquare(use_numpy_inv):
-    use_numpy = linalg._USE_NUMPY_LINALG_INV
-    linalg._USE_NUMPY_LINALG_INV = use_numpy_inv
+def test_inv_nonsquare():
     with pytest.raises(np.linalg.LinAlgError):
-        try:
-            linalg.inv(np.empty((1, 2)))
-        finally:
-            linalg._USE_NUMPY_LINALG_INV = use_numpy
+        linalg.inv(np.empty((1, 2)))
 
 
-@pytest.mark.parametrize('use_numpy_inv', [True, False])
-def test_inv_singular(use_numpy_inv):
-    use_numpy = linalg._USE_NUMPY_LINALG_INV
-    linalg._USE_NUMPY_LINALG_INV = use_numpy_inv
+def test_inv_singular():
     arr = np.array([[1.0, 1.0], [2.0, 2.0]])
     with pytest.raises(np.linalg.LinAlgError):
-        try:
-            linalg.inv(arr)
-        finally:
-            linalg._USE_NUMPY_LINALG_INV = use_numpy
+        linalg.inv(arr)
 
 
-@pytest.mark.parametrize('use_numpy_inv', [True, False])
-def test_inv_nan(use_numpy_inv):
-    use_numpy = linalg._USE_NUMPY_LINALG_INV
-    linalg._USE_NUMPY_LINALG_INV = use_numpy_inv
+def test_inv_nan():
     arr = np.array([[1.0, 1.0, -1.], [2.0, -2.1, 4.0], [-1.0, np.nan, 1.0]])
     with pytest.raises(np.linalg.LinAlgError):
-        try:
-            linalg.inv(arr)
-        finally:
-            linalg._USE_NUMPY_LINALG_INV = use_numpy
+        linalg.inv(arr)
 
 
 def test_inv_high_dim():
-    use_numpy = linalg._USE_NUMPY_LINALG_INV
-    linalg._USE_NUMPY_LINALG_INV = False
     arr = np.random.random((4, 4, 4))
     with pytest.raises(np.linalg.LinAlgError):
-        try:
-            linalg.inv(arr)
-        finally:
-            linalg._USE_NUMPY_LINALG_INV = use_numpy
+        linalg.inv(arr)

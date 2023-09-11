@@ -26,7 +26,7 @@ _TRANSFORM_SELECTOR = {
 }
 
 _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
-    np.finfo(linalg._MAX_LINALG_TYPE).eps
+    np.finfo(None).eps
 )
 
 
