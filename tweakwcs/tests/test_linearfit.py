@@ -9,7 +9,7 @@ import math
 import pytest
 import numpy as np
 from astropy.modeling.models import Shift, Rotation2D
-from tweakwcs import linearfit, linalg
+from tweakwcs import linearfit
 
 
 _LARGE_SAMPLE_SIZE = 1000
