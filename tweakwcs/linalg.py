@@ -56,7 +56,7 @@ def _is_longdouble_lte_flt_type(flt_type=np.double):
 
 def _find_max_linalg_type():
     max_type = None
-    for np_type in np.core.sctypes['float'][::-1]:  # pragma: no branch
+    for np_type in [np.longdouble, np.float64, np.float32]:  # pragma: no branch
         try:
             r = np.linalg.inv(np.identity(2, dtype=np_type))
             max_type = np_type
