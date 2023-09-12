@@ -56,7 +56,7 @@ def _is_longdouble_lte_flt_type(flt_type=np.double):
 
 def _find_max_linalg_type():
     max_type = None
-    for np_type in np.sctypes['float'][::-1]:  # pragma: no branch
+    for np_type in [np.longdouble, np.float64, np.float32]:  # pragma: no branch
         try:
             r = np.linalg.inv(np.identity(2, dtype=np_type))
             max_type = np_type
@@ -66,6 +66,7 @@ def _find_max_linalg_type():
             break
         except TypeError:
             continue
+    return max_type
 
 
 _USE_NUMPY_LINALG_INV = _is_longdouble_lte_flt_type(flt_type=np.double)
@@ -96,7 +97,7 @@ def inv(m):
     """
     # check that matrix is square:
     if _USE_NUMPY_LINALG_INV:
-        invm = np.linalg.inv(np.array(m, dtype=_MAX_LINALG_TYPE))
+        invm = np.linalg.inv(np.array(m).astype(_MAX_LINALG_TYPE))
         # detect singularity:
         if not np.all(np.isfinite(invm)):
             raise np.linalg.LinAlgError('Singular matrix.')

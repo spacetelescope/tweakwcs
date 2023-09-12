@@ -4,8 +4,18 @@
 Release Notes
 =============
 
-.. 0.8.3 (unreleased)
+.. 0.8.4 (unreleased)
    ==================
+
+0.8.3 (12-September-2023)
+=========================
+
+- Fixed a bug in the ``linalg`` module due to which computation of the inverse
+  matrix would fallback to custom implementation instead of using ``numpy``
+  implementation. [#185]
+
+- Fixed incompatibilities with the future (version 2.0) release of
+  ``numpy``. [#185]
 
 0.8.2 (13-April-2023)
 =====================

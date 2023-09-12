@@ -6,6 +6,7 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 from itertools import product
 import math
+import sys
 import pytest
 import numpy as np
 from astropy.modeling.models import Shift, Rotation2D
@@ -25,9 +26,12 @@ _TRANSFORM_SELECTOR = {
     'general': linearfit.fit_general,
 }
 
-_ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
-    np.finfo(linalg._MAX_LINALG_TYPE).eps
-)
+if linalg._MAX_LINALG_TYPE is not None:
+    _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(
+        np.finfo(linalg._MAX_LINALG_TYPE).eps
+    )
+else:
+    _ATOL = 10 * _LARGE_SAMPLE_SIZE * np.sqrt(sys.float_info.epsilon)
 
 
 def test_test_transform_selector():
