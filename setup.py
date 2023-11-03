@@ -110,7 +110,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Development Status :: 3 - Alpha',
     ],
-    python_requires='>=3.5',
+    python_requires='>=3.7',
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRE,
     packages=find_packages(),
