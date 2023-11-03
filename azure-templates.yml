@@ -16,6 +16,10 @@ jobs:
         python.version: '3.9'
       Python310:
         python.version: '3.10'
+      Python311:
+        python.version: '3.11'
+      Python312:
+        python.version: '3.12'
     maxParallel: 4
 
   steps:
@@ -69,4 +73,3 @@ jobs:
       inputs:
         testResultsFiles: '**/test-*.xml'
         testRunTitle: 'Python $(python.version)-${{ format(parameters.name) }}'
-
