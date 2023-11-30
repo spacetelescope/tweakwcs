@@ -6,6 +6,7 @@
 __pycache__
 
 # Other generated files
+tweakwcs/_version.py
 */version.py
 */cython_version.py
 htmlcov
