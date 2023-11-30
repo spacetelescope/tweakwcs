@@ -76,16 +76,13 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "*" = [
+    'tweakwcs/tests/data/*',
+    'notebooks/*',
+]
+"tweakwcs" = [
     'README.rst',
     'LICENSE.txt',
     'CHANGELOG.rst',
-    '*.fits',
-    '*.txt',
-    '*.inc',
-    '*.cfg',
-    '*.csv',
-    '*.yaml',
-    '*.json',
 ]
 
 [tool.setuptools_scm]

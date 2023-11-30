@@ -1,0 +1,20 @@
+# flake8 does not support pyproject.toml (https://github.com/PyCQA/flake8/issues/234)
+
+[flake8]
+max-line-length = 99
+count = True
+doctests = True
+show_source = True
+statistics = True
+exclude =
+    .git,
+    .tox,
+    .eggs,
+    __pycache__,
+    docs/source/conf.py,
+    docs/conf.py,
+    docs/exts/*,
+    tweakreg/_version.py,
+    build,
+    dist,
+ignore = E402,F403,W504

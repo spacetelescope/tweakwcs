@@ -12,15 +12,27 @@ tweakwcs/_version.py
 htmlcov
 .coverage
 MANIFEST
-.ipynb_checkpoints
 
 # Sphinx
 docs/api
 docs/_build/
 
+# Notebooks
+**/.ipynb_checkpoints/
+
 # WingIDE
 *.wpr
 *.wpu
+
+# VSCode
+**/.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
 
 # Eclipse editor project files
 .project

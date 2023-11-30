@@ -8,10 +8,13 @@ __taskname__ = 'tweakwcs'
 __author__ = 'Mihai Cara'
 
 
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 
 
-__version__ = version(__name__)
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    __version__ = ''
 
 
 from .correctors import (WCSCorrector, JWSTWCSCorrector,  # noqa: F401
