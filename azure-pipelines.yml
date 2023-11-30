@@ -54,5 +54,5 @@ jobs:
 
   - script: |
       python -m pip install astropy
-      python setup.py sdist
+      python -m build --sdist .
     displayName: 'Build sdist'
