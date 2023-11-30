@@ -10,6 +10,10 @@
     :target: https://tweakwcs.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://zenodo.org/badge/127811534.svg
+    :target: https://zenodo.org/doi/10.5281/zenodo.4018234
+    :alt: Zenodo DOI 10.5281/zenodo.4018234
+
 ``tweakwcs`` is a package that provides core algorithms for computing and
 applying corrections to ``WCS`` objects such as to minimize mismatch between
 image and reference catalogs. Currently only aligning images with ``FITS WCS``
