@@ -7,12 +7,15 @@ __docformat__ = 'restructuredtext'
 __taskname__ = 'tweakwcs'
 __author__ = 'Mihai Cara'
 
-from pkg_resources import get_distribution, DistributionNotFound
+
+from importlib.metadata import version, PackageNotFoundError
+
+
 try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    # package is not installed
-    __version__ = 'UNKNOWN'
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    __version__ = ''
+
 
 from .correctors import (WCSCorrector, JWSTWCSCorrector,  # noqa: F401
                          FITSWCSCorrector,  # noqa: F401
