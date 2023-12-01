@@ -8,11 +8,17 @@ Release Notes
    ==================
 
 
-0.8.4 (30-November-2023)
+0.8.5 (30-November-2023)
 ========================
 
 - Addressed compatibility issues with Python 3.12. Re-organized package
   setup machinery. [#188]
+
+
+0.8.4 (unreleased)
+==================
+
+- Mistaken tagging.
 
 
 0.8.3 (12-September-2023)
