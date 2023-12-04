@@ -45,7 +45,6 @@ Documentation = "http://spacetelescope.github.io/tweakwcs/"
 test = [
     "pytest",
     "pytest-cov",
-    "coverage",
     "scipy",
 ]
 docs = [
@@ -72,18 +71,18 @@ include-package-data = true
 license-files = ["LICENSE.rst"]
 
 [tool.setuptools.packages.find]
-namespaces = false
+namespaces = true
 
 [tool.setuptools.package-data]
 "*" = [
-    'tweakwcs/tests/data/*',
-    'notebooks/*',
+    'notebooks/*.ipynb',
 ]
 "tweakwcs" = [
     'README.rst',
     'LICENSE.txt',
     'CHANGELOG.rst',
 ]
+"tweakwcs.tests.data" = ["tweakwcs/tests/data/*"]
 
 [tool.setuptools_scm]
 write_to = "tweakwcs/_version.py"

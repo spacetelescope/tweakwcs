@@ -8,9 +8,11 @@ exclude_lines =
     pragma: no cover
     raise NotImplementedError
     if __name__ == .__main__.:
+    @(abc\\.)?abstractmethod
+    raise AssertionError
+    raise NotImplementedError
 ignore_errors = True
 omit =
-    conftest.py
     setup.py
     tests/*
     tweakwcs/tests/*

@@ -12,6 +12,7 @@ tweakwcs/_version.py
 htmlcov
 .coverage
 MANIFEST
+coveragerc
 
 # Sphinx
 docs/api
@@ -45,6 +46,7 @@ docs/_build/
 # Packages/installer info
 *.egg
 *.egg-info
+.tox
 dist/
 build/
 eggs
@@ -61,6 +63,7 @@ pip-wheel-metadata
 # codecov
 .coverage
 *.coverage.*
+**/coverage.xml
 
 # Other
 *~

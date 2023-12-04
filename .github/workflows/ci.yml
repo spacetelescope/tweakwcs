@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - '*.x'
+    tags:
+      - "*"
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
+    with:
+      envs: |
+        - linux: check-style
+        - linux: check-security
+        - linux: check-build
+  test:
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
+    with:
+      envs: |
+        - linux: test-xdist
+          python-version: 3.8
+        - macos: test-xdist
+          python-version: 3.8
+        - windows: test-xdist
+          python-version: 3.8
+        - linux: test-numpy121-xdist
+          python-version: 3.9
+        - linux: test-numpy123-xdist
+          python-version: 3.9
+        - linux: test-numpy125-xdist
+          python-version: 3.9
+        - macos: test-numpy121-xdist
+          python-version: 3.10
+        - linux: test-numpy125-xdist
+          python-version: 3.10
+        - linux: test-xdist
+          python-version: 3.11
+          pytest-results-summary: true
+        - macos: test-xdist
+          python-version: 3.11
+          pytest-results-summary: true
+        - windows: test-xdist
+          python-version: 3.11
+          pytest-results-summary: true
+        - linux: test-pyargs-xdist
+          python-version: 3.11
+        - linux: test-cov-xdist
+          python-version: 3.12
+          coverage: codecov
+          pytest-results-summary: true
+        - macos: test-xdist
+          python-version: 3.12
+          pytest-results-summary: true
+        - windows: test-xdist
+          python-version: 3.12
+          pytest-results-summary: true
+        - linux: test-dev-xdist
+          python-version: 3.12
