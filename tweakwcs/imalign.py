@@ -765,6 +765,7 @@ def overlap_matrix(images):
             m[i, j] = area
     return m
 
+
 @deprecated("0.8.6")
 def max_overlap_pair(images, enforce_user_order):
     """
@@ -906,7 +907,7 @@ def _max_overlap_pair(images, enforce_user_order):
     -------
     (im1, im2, overlap_area)
         Returns a tuple of two images - elements of input ``images`` list and
-        the area of the overlap of the two images in steradians. 
+        the area of the overlap of the two images in steradians.
         When ``enforce_user_order`` is `True`, images are returned in the
         order in which they appear in the input ``images`` list. When the
         number of input images is smaller than two, ``im1`` and ``im2`` may
@@ -920,7 +921,7 @@ def _max_overlap_pair(images, enforce_user_order):
 
     elif nimg == 1:
         return images[0], None, None
-        
+
     elif nimg == 2 or enforce_user_order:
         # for the special case when only two images are provided
         # return (refimage, image) in the same order as provided in 'images'.
