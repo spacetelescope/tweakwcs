@@ -15,7 +15,7 @@ import collections
 
 import numpy as np
 import astropy
-from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.decorators import deprecated_renamed_argument, deprecated
 
 from . wcsimage import RefCatalog, WCSImageCatalog, WCSGroupCatalog
 from . correctors import WCSCorrector
@@ -656,7 +656,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
     # create reference catalog if needed:
     if refcat is None:
         # create reference catalog:
-        ref_imcat, current_wcat = max_overlap_pair(
+        ref_imcat, current_wcat, area = _max_overlap_pair(
             images=wcs_gcat,
             enforce_user_order=enforce_user_order or not expand_refcat
         )
@@ -670,7 +670,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
     else:
         # find the first image to be aligned:
-        current_wcat = max_overlap_image(
+        current_wcat, area = _max_overlap_image(
             refimage=refcat,
             images=wcs_gcat,
             enforce_user_order=enforce_user_order or not expand_refcat
@@ -696,13 +696,22 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:
-            unmatched_src = current_wcat.get_unmatched_cat()
-            refcat.expand_catalog(unmatched_src)
-            log.info("Added {:d} unmatched sources from '{}' to the reference "
-                     "catalog.".format(len(unmatched_src), current_wcat.name))
+            if wcat.corrector.meta['fit_info'] == 'SUCCESS' or not area:
+                unmatched_src = current_wcat.get_unmatched_cat()
+                refcat.expand_catalog(unmatched_src)
+                log.info(
+                    "Added {:d} unmatched sources from '{}' to the reference "
+                    "catalog.".format(len(unmatched_src), current_wcat.name)
+                )
+            else:
+                log.info(
+                    f"Failed to align catalog {current_wcat.name} to the "
+                    "refence catalog. Therefore, it will not be added to the "
+                    "expanded reference catalog."
+                )
 
         # find the next image to be aligned:
-        current_wcat = max_overlap_image(
+        current_wcat, area = _max_overlap_image(
             refimage=refcat,
             images=wcs_gcat,
             enforce_user_order=enforce_user_order or not expand_refcat
@@ -756,7 +765,7 @@ def overlap_matrix(images):
             m[i, j] = area
     return m
 
-
+@deprecated("0.8.6")
 def max_overlap_pair(images, enforce_user_order):
     """
     Return a pair of images with the largest overlap.
@@ -831,6 +840,7 @@ def max_overlap_pair(images, enforce_user_order):
     return im1, im2
 
 
+@deprecated("0.8.6")
 def max_overlap_image(refimage, images, enforce_user_order):
     """
     Return the image from the input ``images`` list that has the largest
@@ -870,3 +880,125 @@ def max_overlap_image(refimage, images, enforce_user_order):
     idx = np.argmax([refimage.intersection_area(im) for im in images])
 
     return images.pop(idx)
+
+
+def _max_overlap_pair(images, enforce_user_order):
+    """
+    Return a pair of images with the largest overlap.
+
+    .. warning::
+        Returned pair of images is "poped" from input ``images`` list and
+        therefore on return ``images`` will contain a smaller number of
+        elements.
+
+    Parameters
+    ----------
+
+    images: list of WCSImageCatalog, WCSGroupCatalog, or RefCatalog
+        A list of catalogs that implement :py:meth:`intersection_area` method.
+
+    enforce_user_order: bool
+        When ``enforce_user_order`` is `True`, a pair of images will be
+        returned **in the same order** as they were arranged in the ``images``
+        input list. That is, image overlaps will be ignored.
+
+    Returns
+    -------
+    (im1, im2, overlap_area)
+        Returns a tuple of two images - elements of input ``images`` list and
+        the area of the overlap of the two images in steradians. 
+        When ``enforce_user_order`` is `True`, images are returned in the
+        order in which they appear in the input ``images`` list. When the
+        number of input images is smaller than two, ``im1`` and ``im2`` may
+        be `None`.
+
+    """
+    nimg = len(images)
+
+    if nimg == 0:
+        return None, None, None
+
+    elif nimg == 1:
+        return images[0], None, None
+        
+    elif nimg == 2 or enforce_user_order:
+        # for the special case when only two images are provided
+        # return (refimage, image) in the same order as provided in 'images'.
+        # Also, when ref. catalog is static - revert to old tweakreg behavior
+        im1 = images.pop(0)  # reference image
+        im2 = images.pop(0)
+        overlap_area = im1._guarded_intersection_area(im2)
+        return im1, im2, overlap_area
+
+    m = overlap_matrix(images)
+    i, j = np.unravel_index(m.argmax(), m.shape)
+    si = np.sum(m[i])
+    sj = np.sum(m[:, j])
+
+    if si < sj:  # pragma: no branch
+        i, j = j, i
+
+    if i < j:  # pragma: no branch
+        j -= 1
+
+    im1 = images.pop(i)  # reference image
+    im2 = images.pop(j)
+    overlap_area = m[i, j]
+
+    # Sort the remaining of the input list of images by overlap area
+    # with the reference image (in decreasing order):
+    row = m[i]
+    row = np.delete(row, i)
+    row = np.delete(row, j)
+    sorting_indices = np.argsort(row)[::-1]
+    sorted_images = [images[k] for k in sorting_indices]  # apply argsort
+    del images[:]
+    for im in sorted_images:
+        images.append(im)
+
+    return im1, im2, overlap_area
+
+
+def _max_overlap_image(refimage, images, enforce_user_order):
+    """
+    Return the image from the input ``images`` list that has the largest
+    overlap with the ``refimage`` image.
+
+    .. warning::
+        Returned image of images is "poped" from input ``images`` list and
+        therefore on return ``images`` will contain a smaller number of
+        elements.
+
+    Parameters
+    ----------
+    refimage: RefCatalog
+        Reference catalog.
+
+    images: list of WCSImageCatalog, or WCSGroupCatalog
+        A list of catalogs that implement :py:meth:`intersection_area` method.
+
+    enforce_user_order: bool
+        When ``enforce_user_order`` is `True`, returned image is the first
+        image from the ``images`` input list regardless of image overlaps.
+
+    Returns
+    -------
+    image or (image, overlap_area)
+        ``image`` is either `WCSImageCatalog`, `WCSGroupCatalog`, or `None`.
+        Returns an element of input ``images`` list and, optionally
+        (when ``return_overlap_area=True``), the area of the overlap
+        of the image with the reference image in steradians. When input list is
+        empty - `None` is returned.
+
+    """
+    if not images:
+        return None, None
+
+    if enforce_user_order:
+        # revert to old tweakreg behavior
+        return images.pop(0), None
+
+    overlap_area = [refimage.intersection_area(im) for im in images]
+    idx = np.argmax(overlap_area)
+
+    return images.pop(idx), overlap_area[idx]
