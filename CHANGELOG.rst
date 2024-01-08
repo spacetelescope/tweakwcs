@@ -7,8 +7,8 @@ Release Notes
 .. 0.8.7 (unreleased)
    ==================
 
-0.8.6 (unreleased)
-==================
+0.8.6 (08-January-2024)
+=======================
 
 - Improved the quality of the *expanded* reference catalog when
   ``expand_refcat`` is set to `True` in the ``align_wcs`` function by not
