@@ -278,9 +278,6 @@ class XYXYMatch(MatchCatalogs):
 
 
 def _xy_2dhist(imgxy, refxy, r):
-    # This code replaces the C version (arrxyzero) from carrutils.c
-    # It is about 5-8 times slower than the C version.
-
     # trim to only pairs within (r+0.5) * np.sqrt(2) using a kdtree
     # to avoid computing differences for many widely separated pairs.
     kdtree = spatial.KDTree(refxy)
@@ -290,7 +287,7 @@ def _xy_2dhist(imgxy, refxy, r):
     if len(mi) > 0:
         mr = np.concatenate([n for n in neighbors if len(n) > 0])
     else:
-        mr = mi.copy()
+        mr = mi
 
     dx = imgxy[mi, 0] - refxy[mr, 0]
     dy = imgxy[mi, 1] - refxy[mr, 1]
