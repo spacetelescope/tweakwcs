@@ -15,6 +15,10 @@ Release Notes
   using input catalogs that failed to align in the expanded reference
   catalog. [#195]
 
+- Reduce memory & compute needed by _xy_2dhist by pruning distant
+  pairs with a kdtree.  This is a purely internal change that does not
+  affect the results of the algorithm.  [#196]
+
 
 0.8.5 (30-November-2023)
 ========================
