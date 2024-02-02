@@ -1,8 +1,8 @@
-.. image:: https://dev.azure.com/spacetelescope/tweakwcs/_apis/build/status/spacetelescope.tweakwcs?branchName=master
-    :target: https://dev.azure.com/spacetelescope/tweakwcs/_build/latest?definitionId=5&branchName=master
+.. image:: https://dev.azure.com/spacetelescope/tweakwcs/_apis/build/status/spacetelescope.tweakwcs?branchName=main
+    :target: https://dev.azure.com/spacetelescope/tweakwcs/_build/latest?definitionId=5&branchName=main
     :alt: Azure Pipelines build status
 
-.. image:: https://codecov.io/gh/spacetelescope/tweakwcs/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/spacetelescope/tweakwcs/branch/main/graph/badge.svg
   :target: https://codecov.io/gh/spacetelescope/tweakwcs
   :alt: Test coverage status
 
