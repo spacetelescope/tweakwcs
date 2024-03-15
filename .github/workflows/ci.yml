@@ -27,42 +27,20 @@ jobs:
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
     with:
       envs: |
-        - linux: test-xdist
-          python-version: 3.8
-        - macos: test-xdist
-          python-version: 3.8
-        - windows: test-xdist
-          python-version: 3.8
-        - linux: test-numpy121-xdist
-          python-version: 3.9
-        - linux: test-numpy123-xdist
-          python-version: 3.9
-        - linux: test-numpy125-xdist
-          python-version: 3.9
-        - macos: test-numpy121-xdist
-          python-version: 3.10
-        - linux: test-numpy125-xdist
-          python-version: 3.10
-        - linux: test-xdist
-          python-version: 3.11
+        - macos: py310-numpy121-xdist
+        - linux: py310-numpy125-xdist
+        - linux: py311-xdist
           pytest-results-summary: true
-        - macos: test-xdist
-          python-version: 3.11
+        - macos: py311-xdist
           pytest-results-summary: true
-        - windows: test-xdist
-          python-version: 3.11
+        - windows: py311-xdist
           pytest-results-summary: true
-        - linux: test-pyargs-xdist
-          python-version: 3.11
-        - linux: test-cov-xdist
-          python-version: 3.12
+        - linux: py311-pyargs-xdist
+        - linux: py312-cov-xdist
           coverage: codecov
           pytest-results-summary: true
-        - macos: test-xdist
-          python-version: 3.12
+        - macos: py312-xdist
           pytest-results-summary: true
-        - windows: test-xdist
-          python-version: 3.12
+        - windows: py312-xdist
           pytest-results-summary: true
-        - linux: test-dev-xdist
-          python-version: 3.12
+        - linux: py312-dev-xdist
