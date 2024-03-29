@@ -4,8 +4,16 @@
 Release Notes
 =============
 
-.. 0.8.7 (unreleased)
+.. 0.8.8 (unreleased)
    ==================
+
+0.8.7 (29-March-2024)
+=====================
+
+- Fix a bug in the ``imalign.align_wcs`` function due to which reference catalog
+  would not get expanded even for successful alignments, essentially disabling
+  ``expand_refcat`` option. [#201]
+
 
 0.8.6 (08-January-2024)
 =======================

@@ -696,7 +696,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
         # add unmatched sources to the reference catalog:
         if expand_refcat:
-            if wcat.corrector.meta['fit_info'] == 'SUCCESS' or not area:
+            if wcat.corrector.meta['fit_info']['status'] == 'SUCCESS' or not area:
                 unmatched_src = current_wcat.get_unmatched_cat()
                 refcat.expand_catalog(unmatched_src)
                 log.info(
@@ -704,10 +704,11 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
                     "catalog.".format(len(unmatched_src), current_wcat.name)
                 )
             else:
-                log.info(
+                log.warning(
                     f"Failed to align catalog {current_wcat.name} to the "
                     "refence catalog. Therefore, it will not be added to the "
-                    "expanded reference catalog."
+                    "expanded reference catalog. Reported error: "
+                    f"'{wcat.corrector.meta['fit_info']['status']}'"
                 )
 
         # find the next image to be aligned:
