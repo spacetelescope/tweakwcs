@@ -7,6 +7,13 @@ Release Notes
 .. 0.8.8 (unreleased)
    ==================
 
+0.8.8 (unreleased)
+==================
+
+- ``align_wcs`` now will raise a custom exception of type ``NotEnoughCatalogs``
+  when there are not enough input catalogs to perform alignment. [#203]
+
+
 0.8.7 (29-March-2024)
 =====================
 

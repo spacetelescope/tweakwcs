@@ -13,7 +13,12 @@ import numpy as np
 from astropy.table import Table
 
 from tweakwcs.linearfit import build_fit_matrix
-from tweakwcs.imalign import fit_wcs, align_wcs, max_overlap_pair
+from tweakwcs.imalign import (
+    fit_wcs,
+    align_wcs,
+    max_overlap_pair,
+    NotEnoughCatalogs,
+)
 from tweakwcs import FITSWCSCorrector
 
 
@@ -26,7 +31,7 @@ def test_fit_wcs_empty_cat(empty_refcat, empty_imcat, mock_fits_wcs):
         meta={'catalog': Table([[], []], names=('x', 'y')), 'group_id': 1}
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(NotEnoughCatalogs) as e:
         align_wcs([tpwcs, tpwcs, tpwcs])
     assert e.value.args[0] == ("Too few input images (or groups of images) "
                                "with non-empty catalogs.")
@@ -472,7 +477,7 @@ def test_align_wcs_1im_no_ref(mock_fits_wcs):
     imcat = Table(xy, names=('x', 'y'))
     tpwcs = FITSWCSCorrector(mock_fits_wcs, meta={'catalog': imcat})
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(NotEnoughCatalogs) as e:
         align_wcs(tpwcs, refcat=None, fitgeom='shift', match=None)
     assert e.value.args[0] == ("Too few input images (or groups of images) "
                                "with non-empty catalogs.")
