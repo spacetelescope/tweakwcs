@@ -32,6 +32,14 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
+class NotEnoughCatalogs(ValueError):
+    """
+    An exception class used to notify that an alignment routine does not have
+    enough input catalogs to perform alignment.
+    """
+    pass
+
+
 @deprecated_renamed_argument('tpwcs', 'corrector', since='0.8.0')
 def fit_wcs(refcat, imcat, corrector, ref_tpwcs=None, fitgeom='general',
             nclip=3, sigma=(3.0, 'rmse'), clip_accum=False,
@@ -465,6 +473,14 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         ``refcat`` catalog, an expanded ``refcat`` with a combination of
         source positions from all input images.
 
+    Raises
+    ------
+    NotEnoughCatalogs
+        This exception is raised when there are not enough input catalogs
+        to perform alignment. For example, ``wcscat`` must be a list of at least
+        two correctors when ``refcat`` is `None`, or be a single corrector
+        when a refernce catalog is provided via ``refcat``.
+
     Notes
     -----
     **1. Weights:**
@@ -649,8 +665,10 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
 
     # check that we have enough input images:
     if (refcat is None and len(wcs_gcat) < 2) or len(wcs_gcat) == 0:
-        raise ValueError("Too few input images (or groups of images) with "
-                         "non-empty catalogs.")
+        raise NotEnoughCatalogs(
+            "Too few input images (or groups of images) with "
+            "non-empty catalogs."
+        )
 
     # get the first image to be aligned and
     # create reference catalog if needed:
