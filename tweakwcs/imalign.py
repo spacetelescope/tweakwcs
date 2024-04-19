@@ -26,7 +26,7 @@ from . import __version__
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['fit_wcs', 'align_wcs']
+__all__ = ['fit_wcs', 'align_wcs', 'NotEnoughCatalogs']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
