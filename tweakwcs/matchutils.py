@@ -22,10 +22,17 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['MatchCatalogs', 'XYXYMatch']
+__all__ = ['MatchCatalogs', 'XYXYMatch', 'MultiMatchError']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+class MultiMatchError(RuntimeError):
+    """
+    Error indicating that multiple sources matched to a single reference
+    source.
+    """
 
 
 class MatchCatalogs(ABC):
@@ -266,13 +273,19 @@ class XYXYMatch(MatchCatalogs):
         else:
             xyoff = (self._xoffset, self._yoffset)
 
-        matches = xyxymatch(
-            imxy,
-            refxy,
-            origin=xyoff,
-            tolerance=self._tolerance,
-            separation=self._separation
-        )
+        try:
+            matches = xyxymatch(
+                imxy,
+                refxy,
+                origin=xyoff,
+                tolerance=self._tolerance,
+                separation=self._separation
+            )
+        except RuntimeError as e:
+            msg = e.args[0]
+            if msg.startswith("Number of output coordinates exceeded allocation"):
+                raise MultiMatchError(msg)
+            raise e
 
         return matches['ref_idx'], matches['input_idx']
 
