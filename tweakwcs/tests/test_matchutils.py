@@ -18,7 +18,7 @@ from astropy.utils.data import get_pkg_data_filename
 import tweakwcs
 from tweakwcs.matchutils import (_xy_2dhist, _estimate_2dhist_shift,
                                  _find_peak, XYXYMatch, MatchCatalogs,
-                                 MultiMatchError)
+                                 MatchSourceConfusionError)
 from .helper_correctors import DummyWCSCorrector
 
 
@@ -298,7 +298,7 @@ def test_multi_match_error():
     tpmatch = XYXYMatch(tolerance=1.0, separation=0.01)
     refcat = Table([[0.0, 0.1], [0.1, 0.0]], names=('TPx', 'TPy'), meta={'name': None})
     imcat = Table([[0.0], [0.0]], names=('TPx', 'TPy'), meta={'name': None})
-    with pytest.raises(MultiMatchError):
+    with pytest.raises(MatchSourceConfusionError):
         tpmatch(refcat, imcat)
 
 

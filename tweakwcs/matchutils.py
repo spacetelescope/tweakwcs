@@ -22,13 +22,13 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['MatchCatalogs', 'XYXYMatch', 'MultiMatchError']
+__all__ = ['MatchCatalogs', 'XYXYMatch', 'MatchSourceConfusionError']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 
-class MultiMatchError(RuntimeError):
+class MatchSourceConfusionError(RuntimeError):
     """
     Error indicating that multiple sources matched to a single reference
     source.
@@ -284,7 +284,7 @@ class XYXYMatch(MatchCatalogs):
         except RuntimeError as e:
             msg = e.args[0]
             if msg.startswith("Number of output coordinates exceeded allocation"):
-                raise MultiMatchError(msg)
+                raise MatchSourceConfusionError(msg)
             raise e
 
         return matches['ref_idx'], matches['input_idx']
