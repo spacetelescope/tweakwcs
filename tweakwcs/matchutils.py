@@ -187,6 +187,11 @@ class XYXYMatch(MatchCatalogs):
             A tuple of two 1D `numpy.ndarray` containing indices of matched
             sources in the ``refcat`` and ``imcat`` catalogs accordingly.
 
+        Raises
+        ------
+        MatchSourceConfusionError
+            Multiple sources matched a single reference source. Try different
+            values for ``tolerance`` and ``separation`` to fix this error.
         """
         # Check catalogs:
         if not isinstance(refcat, astropy.table.Table):
