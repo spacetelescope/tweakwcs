@@ -31,7 +31,7 @@ log.setLevel(logging.DEBUG)
 class MatchSourceConfusionError(RuntimeError):
     """
     Error indicating that multiple sources matched to a single reference
-    source.
+    source. Try different values for ``tolerance`` and ``separation``to fix this error.
     """
 
 
