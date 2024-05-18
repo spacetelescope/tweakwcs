@@ -22,10 +22,17 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['MatchCatalogs', 'XYXYMatch']
+__all__ = ['MatchCatalogs', 'XYXYMatch', 'MatchSourceConfusionError']
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+class MatchSourceConfusionError(RuntimeError):
+    """
+    Error indicating that multiple sources matched to a single reference
+    source. Try different values for ``tolerance`` and ``separation`` to fix this error.
+    """
 
 
 class MatchCatalogs(ABC):
@@ -180,6 +187,11 @@ class XYXYMatch(MatchCatalogs):
             A tuple of two 1D `numpy.ndarray` containing indices of matched
             sources in the ``refcat`` and ``imcat`` catalogs accordingly.
 
+        Raises
+        ------
+        MatchSourceConfusionError
+            Multiple sources matched a single reference source. Try different
+            values for ``tolerance`` and ``separation`` to fix this error.
         """
         # Check catalogs:
         if not isinstance(refcat, astropy.table.Table):
@@ -266,13 +278,19 @@ class XYXYMatch(MatchCatalogs):
         else:
             xyoff = (self._xoffset, self._yoffset)
 
-        matches = xyxymatch(
-            imxy,
-            refxy,
-            origin=xyoff,
-            tolerance=self._tolerance,
-            separation=self._separation
-        )
+        try:
+            matches = xyxymatch(
+                imxy,
+                refxy,
+                origin=xyoff,
+                tolerance=self._tolerance,
+                separation=self._separation
+            )
+        except RuntimeError as e:
+            msg = e.args[0]
+            if msg.startswith("Number of output coordinates exceeded allocation"):
+                raise MatchSourceConfusionError(msg)
+            raise e
 
         return matches['ref_idx'], matches['input_idx']
 

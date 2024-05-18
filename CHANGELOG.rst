@@ -12,6 +12,9 @@ Release Notes
 
 - ``align_wcs`` now will raise a custom exception of type ``NotEnoughCatalogs``
   when there are not enough input catalogs to perform alignment. [#203]
+ 
+- ``XYXYMatch`` now will raise a custom exception of type ``MatchSourceConfusionError``
+  when multipe reference sources match a single input source. [#204]
 
 
 0.8.7 (29-March-2024)
