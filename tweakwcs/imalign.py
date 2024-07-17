@@ -787,9 +787,8 @@ def overlap_matrix(images):
 
     if n_malformed:
         log.warning(
-            "MalformedPolygonError in spherical_geometry. Using "
-            "convex hull instead of multi_union. Alignment order "
-            "may be sub-optimal."
+            "MalformedPolygonError in spherical_geometry. Computed overlap "
+            "area is not accurate. Alignment order may be sub-optimal."
         )
 
     return m
@@ -1037,9 +1036,8 @@ def _max_overlap_image(refimage, images, enforce_user_order):
 
     if n_malformed:
         log.warning(
-            "MalformedPolygonError in spherical_geometry. Using "
-            "convex hull instead of multi_union. Alignment order "
-            "may be sub-optimal."
+            "MalformedPolygonError in spherical_geometry. Computed overlap "
+            "area is not accurate. Alignment order may be sub-optimal."
         )
 
     idx = np.argmax(overlap_area)
