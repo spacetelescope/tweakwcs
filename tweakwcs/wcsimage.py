@@ -350,24 +350,32 @@ class WCSImageCatalog(object):
         intersections fail due to a bug/limitation of ``spherical_geometry``
         then the area of the valid intersections will be returned.
         If images do not intersect or intersection fails, 0 will be returned.
+
+        In addition to the area, this function returns the number of times
+        a failure in the ``spherical_geometry`` package occurred resulting in a
+        ``MalformedPolygonError`` error.
+
+        Return value: ``(area, nfailures)``
         """
         if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
             try:
-                return np.fabs(self.intersection(wcsim).area())
+                return np.fabs(self.intersection(wcsim).area()), 0
             except MalformedPolygonError:
-                return 0.0
+                return 0.0, 1
 
         else:
             # this is bug workaround:
             area = 0.0
+            nfailures = 0
             for wim in wcsim:
                 try:
                     area += np.fabs(
                         self.polygon.intersection(wim.polygon).area()
                     )
                 except MalformedPolygonError:
+                    nfailures += 1
                     continue
-            return area
+            return area, nfailures
 
     def _calc_chip_bounding_polygon(self, stepsize=None):
         """
@@ -656,8 +664,20 @@ class WCSGroupCatalog(object):
         intersections fail due to a bug/limitation of ``spherical_geometry``
         then the area of the valid intersections will be returned.
         If images do not intersect or intersection fails, 0 will be returned.
+
+        In addition to the area, this function returns the number of times
+        a failure in the ``spherical_geometry`` package occurred resulting in a
+        ``MalformedPolygonError`` error.
+
+        Return value: ``(area, nfailures)``
         """
-        return sum(im._guarded_intersection_area(wcsim) for im in self._images)
+        area = 0
+        nfailures = 0
+        for im in self._images:
+            a, nf = im._guarded_intersection_area(wcsim)
+            area += a
+            nfailures += nf
+        return area, nfailures
 
     def _aproximate_bb(self):
         if not self._images:
@@ -1551,24 +1571,33 @@ class RefCatalog(object):
         intersections fail due to a bug/limitation of ``spherical_geometry``
         then the area of the valid intersections will be returned.
         If images do not intersect or intersection fails, 0 will be returned.
+
+        In addition to the area, this function returns the number of times
+        a failure in the ``spherical_geometry`` package occurred resulting in a
+        ``MalformedPolygonError`` error.
+
+        Return value: ``(area, nfailures)``
         """
         if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
             try:
-                return np.fabs(self.intersection(wcsim).area())
+                return np.fabs(self.intersection(wcsim).area()), 0
             except MalformedPolygonError:
-                return 0.0
+                return 0.0, 1
 
         else:
             # this is bug workaround:
             area = 0.0
+            nfailures = 0
             for wim in wcsim:
                 try:
                     area += np.fabs(
                         self.polygon.intersection(wim.polygon).area()
                     )
                 except MalformedPolygonError:
+                    nfailures += 1
                     continue
-            return area
+
+            return area, nfailures
 
     def _calc_cat_convex_hull(self):
         """

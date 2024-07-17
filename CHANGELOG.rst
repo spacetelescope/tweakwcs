@@ -4,17 +4,24 @@
 Release Notes
 =============
 
-.. 0.8.8 (unreleased)
+.. 0.8.9 (unreleased)
    ==================
 
-0.8.8 (unreleased)
-==================
+0.8.8 (17-July-2024)
+====================
+
+- Use a more robust algorithm for computing intersection polygon area that
+  ignores intersection polygons that raise ``MalformedPolygonError`` in the
+  ``spherical_geometry`` package. This may result in sub-optimal alignment
+  *order* but in practice, it should have minimal effect
+  on the end result. [#281]
 
 - ``align_wcs`` now will raise a custom exception of type ``NotEnoughCatalogs``
   when there are not enough input catalogs to perform alignment. [#203]
- 
-- ``XYXYMatch`` now will raise a custom exception of type ``MatchSourceConfusionError``
-  when multipe reference sources match a single input source. [#204]
+
+- ``XYXYMatch`` now will raise a custom exception of type
+  ``MatchSourceConfusionError`` when multipe reference sources match a single
+  input source. [#204]
 
 
 0.8.7 (29-March-2024)

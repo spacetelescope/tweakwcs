@@ -120,7 +120,7 @@ def test_wcsimcat_intersections(mock_fits_wcs, rect_imcat):
 
 def test_wcsimcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
     assert np.allclose(
-        rect_imcat._guarded_intersection_area(rect_imcat),
+        rect_imcat._guarded_intersection_area(rect_imcat)[0],
         2.9904967391303217e-12, atol=0.0, rtol=5.0e-4
     )
 
@@ -241,7 +241,7 @@ def test_wcsgroupcat_intersections(mock_fits_wcs, rect_imcat):
 def test_wcsgroupcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
     g = WCSGroupCatalog(rect_imcat)
     assert np.allclose(
-        g._guarded_intersection_area(g), 2.9904967391303217e-12,
+        g._guarded_intersection_area(g)[0], 2.9904967391303217e-12,
         atol=0.0, rtol=5.0e-4
     )
 
@@ -458,7 +458,9 @@ def test_wcsrefcat_guarded_intersection_area(mock_fits_wcs, rect_imcat):
     ref.calc_tanp_xy(rect_imcat.corrector)
 
     assert np.allclose(
-        ref._guarded_intersection_area(ref), 2.9902125220360176e-10, atol=0.0,
+        ref._guarded_intersection_area(ref)[0],
+        2.9902125220360176e-10,
+        atol=0.0,
         rtol=0.005,
     )
 
