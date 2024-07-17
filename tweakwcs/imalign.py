@@ -777,11 +777,20 @@ def overlap_matrix(images):
     """
     nimg = len(images)
     m = np.zeros((nimg, nimg), dtype=np.double)
+    n_malformed = 0
     for i in range(nimg):
         for j in range(i + 1, nimg):
-            area = images[i]._guarded_intersection_area(images[j])
+            area, nf = images[i]._guarded_intersection_area(images[j])
+            n_malformed += nf
             m[j, i] = area
             m[i, j] = area
+
+    if n_malformed:
+        log.warning(
+            "MalformedPolygonError in spherical_geometry. Computed overlap "
+            "area is not accurate. Alignment order may be sub-optimal."
+        )
+
     return m
 
 
@@ -947,7 +956,7 @@ def _max_overlap_pair(images, enforce_user_order):
         # Also, when ref. catalog is static - revert to old tweakreg behavior
         im1 = images.pop(0)  # reference image
         im2 = images.pop(0)
-        overlap_area = im1._guarded_intersection_area(im2)
+        overlap_area = im1._guarded_intersection_area(im2)[0]
         return im1, im2, overlap_area
 
     m = overlap_matrix(images)
@@ -1018,7 +1027,19 @@ def _max_overlap_image(refimage, images, enforce_user_order):
         # revert to old tweakreg behavior
         return images.pop(0), None
 
-    overlap_area = [refimage.intersection_area(im) for im in images]
+    n_malformed = 0
+    overlap_area = []
+    for im in images:
+        area, nf = refimage._guarded_intersection_area(im)
+        overlap_area.append(area)
+        n_malformed += nf
+
+    if n_malformed:
+        log.warning(
+            "MalformedPolygonError in spherical_geometry. Computed overlap "
+            "area is not accurate. Alignment order may be sub-optimal."
+        )
+
     idx = np.argmax(overlap_area)
 
     return images.pop(idx), overlap_area[idx]
