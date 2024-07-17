@@ -14,7 +14,7 @@ Release Notes
   ignores intersection polygons that raise ``MalformedPolygonError`` in the
   ``spherical_geometry`` package. This may result in sub-optimal alignment
   *order* but in practice, it should have minimal effect
-  on the end result. [#281]
+  on the end result. [#205]
 
 - ``align_wcs`` now will raise a custom exception of type ``NotEnoughCatalogs``
   when there are not enough input catalogs to perform alignment. [#203]
