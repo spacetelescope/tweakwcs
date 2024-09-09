@@ -43,4 +43,10 @@ jobs:
           pytest-results-summary: true
         - windows: py312-xdist
           pytest-results-summary: true
+        - linux: py312-numpy21-xdist
+          pytest-results-summary: true
+        - macos: py312-numpy21-xdist
+          pytest-results-summary: true
+        - windows: py312-numpy21-xdist
+          pytest-results-summary: true
         - linux: py312-dev-xdist
