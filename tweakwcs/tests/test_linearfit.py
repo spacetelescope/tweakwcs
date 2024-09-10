@@ -7,9 +7,10 @@ Licensed under a 3-clause BSD style license - see LICENSE.rst
 from itertools import product
 import math
 import sys
-import pytest
-import numpy as np
+
 from astropy.modeling.models import Shift, Rotation2D
+import numpy as np
+import pytest
 from tweakwcs import linearfit, linalg
 
 
