@@ -14,6 +14,10 @@
     :target: https://zenodo.org/doi/10.5281/zenodo.4018234
     :alt: Zenodo DOI 10.5281/zenodo.4018234
 
+.. image:: https://img.shields.io/pypi/v/tweakwcs.svg
+    :target: https://pypi.org/project/tweakwcs
+    :alt: PyPI Status
+
 ``tweakwcs`` is a package that provides core algorithms for computing and
 applying corrections to ``WCS`` objects such as to minimize mismatch between
 image and reference catalogs. Currently only aligning images with ``FITS WCS``
