@@ -10,16 +10,18 @@ sets of 2D points.
 """
 import logging
 import numbers
+
+import astropy
+import numpy as np
 from packaging.version import Version
 
-import numpy as np
-import astropy
-from astropy.modeling.fitting import LevMarLSQFitter
 if Version(astropy.__version__) >= Version('5.1'):
     from astropy.modeling.fitting import fitter_to_model_params
+    from astropy.modeling.fitting import LMLSQFitter
 else:
     from astropy.modeling.fitting import (_fitter_to_model_params as
                                           fitter_to_model_params)
+    from astropy.modeling.fitting import LevMarLSQFitter as LMLSQFitter
 
 from . linalg import inv
 from . import __version__  # noqa: F401
@@ -27,8 +29,10 @@ from . import __version__  # noqa: F401
 __author__ = 'Mihai Cara, Warren Hack'
 
 __all__ = [
-    'iter_linear_fit', 'build_fit_matrix', 'SUPPORTED_FITGEOM_MODES',
-    '_LevMarLSQFitter2x2'
+    'iter_linear_fit',
+    'build_fit_matrix',
+    'SUPPORTED_FITGEOM_MODES',
+    '_LevMarLSQFitter2x2',
 ]
 
 # Supported fitgeom modes and corresponding minobj
@@ -846,10 +850,10 @@ def build_fit_matrix(rot, scale=1):
     return matrix
 
 
-class _LevMarLSQFitter2x2(LevMarLSQFitter):
+class _LevMarLSQFitter2x2(LMLSQFitter):
     """ Performs fits of 2D vector-models to 2D reference points. """
     def objective_function(self, fps, *args):
-        model, weights, inputs, meas = args
+        model, weights, inputs, meas, *_ = args
         fitter_to_model_params(model, fps)
         if weights is None:
             return np.ravel(np.subtract(model(*inputs), meas))
