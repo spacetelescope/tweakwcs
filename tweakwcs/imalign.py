@@ -336,7 +336,7 @@ def align_wcs(wcscat, refcat=None, ref_tpwcs=None, enforce_user_order=True,
         valid. Therefore, it is advisable verify that status is ``'SUCCESS'``
         before attempting to access other items, for example:
 
-        >>> fit_info = wcscat[0].meta.get('fit_info')  # doctest: +SKIP
+        >>> fit_info = wcscat[0].meta.get('fit_info')  # noqa # doctest: +SKIP
         >>> if fit_info['status'] == 'SUCCESS':  # doctest: +SKIP
         ...     print("shifts: [{}, {}]".format(*fit_info['shift']))
         ... else:
