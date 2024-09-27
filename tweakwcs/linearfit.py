@@ -852,7 +852,7 @@ def build_fit_matrix(rot, scale=1):
 
 class _LevMarLSQFitter2x2(LMLSQFitter):
     """ Performs fits of 2D vector-models to 2D reference points. """
-    def objective_function(self, fps, *args):
+    def objective_function(self, fps, *args, **kwargs):
         model, weights, inputs, meas, *_ = args
         fitter_to_model_params(model, fps)
         if weights is None:
