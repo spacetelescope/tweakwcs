@@ -50,3 +50,5 @@ jobs:
         - windows: py312-numpy21-xdist
           pytest-results-summary: true
         - linux: py312-dev-xdist
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
