@@ -13,6 +13,7 @@ from astropy import wcs as fitswcs
 from astropy.modeling import CompoundModel
 import gwcs
 from gwcs.geometry import SphericalToCartesian
+from packaging.version import Version
 from tweakwcs.linearfit import build_fit_matrix
 from tweakwcs.correctors import JWSTWCSCorrector, FITSWCSCorrector
 
@@ -22,6 +23,7 @@ from .helper_correctors import (make_mock_jwst_wcs, make_mock_jwst_pipeline,
 
 
 _ATOL = 100 * np.finfo(np.array([1.]).dtype).eps
+_GWCS_GE_0P24 = Version(gwcs.__version__) >= Version("0.24")
 
 
 def test_tpwcs():
@@ -307,27 +309,35 @@ def test_jwstgwcs_bad_pipelines_no_vacorr():
         JWSTWCSCorrector(None, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # fewer than 3 frames:
-    w = gwcs.wcs.WCS(p0[:2])
+    w = gwcs.wcs.WCS([p0[0], p0[-1]])
     with pytest.raises(ValueError):
         JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # repeated (any one of the) last two frames:
-    w = gwcs.wcs.WCS(p0 + [p0[-1]])
-    with pytest.raises(ValueError):
-        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
-
-    w = gwcs.wcs.WCS(p0 + [p0[-2]])
-    with pytest.raises(ValueError):
-        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    for k in [-1, -2]:
+        if _GWCS_GE_0P24:
+            with pytest.raises(ValueError):
+                w = gwcs.wcs.WCS(p0 + [p0[k]])
+        else:
+            w = gwcs.wcs.WCS(p0 + [p0[k]])
+            with pytest.raises(ValueError):
+                JWSTWCSCorrector(
+                    w,
+                    {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0}
+                )
 
     # multiple 'v2v3' frames:
     w = gwcs.wcs.WCS(p0)
     w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     p = w.wcs.pipeline
     p.insert(1, p[1])
-    w = gwcs.wcs.WCS(p)
-    with pytest.raises(ValueError):
-        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    if _GWCS_GE_0P24:
+        with pytest.raises(ValueError):
+            w = gwcs.wcs.WCS(p)
+    else:
+        w = gwcs.wcs.WCS(p)
+        with pytest.raises(ValueError):
+            JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # misplaced 'v2v3' frame:
     w = gwcs.wcs.WCS(p0)
@@ -345,9 +355,13 @@ def test_jwstgwcs_bad_pipelines_no_vacorr():
     w.set_correction()
     p = w.wcs.pipeline
     p.insert(1, p[-2])
-    w = gwcs.wcs.WCS(p)
-    with pytest.raises(ValueError):
-        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    if _GWCS_GE_0P24:
+        with pytest.raises(ValueError):
+            w = gwcs.wcs.WCS(p)
+    else:
+        w = gwcs.wcs.WCS(p)
+        with pytest.raises(ValueError):
+            JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
     # misplaced 'v2v3corr' frame:
     del p[-2]
@@ -368,9 +382,13 @@ def test_jwstgwcs_bad_pipelines_with_vacorr():
     w = JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
     p = w.wcs.pipeline
     p.insert(1, p[2])
-    w = gwcs.wcs.WCS(p)
-    with pytest.raises(ValueError):
-        JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
+    if _GWCS_GE_0P24:
+        with pytest.raises(ValueError):
+            w = gwcs.wcs.WCS(p)
+    else:
+        w = gwcs.wcs.WCS(p)
+        with pytest.raises(ValueError):
+            JWSTWCSCorrector(w, {'v2_ref': 0.0, 'v3_ref': 0.0, 'roll_ref': 0.0})
 
 
 def test_fitswcs_non_celestial():
