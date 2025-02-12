@@ -14,11 +14,12 @@ from tweakwcs.utils.jwst_utils import assign_jwst_tweakwcs_groups
 @pytest.fixture(scope='function')
 def data_model_list():
     pytest.importorskip("jwst")
-    from jwst.datamodels import DataModel, ModelContainer
+    from jwst.datamodels import ModelContainer
+    from stdatamodels.jwst.datamodels import ImageModel
 
     models = []
     for k in range(6):
-        m = DataModel()
+        m = ImageModel()
         m.meta.observation.program_number = '0001'
         m.meta.observation.observation_number = '1'
         m.meta.observation.visit_number = '1'
@@ -76,8 +77,13 @@ def test_assign_jwst_tweakwcs_groups_fail(defective_data_model):
 def test_assign_jwst_tweakwcs_groups(data_model_list, monkeypatch):
     """ Imitate string file names and file IO: """
     jwst = pytest.importorskip("jwst")
+    stdatamodels = pytest.importorskip("stdatamodels")
     models = {m.meta.filename: m for m in data_model_list}
-    monkeypatch.setattr(jwst.datamodels.DataModel, 'save', lambda s, m: m)
+    monkeypatch.setattr(
+        stdatamodels.jwst.datamodels.ImageModel,
+        'save',
+        lambda s, m: m
+    )
     monkeypatch.setattr(jwst.datamodels, 'open', lambda fname: models[fname])
 
     assign_jwst_tweakwcs_groups(list(models.keys()))
