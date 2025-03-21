@@ -36,19 +36,23 @@ jobs:
         - windows: py311-xdist
           pytest-results-summary: true
         - linux: py311-pyargs-xdist
-        - linux: py312-cov-xdist
-          coverage: codecov
-          pytest-results-summary: true
         - macos: py312-xdist
-          pytest-results-summary: true
-        - windows: py312-xdist
           pytest-results-summary: true
         - linux: py312-numpy21-xdist
           pytest-results-summary: true
-        - macos: py312-numpy21-xdist
+        - linux: py313-cov-xdist
+          coverage: codecov
           pytest-results-summary: true
-        - windows: py312-numpy21-xdist
+        - macos: py313-xdist
           pytest-results-summary: true
-        - linux: py312-dev-xdist
+        - windows: py313-xdist
+          pytest-results-summary: true
+        - linux: py313-numpy22-xdist
+          pytest-results-summary: true
+        - macos: py313-numpy22-xdist
+          pytest-results-summary: true
+        - windows: py313-numpy22-xdist
+          pytest-results-summary: true
+        - linux: py313-dev-xdist
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
