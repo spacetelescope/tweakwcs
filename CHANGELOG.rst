@@ -7,6 +7,13 @@ Release Notes
 .. 0.8.10 (unreleased)
    ===================
 
+0.8.10 (31-March-2025)
+=========================
+
+- Updated unit tests to work correctly with the latest ``gwcs`` releases
+  (> 0.24). [#220]
+
+
 0.8.9 (28-September-2024)
 =========================
 
