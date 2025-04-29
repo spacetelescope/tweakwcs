@@ -14,12 +14,12 @@ dependencies = [
     "spherical_geometry>=1.2.20",
     "packaging>=21.1",
 ]
+license-files = ["LICENSE.txt"]
 dynamic = [
     "version",
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Topic :: Scientific/Engineering :: Astronomy",
@@ -30,10 +30,6 @@ classifiers = [
 [project.readme]
 file = "README.rst"
 content-type = "text/x-rst"
-
-[project.license]
-file = "LICENSE.txt"
-content-type = "text/plain"
 
 [project.urls]
 Homepage = "https://github.com/spacetelescope/tweakwcs"
