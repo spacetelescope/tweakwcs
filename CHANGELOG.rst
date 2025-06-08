@@ -7,6 +7,13 @@ Release Notes
 .. 0.8.10 (unreleased)
    ===================
 
+0.8.11 (08-June-2025)
+=========================
+
+- Fixed a bug in the string formatting for a warning log message
+  in ``XYXYMatch``. [#229]
+
+
 0.8.10 (31-March-2025)
 =========================
 

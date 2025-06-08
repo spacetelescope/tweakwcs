@@ -1372,8 +1372,10 @@ class WCSGroupCatalog(object):
 
         if nmatches < minobj:
             name = 'Unnamed' if self.name is None else self.name
-            log.warning("Not enough matches ({nmatches:d}) found for image "
-                        "catalog '{name:s}'. Min requred: {minobj:d}.")
+            log.warning(
+                f"Not enough matches ({nmatches:d}) found for image "
+                f"catalog '{name:s}'. Min requred: {minobj:d}."
+            )
             for imcat in self:
                 imcat.fit_status = 'FAILED: not enough matches'
             return False
