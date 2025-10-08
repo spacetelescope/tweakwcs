@@ -6,7 +6,7 @@ applying corrections to ``WCS`` objects such as to minimize mismatch between
 image and reference catalogs. Currently only aligning images with ``FITS WCS``
 and ``JWST GWCS`` are supported.
 
-.. moduleauthor:: Mihai Cara <help@stsci.edu>
+.. moduleauthor:: Mihai Cara
 
 Content
 =======

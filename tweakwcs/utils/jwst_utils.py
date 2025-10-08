@@ -14,7 +14,7 @@ that come from differenct chips of the same sensor chip assembly (SCA).
     Grouping logic/algorithms are inherently telescope and instrument
     dependent.
 
-:Authors: Mihai Cara (contact: help@stsci.edu)
+:Authors: Mihai Cara
 
 :License: :doc:`../LICENSE`
 
