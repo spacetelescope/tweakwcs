@@ -3,7 +3,7 @@
 This module provides general purpose and/or specialized linear algebra
 routines.
 
-:Authors: Mihai Cara (contact: help@stsci.edu)
+:Authors: Mihai Cara
 
 :License: :doc:`LICENSE`
 
