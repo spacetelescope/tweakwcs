@@ -3,7 +3,7 @@ name = "tweakwcs"
 description = "A package for correcting alignment errors in WCS objects"
 requires-python = ">=3.10"
 authors = [
-    { name = "Mihai Cara", email = "help@stsci.edu" },
+    { name = "Mihai Cara" },
 ]
 dependencies = [
     "numpy",
