@@ -2,7 +2,7 @@
 linearfit
 =========
 
-.. moduleauthor:: Mihai Cara <help@stsci.edu>
+.. moduleauthor:: Mihai Cara
 
 .. currentmodule:: tweakwcs.linearfit
 
