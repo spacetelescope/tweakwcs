@@ -2,7 +2,7 @@
 """
 A module that provides utility functions for WCS transformations.
 
-:Authors: Mihai Cara (contact: help@stsci.edu)
+:Authors: Mihai Cara
 
 :License: :doc:`LICENSE`
 
