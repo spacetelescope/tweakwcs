@@ -53,6 +53,9 @@ jobs:
           pytest-results-summary: true
         - windows: py313-numpy22-xdist
           pytest-results-summary: true
-        - linux: py313-dev-xdist
+        - linux: py314-xdist
+        - macos: py314-xdist
+        - windows: py314-xdist
+        - linux: py314-dev-xdist
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
