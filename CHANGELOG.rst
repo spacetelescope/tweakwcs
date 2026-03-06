@@ -7,6 +7,12 @@ Release Notes
 .. 0.8.13 (unreleased)
    ===================
 
+0.9.0 (06-Mar-2026)
+====================
+
+- Added ``RomanWCSCorrector`` class to support Roman WCS. [#243]
+
+
 0.8.12 (08-Oct-2025)
 ====================
 

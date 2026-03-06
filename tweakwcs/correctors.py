@@ -27,7 +27,12 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['WCSCorrector', 'JWSTWCSCorrector', 'FITSWCSCorrector']
+__all__ = [
+    'FITSWCSCorrector',
+    'JWSTWCSCorrector',
+    'RomanWCSCorrector',
+    'WCSCorrector',
+]
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -565,6 +570,7 @@ class JWSTWCSCorrector(WCSCorrector):
 
     """
     units = 'arcsec'
+    corrector_name = 'JWST tangent-plane linear correction. v1'
 
     def __init__(self, wcs, wcsinfo, meta=None):
         """
@@ -642,7 +648,8 @@ class JWSTWCSCorrector(WCSCorrector):
             self._default_tpcorr = JWSTWCSCorrector._tpcorr_init(
                 v2_ref=v2_ref / 3600.0,
                 v3_ref=v3_ref / 3600.0,
-                roll_ref=roll_ref
+                roll_ref=roll_ref,
+                corrector_name=self.corrector_name
             )
             self._partial_tpcorr = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(
                 self._default_tpcorr
@@ -650,10 +657,10 @@ class JWSTWCSCorrector(WCSCorrector):
 
         self._update_transformations()
 
-    @staticmethod
-    def _check_tpcorr_structure(tpcorr):
+    @classmethod
+    def _check_tpcorr_structure(cls, tpcorr):
         # implement a more sophisticated check later
-        if tpcorr.name != 'JWST tangent-plane linear correction. v1':
+        if tpcorr.name != cls.corrector_name:
             return False
         return True
 
@@ -694,7 +701,7 @@ class JWSTWCSCorrector(WCSCorrector):
         tpcorr.inverse['tp_affine_inv'].translation = -np.dot(invm, t)
 
     @staticmethod
-    def _tpcorr_init(v2_ref, v3_ref, roll_ref):
+    def _tpcorr_init(v2_ref, v3_ref, roll_ref, corrector_name="Unnamed"):
         s2c = SphericalToCartesian(name='s2c', wrap_lon_at=180)
         c2s = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
@@ -730,13 +737,13 @@ class JWSTWCSCorrector(WCSCorrector):
             unit_conv | s2c | rot | c2tan | affine |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        total_corr.name = 'JWST tangent-plane linear correction. v1'
+        total_corr.name = corrector_name
 
         inv_total_corr = (
             unit_conv | s2c | rot | c2tan | affine_inv |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        inv_total_corr.name = 'Inverse JWST tangent-plane linear correction. v1'
+        inv_total_corr.name = f'Inverse {corrector_name}'
 
         # TODO
         # re-enable circular inverse definitions once
@@ -859,7 +866,8 @@ class JWSTWCSCorrector(WCSCorrector):
             self._tpcorr = JWSTWCSCorrector._tpcorr_init(
                 v2_ref=self._wcsinfo['v2_ref'] / 3600.0,
                 v3_ref=self._wcsinfo['v3_ref'] / 3600.0,
-                roll_ref=self._wcsinfo['roll_ref']
+                roll_ref=self._wcsinfo['roll_ref'],
+                corrector_name=self.corrector_name
             )
 
             JWSTWCSCorrector._tpcorr_combine_affines(
@@ -1041,6 +1049,17 @@ class JWSTWCSCorrector(WCSCorrector):
 
         else:
             return self._owcs.pixel_bounds
+
+
+class RomanWCSCorrector(JWSTWCSCorrector):
+    """ A class for holding ``Roman`` ``GWCS`` information and for managing
+    tangent-plane corrections. The units of the tangent plane of this
+    corrector are ``arcsec`` and the axes are not along parallel to the
+    axes of the detector's coordinate system.
+
+    """
+    units = 'arcsec'
+    corrector_name = 'Roman tangent-plane linear correction. v1'
 
 
 @deprecated(since='0.8.0', alternative='WCSCorrector')
