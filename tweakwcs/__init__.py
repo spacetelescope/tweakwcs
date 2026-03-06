@@ -18,7 +18,7 @@ except PackageNotFoundError:
 
 
 from .correctors import (WCSCorrector, JWSTWCSCorrector,  # noqa: F401
-                         FITSWCSCorrector,  # noqa: F401
+                         RomanWCSCorrector, FITSWCSCorrector,  # noqa: F401
                          TPWCS, JWSTgWCS, FITSWCS)  # noqa: F401
 from .matchutils import MatchCatalogs, XYXYMatch, TPMatch  # noqa: F401
 from .imalign import fit_wcs, align_wcs  # noqa: F401
