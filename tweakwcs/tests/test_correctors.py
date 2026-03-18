@@ -396,6 +396,7 @@ def test_jwstgwcs_bbox(corr_cls):
     wc._owcs.array_shape = None
     assert wc.bounding_box is None
 
+
 @pytest.mark.parametrize(
     'corr_cls', [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector]
 )
