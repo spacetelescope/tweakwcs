@@ -17,8 +17,9 @@ except PackageNotFoundError:
     __version__ = ''
 
 
-from .correctors import (WCSCorrector, JWSTWCSCorrector,  # noqa: F401
-                         RomanWCSCorrector, FITSWCSCorrector,  # noqa: F401
+from .correctors import (WCSCorrector, FITSWCSCorrector,  # noqa: F401
+                         ST_V2V3_WCSCorrector,  # noqa: F401
+                         JWSTWCSCorrector, RomanWCSCorrector,  # noqa: F401
                          TPWCS, JWSTgWCS, FITSWCS)  # noqa: F401
 from .matchutils import MatchCatalogs, XYXYMatch, TPMatch  # noqa: F401
 from .imalign import fit_wcs, align_wcs  # noqa: F401

@@ -12,7 +12,7 @@ from astropy import coordinates as coord
 from astropy import units as u
 import gwcs
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
-from tweakwcs.correctors import WCSCorrector, JWSTWCSCorrector
+from tweakwcs.correctors import WCSCorrector
 
 
 _S2C = SphericalToCartesian(name='s2c', wrap_lon_at=180)
@@ -53,29 +53,34 @@ def rot_mat3d(angle, axis):
     return np.insert(np.insert(mat2d, axis, [0.0, 0.0], 1), axis, axisv, 0)
 
 
-def create_DetToV2V3(v2ref=0.0, v3ref=0.0, roll=0.0,
+def create_DetToV2V3(corr_cls, v2ref=0.0, v3ref=0.0, roll=0.0,
                      cd=[[1.0, 0.0], [0.0, 1.0]], crpix=[0, 0]):
-    tpcorr = JWSTWCSCorrector._tpcorr_init(v2_ref=v2ref, v3_ref=v3ref, roll_ref=roll)
+    tpcorr = corr_cls._tpcorr_init(v2_ref=v2ref, v3_ref=v3ref, roll_ref=roll)
 
     afinv = AffineTransformation2D(cd, -np.dot(cd, crpix)).inverse
 
-    JWSTWCSCorrector._tpcorr_combine_affines(
+    corr_cls._tpcorr_combine_affines(
         tpcorr,
         afinv.matrix.value,
         afinv.translation.value
     )
 
-    p = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(tpcorr)
+    p = corr_cls._v2v3_to_tpcorr_from_full(tpcorr)
     partial_tpcorr = p.inverse
     partial_tpcorr.inverse = p
 
     return partial_tpcorr
 
 
-def create_V2V3ToDet(v2ref=0.0, v3ref=0.0, roll=0.0,
+def create_V2V3ToDet(corr_cls, v2ref=0.0, v3ref=0.0, roll=0.0,
                      cd=[[1.0, 0.0], [0.0, 1.0]], crpix=[0, 0]):
     inv_partial_tpcorr = create_DetToV2V3(
-        v2ref=v2ref, v3ref=v3ref, roll=roll, crpix=crpix, cd=cd
+        corr_cls,
+        v2ref=v2ref,
+        v3ref=v3ref,
+        roll=roll,
+        crpix=crpix,
+        cd=cd
     ).inverse
     return inv_partial_tpcorr
 
@@ -202,9 +207,9 @@ class V2V3ToSkyInv(Model):
         return V2V3ToSky(self.angles.value, self.axes_order)
 
 
-def make_mock_jwst_pipeline(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
-                            cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0],
-                            enable_vacorr=True):
+def make_mock_st_pipeline(corr_cls, v2ref=0, v3ref=0, roll=0,
+                          crpix=[512, 512], cd=[[1e-5, 0], [0, 1e-5]],
+                          crval=[0, 0], enable_vacorr=True):
     detector = gwcs.coordinate_frames.Frame2D(
         name='detector', axes_order=(0, 1), unit=(u.pix, u.pix)
     )
@@ -216,8 +221,14 @@ def make_mock_jwst_pipeline(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
     )
     world = gwcs.coordinate_frames.CelestialFrame(reference_frame=coord.ICRS(),
                                                   name='world')
-    det2v2v3 = create_DetToV2V3(v2ref=v2ref / 3600.0, v3ref=v3ref / 3600.0,
-                                roll=roll, cd=cd, crpix=crpix)
+    det2v2v3 = create_DetToV2V3(
+        corr_cls,
+        v2ref=v2ref / 3600.0,
+        v3ref=v3ref / 3600.0,
+        roll=roll,
+        cd=cd,
+        crpix=crpix
+    )
 
     v23sky = V2V3ToSky([-v2ref / 3600.0, v3ref / 3600.0, -roll,
                         -crval[1], crval[0]], [2, 1, 0, 1, 2])
@@ -230,10 +241,19 @@ def make_mock_jwst_pipeline(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
     return pipeline
 
 
-def make_mock_jwst_wcs(v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
-                       cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0],
-                       enable_vacorr=True):
-    pipeline = make_mock_jwst_pipeline(v2ref, v3ref, roll, crpix, cd, crval, enable_vacorr)
+def make_mock_st_wcs(corr_cls, v2ref=0, v3ref=0, roll=0, crpix=[512, 512],
+                     cd=[[1e-5, 0], [0, 1e-5]], crval=[0, 0],
+                     enable_vacorr=True):
+    pipeline = make_mock_st_pipeline(
+        corr_cls=corr_cls,
+        v2ref=v2ref,
+        v3ref=v3ref,
+        roll=roll,
+        crpix=crpix,
+        cd=cd,
+        crval=crval,
+        enable_vacorr=enable_vacorr
+    )
     wcs = gwcs.wcs.WCS(pipeline)
     wcs.bounding_box = ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5))
     wcs.array_shape = (2048, 1024)

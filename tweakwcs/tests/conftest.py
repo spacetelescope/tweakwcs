@@ -4,17 +4,23 @@ from astropy import wcs as fitswcs
 from astropy.table import Table
 
 from tweakwcs.linearfit import build_fit_matrix
-from . helper_correctors import make_mock_jwst_wcs
+from . helper_correctors import make_mock_st_wcs
 
 
 @pytest.fixture(scope='module')
-def mock_jwst_wcs():
+def mock_st_wcs(request):
+    corr_cls = request.param
     cd = build_fit_matrix((36, 47), 1e-5)
-    w = make_mock_jwst_wcs(
-        v2ref=123.0, v3ref=500.0, roll=115.0, crpix=[512.0, 512.0],
-        cd=cd, crval=[82.0, 12.0]
+    w = make_mock_st_wcs(
+        corr_cls=corr_cls,
+        v2ref=123.0,
+        v3ref=500.0,
+        roll=115.0,
+        crpix=[512.0, 512.0],
+        cd=cd,
+        crval=[82.0, 12.0]
     )
-    return w
+    return w, corr_cls
 
 
 @pytest.fixture(scope='function')
