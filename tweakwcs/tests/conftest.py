@@ -3,11 +3,19 @@ import pytest
 from astropy import wcs as fitswcs
 from astropy.table import Table
 
+from tweakwcs.correctors import (
+    JWSTWCSCorrector,
+    RomanWCSCorrector,
+    ST_V2V3_WCSCorrector,
+)
 from tweakwcs.linearfit import build_fit_matrix
 from . helper_correctors import make_mock_st_wcs
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(
+    scope='module',
+    params=[ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector]
+)
 def mock_st_wcs(request):
     corr_cls = request.param
     cd = build_fit_matrix((36, 47), 1e-5)

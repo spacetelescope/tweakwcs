@@ -205,11 +205,6 @@ def test_jwst_wcs_corr_applied(corr_cls):
     assert 'dummy_meta' in wc.meta
 
 
-@pytest.mark.parametrize(
-    'mock_st_wcs',
-    [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector],
-    indirect=True
-)
 def test_jwst_wcs_corr_are_being_combined(mock_st_wcs):
     wcs, corr_cls = mock_st_wcs
     wc = corr_cls(
@@ -245,11 +240,6 @@ def test_jwstgwcs_unsupported_wcs():
         JWSTWCSCorrector(dummy_wcs, {})
 
 
-@pytest.mark.parametrize(
-    'mock_st_wcs',
-    [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector],
-    indirect=True
-)
 def test_jwstgwcs_inconsistent_ref(mock_st_wcs):
     wcs, corr_cls = mock_st_wcs
     wc = corr_cls(
@@ -263,11 +253,6 @@ def test_jwstgwcs_inconsistent_ref(mock_st_wcs):
         )
 
 
-@pytest.mark.parametrize(
-    'mock_st_wcs',
-    [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector],
-    indirect=True
-)
 def test_jwstgwcs_wrong_tpcorr_type(mock_st_wcs):
     wcs, corr_cls = mock_st_wcs
     wc = corr_cls(
@@ -288,11 +273,6 @@ def test_jwstgwcs_wrong_tpcorr_type(mock_st_wcs):
         )
 
 
-@pytest.mark.parametrize(
-    'mock_st_wcs',
-    [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector],
-    indirect=True
-)
 def test_jwstgwcs_ref_angles_preserved(mock_st_wcs):
     wcs, corr_cls = mock_st_wcs
     wc = corr_cls(
