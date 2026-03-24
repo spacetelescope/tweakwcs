@@ -82,7 +82,8 @@ def test_wcsimcat_set_none_catalog(mock_fits_wcs, rect_imcat):
 
 def test_wcsimcat_wcs_transforms_roundtrip(mock_fits_wcs):
     x = np.arange(5)
-    y = np.random.permutation(5)
+    y = np.array([2, 1, 4, 0, 3], dtype=float)
+
     imcat = Table([x, y], names=('x', 'y'))
     corr = FITSWCSCorrector(mock_fits_wcs)
     w = WCSImageCatalog(imcat, corr)
