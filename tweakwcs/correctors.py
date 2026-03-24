@@ -27,7 +27,13 @@ from . import __version__  # noqa: F401
 
 __author__ = 'Mihai Cara'
 
-__all__ = ['WCSCorrector', 'JWSTWCSCorrector', 'FITSWCSCorrector']
+__all__ = [
+    'FITSWCSCorrector',
+    'JWSTWCSCorrector',
+    'RomanWCSCorrector',
+    'ST_V2V3_WCSCorrector',
+    'WCSCorrector',
+]
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -557,14 +563,16 @@ def _get_submodel(model, name):
     return None
 
 
-class JWSTWCSCorrector(WCSCorrector):
-    """ A class for holding ``JWST`` ``gWCS`` information and for managing
-    tangent-plane corrections. The units of the tangent plane of this
-    corrector are ``arcsec`` and the axes are not along parallel to the
-    axes of the detector's coordinate system.
+class ST_V2V3_WCSCorrector(WCSCorrector):
+    """ A class for holding ``GWCS`` information and for managing STScI
+    ``JWST`` and ``Roman`` Space Telescopes V2-V3 tangent-plane corrections.
+    The units of the tangent plane of this corrector are ``arcsec`` and
+    the axes are not along parallel to the axes of the detector's
+    coordinate system.
 
     """
     units = 'arcsec'
+    corrector_name = 'STScI GWCS V2-V3 tangent-plane linear correction. v1'
 
     def __init__(self, wcs, wcsinfo, meta=None):
         """
@@ -615,7 +623,7 @@ class JWSTWCSCorrector(WCSCorrector):
                 wcs.pipeline[frms.index('v2v3corr') - 1].transform
             )
             self._default_tpcorr = None
-            if not JWSTWCSCorrector._check_tpcorr_structure(self._tpcorr):
+            if not self._check_tpcorr_structure(self._tpcorr):
                 raise ValueError("Unsupported tangent-plance correction type.")
 
             # check that transformation parameters are consistent with
@@ -632,28 +640,29 @@ class JWSTWCSCorrector(WCSCorrector):
                     "WCS/TPCorr parameters 'v2ref', 'v3ref', and/or 'roll' "
                     "differ from the corresponding reference values."
                 )
-            self._partial_tpcorr = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(
+            self._partial_tpcorr = ST_V2V3_WCSCorrector._v2v3_to_tpcorr_from_full(
                 self._tpcorr
             )
 
         else:
             self._v23name = 'v2v3vacorr' if 'v2v3vacorr' in frms else 'v2v3'
             self._tpcorr = None
-            self._default_tpcorr = JWSTWCSCorrector._tpcorr_init(
+            self._default_tpcorr = ST_V2V3_WCSCorrector._tpcorr_init(
                 v2_ref=v2_ref / 3600.0,
                 v3_ref=v3_ref / 3600.0,
-                roll_ref=roll_ref
+                roll_ref=roll_ref,
+                corrector_name=self.corrector_name
             )
-            self._partial_tpcorr = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(
+            self._partial_tpcorr = ST_V2V3_WCSCorrector._v2v3_to_tpcorr_from_full(
                 self._default_tpcorr
             )
 
         self._update_transformations()
 
-    @staticmethod
-    def _check_tpcorr_structure(tpcorr):
+    @classmethod
+    def _check_tpcorr_structure(cls, tpcorr):
         # implement a more sophisticated check later
-        if tpcorr.name != 'JWST tangent-plane linear correction. v1':
+        if tpcorr.name != cls.corrector_name:
             return False
         return True
 
@@ -694,7 +703,7 @@ class JWSTWCSCorrector(WCSCorrector):
         tpcorr.inverse['tp_affine_inv'].translation = -np.dot(invm, t)
 
     @staticmethod
-    def _tpcorr_init(v2_ref, v3_ref, roll_ref):
+    def _tpcorr_init(v2_ref, v3_ref, roll_ref, corrector_name="Unnamed"):
         s2c = SphericalToCartesian(name='s2c', wrap_lon_at=180)
         c2s = CartesianToSpherical(name='c2s', wrap_lon_at=180)
 
@@ -730,13 +739,13 @@ class JWSTWCSCorrector(WCSCorrector):
             unit_conv | s2c | rot | c2tan | affine |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        total_corr.name = 'JWST tangent-plane linear correction. v1'
+        total_corr.name = corrector_name
 
         inv_total_corr = (
             unit_conv | s2c | rot | c2tan | affine_inv |
             tan2c | rot_inv | c2s | unit_conv_inv
         )
-        inv_total_corr.name = 'Inverse JWST tangent-plane linear correction. v1'
+        inv_total_corr.name = f'Inverse {corrector_name}'
 
         # TODO
         # re-enable circular inverse definitions once
@@ -811,9 +820,9 @@ class JWSTWCSCorrector(WCSCorrector):
         """
         Sets a tangent-plane correction of the GWCS object according to
         the provided liniar parameters. In addition, this function updates
-        the ``meta`` attribute of the `JWSTWCSCorrector` object with the values
-        of keyword arguments except for the argument ``meta`` which is
-        *merged* with the *attribute* ``meta``.
+        the ``meta`` attribute of the `ST_V2V3_WCSCorrector` object with
+        the values of keyword arguments except for the argument ``meta``
+        which is *merged* with the *attribute* ``meta``.
 
         Parameters
         ----------
@@ -836,7 +845,7 @@ class JWSTWCSCorrector(WCSCorrector):
             Dictionary that will be merged to the object's ``meta`` fields.
 
         **kwargs: optional parameters
-            Optional parameters for the WCS corrector. `JWSTWCSCorrector`
+            Optional parameters for the WCS corrector. `ST_V2V3_WCSCorrector`
             ignores these arguments (except for storing them in the ``meta``
             attribute).
 
@@ -856,19 +865,20 @@ class JWSTWCSCorrector(WCSCorrector):
         # if original WCS did not have tangent-plane corrections, create
         # new correction and add it to the WCs pipeline:
         if self._tpcorr is None:
-            self._tpcorr = JWSTWCSCorrector._tpcorr_init(
+            self._tpcorr = ST_V2V3_WCSCorrector._tpcorr_init(
                 v2_ref=self._wcsinfo['v2_ref'] / 3600.0,
                 v3_ref=self._wcsinfo['v3_ref'] / 3600.0,
-                roll_ref=self._wcsinfo['roll_ref']
+                roll_ref=self._wcsinfo['roll_ref'],
+                corrector_name=self.corrector_name
             )
 
-            JWSTWCSCorrector._tpcorr_combine_affines(
+            ST_V2V3_WCSCorrector._tpcorr_combine_affines(
                 self._tpcorr,
                 matrix,
                 _ARCSEC2RAD * np.asarray(shift)
             )
 
-            self._partial_tpcorr = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(
+            self._partial_tpcorr = ST_V2V3_WCSCorrector._v2v3_to_tpcorr_from_full(
                 self._tpcorr
             )
 
@@ -887,13 +897,13 @@ class JWSTWCSCorrector(WCSCorrector):
         else:
             # combine old and new corrections into a single one and replace
             # old transformation with the combined correction transformation:
-            JWSTWCSCorrector._tpcorr_combine_affines(
+            ST_V2V3_WCSCorrector._tpcorr_combine_affines(
                 self._tpcorr,
                 matrix,
                 _ARCSEC2RAD * np.asarray(shift)
             )
 
-            self._partial_tpcorr = JWSTWCSCorrector._v2v3_to_tpcorr_from_full(
+            self._partial_tpcorr = ST_V2V3_WCSCorrector._v2v3_to_tpcorr_from_full(
                 self._tpcorr
             )
 
@@ -1041,6 +1051,26 @@ class JWSTWCSCorrector(WCSCorrector):
 
         else:
             return self._owcs.pixel_bounds
+
+
+class JWSTWCSCorrector(ST_V2V3_WCSCorrector):
+    """ A class for holding ``JWST`` ``gWCS`` information and for managing
+    V2-V3 tangent-plane corrections. The units of the tangent plane of this
+    corrector are ``arcsec`` and the axes are not along/parallel to the
+    axes of the detector's coordinate system.
+    """
+    units = 'arcsec'
+    corrector_name = 'JWST tangent-plane linear correction. v1'
+
+
+class RomanWCSCorrector(ST_V2V3_WCSCorrector):
+    """ A class for holding ``Roman`` ``GWCS`` information and for managing
+    V2-V3 tangent-plane corrections. The units of the tangent plane of this
+    corrector are ``arcsec`` and the axes are not along/parallel to the
+    axes of the detector's coordinate system.
+    """
+    units = 'arcsec'
+    corrector_name = 'Roman V2-V3 tangent-plane linear correction. v1'
 
 
 @deprecated(since='0.8.0', alternative='WCSCorrector')

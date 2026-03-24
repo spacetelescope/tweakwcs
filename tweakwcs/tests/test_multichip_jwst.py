@@ -1,3 +1,5 @@
+import pytest
+
 import numpy as np
 from astropy.io import fits
 from astropy import table
@@ -125,10 +127,14 @@ def _match(x, y, tp_pscale, tp_units, **kwargs):
     return match
 
 
-def test_multichip_jwst_alignment():
+@pytest.mark.parametrize(
+    'corrector_cls',
+    [tweakwcs.JWSTWCSCorrector, tweakwcs.RomanWCSCorrector]
+)
+def test_multichip_jwst_alignment(corrector_cls):
     w1 = _make_gwcs_wcs('data/wfc3_uvis1.hdr')
 
-    imcat1 = tweakwcs.JWSTWCSCorrector(w1, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
+    imcat1 = corrector_cls(w1, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
     imcat1.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis1.cat'),
         format='ascii.csv',
@@ -141,7 +147,7 @@ def test_multichip_jwst_alignment():
     imcat1.meta['name'] = 'ext1'
 
     w2 = _make_gwcs_wcs('data/wfc3_uvis2.hdr')
-    imcat2 = tweakwcs.JWSTWCSCorrector(w2, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
+    imcat2 = corrector_cls(w2, {'v2_ref': 0, 'v3_ref': 0, 'roll_ref': 0})
     imcat2.meta['catalog'] = table.Table.read(
         get_pkg_data_filename('data/wfc3_uvis2.cat'),
         format='ascii.csv',
