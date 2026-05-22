@@ -14,7 +14,6 @@ import numbers
 import os
 import sys
 from copy import deepcopy
-import traceback
 
 import numpy as np
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
