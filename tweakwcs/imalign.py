@@ -950,7 +950,12 @@ def _max_overlap_pair(images, enforce_user_order):
         # Also, when ref. catalog is static - revert to old tweakreg behavior
         im1 = images.pop(0)  # reference image
         im2 = images.pop(0)
-        overlap_area = im1._guarded_intersection_area(im2)[0]
+        overlap_area, n_malformed = im1._guarded_intersection_area(im2)
+        if n_malformed > 0:
+            log.warning(
+                "MalformedPolygonError in spherical_geometry. Computed "
+                "overlap area (nimg=2) is not accurate."
+            )
         return im1, im2, overlap_area
 
     m = overlap_matrix(images)

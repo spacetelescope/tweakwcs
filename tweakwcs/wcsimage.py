@@ -354,22 +354,50 @@ class WCSImageCatalog:
 
         Return value: ``(area, nfailures)``
         """
-        if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
-            try:
-                return np.fabs(self.intersection(wcsim).area()), 0
-            except MalformedPolygonError:
+        try:
+            return np.fabs(self.intersection(wcsim).area()), 0
+        except MalformedPolygonError as e:
+            if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
+                log.debug(
+                    "Failed to compute intersection area of the image "
+                    "catalog '%s' and '%s' due to a bug in the "
+                    "'spherical_geometry' package. Returning "
+                    "0 for the intersection area. MalformedPolygonError: %s",
+                    self.name,
+                    wcsim.name,
+                    str(e),
+                )
                 return 0.0, 1
+            else:
+                log.debug(
+                    "Failed to compute intersection area of image catalog "
+                    "'%s' and '%s' due to a bug in the 'spherical_geometry' "
+                    "package. Will retry by computing area of individual "
+                    "members. MalformedPolygonError: %s",
+                    self.name,
+                    wcsim.name,
+                    str(e),
+                )
 
-        else:
             # this is bug workaround:
             area = 0.0
             nfailures = 0
             for wim in wcsim:
                 try:
                     area += np.fabs(self.polygon.intersection(wim.polygon).area())
-                except MalformedPolygonError:
+                except MalformedPolygonError as e:
+                    log.debug(
+                        "Failed to compute intersection area of the image "
+                        "catalog '%s' and one of the members of '%s' due to a "
+                        "bug in the 'spherical_geometry' package. "
+                        "Skipping this member. MalformedPolygonError: %s",
+                        self.name,
+                        wim.name,
+                        str(e),
+                    )
                     nfailures += 1
                     continue
+
             return area, nfailures
 
     def _calc_chip_bounding_polygon(self, stepsize=None):
@@ -710,11 +738,12 @@ class WCSGroupCatalog:
         if polygons:
             try:
                 self._polygon = SphericalPolygon.multi_union(polygons)
-            except MalformedPolygonError:
+            except MalformedPolygonError as e:
                 log.warning(
                     "MalformedPolygonError in spherical_geometry. Using "
                     "convex hull instead of multi_union. Alignment order "
-                    "may be sub-optimal."
+                    "may be sub-optimal. Error: %s",
+                    str(e)
                 )
                 refcat = RefCatalog(self._catalog)
                 self._polygon = refcat.polygon
@@ -1560,21 +1589,49 @@ class RefCatalog:
         ``MalformedPolygonError`` error.
 
         Return value: ``(area, nfailures)``
-        """
-        if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
-            try:
-                return np.fabs(self.intersection(wcsim).area()), 0
-            except MalformedPolygonError:
-                return 0.0, 1
 
-        else:
+        """
+        try:
+            return np.fabs(self.intersection(wcsim).area()), 0
+        except MalformedPolygonError as e:
+            if isinstance(wcsim, (WCSImageCatalog, RefCatalog)):
+                log.debug(
+                    "Failed to compute intersection area of the reference "
+                    "catalog '%s' and '%s' due to a bug in the "
+                    "'spherical_geometry' package. Returning "
+                    "0 for the intersection area. MalformedPolygonError: %s",
+                    self.name,
+                    wcsim.name,
+                    str(e),
+                )
+                return 0.0, 1
+            else:
+                log.debug(
+                    "Failed to compute intersection area of reference catalog "
+                    "'%s' and '%s' due to a bug in the 'spherical_geometry' "
+                    "package. Will retry by computing area of individual "
+                    "members. MalformedPolygonError: %s",
+                    self.name,
+                    wcsim.name,
+                    str(e),
+                )
+
             # this is bug workaround:
             area = 0.0
             nfailures = 0
             for wim in wcsim:
                 try:
                     area += np.fabs(self.polygon.intersection(wim.polygon).area())
-                except MalformedPolygonError:
+                except MalformedPolygonError as e:
+                    log.debug(
+                        "Failed to compute intersection area of the reference "
+                        "catalog '%s' and one of the members of '%s' due to a "
+                        "bug in the 'spherical_geometry' package. "
+                        "Skipping this member. MalformedPolygonError: %s",
+                        self.name,
+                        wim.name,
+                        str(e),
+                    )
                     nfailures += 1
                     continue
 
