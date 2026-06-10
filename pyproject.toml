@@ -1,7 +1,7 @@
 [project]
 name = "tweakwcs"
 description = "A package for correcting alignment errors in WCS objects"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Mihai Cara" },
 ]
