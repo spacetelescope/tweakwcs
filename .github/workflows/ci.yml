@@ -28,8 +28,6 @@ jobs:
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@2835f0cacddf3f8de198db9afdb5354a5cebe0ef  # v2.6.3
     with:
       envs: |
-        - macos: py311-numpy121-xdist
-        - linux: py311-numpy125-xdist
         - linux: py311-xdist
           pytest-results-summary: true
         - macos: py311-xdist
