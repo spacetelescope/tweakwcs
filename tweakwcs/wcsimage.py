@@ -533,14 +533,10 @@ class WCSImageCatalog:
             dy /= d
             du = -dy
             dv = dx
-            p1x = x[0] - 0.5 * dx
-            p1y = y[0] - 0.5 * dy
-            p2x = x[1] + 0.5 * dx
-            p2y = y[1] + 0.5 * dy
             # build a rectangle by shifting the line segment by 0.5 in the
             # direction perpendicular to the line:
-            x = np.array([p1x + 0.5 * du, p1x - 0.5 * du, p2x - 0.5 * du, p2x + 0.5 * du, p1x + 0.5 * du])
-            y = np.array([p1y + 0.5 * dv, p1y - 0.5 * dv, p2y - 0.5 * dv, p2y + 0.5 * dv, p1y + 0.5 * dv])
+            x = np.array([x[0] + 0.5 * du, x[0] - 0.5 * du, x[1] - 0.5 * du, x[1] + 0.5 * du, x[0] + 0.5 * du])
+            y = np.array([y[0] + 0.5 * dv, y[0] - 0.5 * dv, y[1] - 0.5 * dv, y[1] + 0.5 * dv, y[0] + 0.5 * dv])
 
         elif len(x) > 3:
             # find minimal area rectangle that contains all points:
