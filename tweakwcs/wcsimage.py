@@ -501,9 +501,8 @@ class WCSImageCatalog:
 
         elif len(x) > 2:
             x, y = convex_hull(x, y, wcs=None, min_separation=0.0001)
-            # else, for len(x) in [1, 2], use entire image footprint.
-            # TODO: a more robust algorithm should be implemented to deal with
-            #       len(x) in [1, 2] cases.
+            # convex hull returns a closed polygon, so we do not need to close
+            # it again.
 
             if len(x) > 3:
                 # convert x, y vertex coordinates to RA & DEC:
@@ -514,6 +513,7 @@ class WCSImageCatalog:
                 p = SphericalPolygon.from_radec(ra, dec)
 
                 if not p.degenerate:
+                    # we have a valid polygon, so we can use it:
                     self._polygon = p
                     self._bb_radec = (ra, dec)
                     self._poly_area = np.fabs(p.area())
@@ -529,16 +529,54 @@ class WCSImageCatalog:
             dx = x[1] - x[0]
             dy = y[1] - y[0]
             d = np.sqrt(dx * dx + dy * dy)
-            dx /= d
-            dy /= d
-            du = -dy
-            dv = dx
-            # build a rectangle by shifting the line segment by 0.5 in the
-            # direction perpendicular to the line:
-            x = np.array([x[0] + 0.5 * du, x[0] - 0.5 * du, x[1] - 0.5 * du, x[1] + 0.5 * du, x[0] + 0.5 * du])
-            y = np.array([y[0] + 0.5 * dv, y[0] - 0.5 * dv, y[1] - 0.5 * dv, y[1] + 0.5 * dv, y[0] + 0.5 * dv])
+            if d < 0.0001:
+                # two points are the same, so we create a small box centered
+                # on the point:
+                x = np.array(
+                    [
+                        x[0] - 0.5,
+                        x[0] + 0.5,
+                        x[0] + 0.5,
+                        x[0] - 0.5,
+                        x[0] - 0.5
+                    ]
+                )
+                y = np.array(
+                    [
+                        y[0] - 0.5,
+                        y[0] - 0.5,
+                        y[0] + 0.5,
+                        y[0] + 0.5,
+                        y[0] - 0.5
+                    ]
+                )
+            else:
+                dx /= d
+                dy /= d
+                du = -dy
+                dv = dx
+                # build a rectangle by shifting the line segment by 0.5 in the
+                # direction perpendicular to the line:
+                x = np.array(
+                    [
+                        x[0] + 0.5 * du,
+                        x[0] - 0.5 * du,
+                        x[1] - 0.5 * du,
+                        x[1] + 0.5 * du,
+                        x[0] + 0.5 * du
+                    ]
+                )
+                y = np.array(
+                    [
+                        y[0] + 0.5 * dv,
+                        y[0] - 0.5 * dv,
+                        y[1] - 0.5 * dv,
+                        y[1] + 0.5 * dv,
+                        y[0] + 0.5 * dv
+                    ]
+                )
 
-        elif len(x) > 3:
+        elif len(x) >= 3:
             # find minimal area rectangle that contains all points:
             min_area = np.inf
             for p1, p2 in zip(zip(x, y), zip(x[1:] + [x[0]], y[1:] + [y[0]])):
