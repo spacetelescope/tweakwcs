@@ -1,16 +1,16 @@
 [project]
 name = "tweakwcs"
 description = "A package for correcting alignment errors in WCS objects"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Mihai Cara" },
 ]
 dependencies = [
-    "numpy",
+    "numpy>=1.25.0",
     "astropy>=5.0.4",
     "gwcs>=0.14.0",
     "stsci.stimage",
-    "spherical_geometry>=1.2.20",
+    "spherical_geometry>=1.4.0",
     "packaging>=21.1",
 ]
 license-files = ["LICENSE.txt"]

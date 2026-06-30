@@ -500,14 +500,137 @@ class WCSImageCatalog:
             )
 
         elif len(x) > 2:
-            ra, dec = convex_hull(x, y, wcs=self.det_to_world, min_separation=1e-11)
-            # else, for len(x) in [1, 2], use entire image footprint.
-            # TODO: a more robust algorithm should be implemented to deal with
-            #       len(x) in [1, 2] cases.
+            x, y = convex_hull(x, y, wcs=None, min_separation=0.0001)
+            # convex hull returns a closed polygon, so we do not need to close
+            # it again.
 
+            if len(x) > 3:
+                # convert x, y vertex coordinates to RA & DEC:
+                ra, dec = self.det_to_world(x, y)
+                ra[-1] = ra[0]
+                dec[-1] = dec[0]
+
+                p = SphericalPolygon.from_radec(ra, dec)
+
+                if not p.degenerate:
+                    # we have a valid polygon, so we can use it:
+                    self._polygon = p
+                    self._bb_radec = (ra, dec)
+                    self._poly_area = np.fabs(p.area())
+                    return
+
+        if len(x) == 1:
+            # one point: create a small box centered on the point:
+            x = np.array([x[0] - 0.5, x[0] + 0.5, x[0] + 0.5, x[0] - 0.5, x[0] - 0.5])
+            y = np.array([y[0] - 0.5, y[0] - 0.5, y[0] + 0.5, y[0] + 0.5, y[0] - 0.5])
+
+        elif len(x) == 2:
+            # two points: create a small box that contains both points:
+            dx = x[1] - x[0]
+            dy = y[1] - y[0]
+            d = np.sqrt(dx * dx + dy * dy)
+            if d < 0.0001:
+                # two points are the same, so we create a small box centered
+                # on the point:
+                x = np.array(
+                    [
+                        x[0] - 0.5,
+                        x[0] + 0.5,
+                        x[0] + 0.5,
+                        x[0] - 0.5,
+                        x[0] - 0.5
+                    ]
+                )
+                y = np.array(
+                    [
+                        y[0] - 0.5,
+                        y[0] - 0.5,
+                        y[0] + 0.5,
+                        y[0] + 0.5,
+                        y[0] - 0.5
+                    ]
+                )
+            else:
+                dx /= d
+                dy /= d
+                du = -dy
+                dv = dx
+                # build a rectangle by shifting the line segment by 0.5 in the
+                # direction perpendicular to the line:
+                x = np.array(
+                    [
+                        x[0] + 0.5 * du,
+                        x[0] - 0.5 * du,
+                        x[1] - 0.5 * du,
+                        x[1] + 0.5 * du,
+                        x[0] + 0.5 * du
+                    ]
+                )
+                y = np.array(
+                    [
+                        y[0] + 0.5 * dv,
+                        y[0] - 0.5 * dv,
+                        y[1] - 0.5 * dv,
+                        y[1] + 0.5 * dv,
+                        y[0] + 0.5 * dv
+                    ]
+                )
+
+        elif len(x) >= 3:
+            # find minimal area rectangle that contains all points:
+            min_area = np.inf
+            for p1, p2 in zip(zip(x, y), zip(x[1:] + [x[0]], y[1:] + [y[0]])):
+                dx = p2[0] - p1[0]
+                dy = p2[1] - p1[1]
+                d = np.sqrt(dx * dx + dy * dy)
+                dx /= d
+                dy /= d
+                du = -dy
+                dv = dx
+                min_u = np.inf
+                max_u = -np.inf
+                min_v = np.inf
+                max_v = -np.inf
+                for px, py in zip(x, y):
+                    u = (px - p1[0]) * dx + (py - p1[1]) * dy
+                    v = (px - p1[0]) * du + (py - p1[1]) * dv
+                    min_u = min(min_u, u) - 0.5
+                    max_u = max(max_u, u) + 0.5
+                    min_v = min(min_v, v) - 0.5
+                    max_v = max(max_v, v) + 0.5
+                area = (max_u - min_u) * (max_v - min_v)
+                if area < min_area:
+                    min_area = area
+                    x = np.array(
+                        [
+                            p1[0] + min_u * dx + min_v * du,
+                            p1[0] + min_u * dx - max_v * du,
+                            p1[0] + max_u * dx - max_v * du,
+                            p1[0] + max_u * dx + min_v * du,
+                            p1[0] + min_u * dx + min_v * du,
+                        ]
+                    )
+                    y = np.array(
+                        [
+                            p1[1] + min_u * dy + min_v * dv,
+                            p1[1] + min_u * dy - max_v * dv,
+                            p1[1] + max_u * dy - max_v * dv,
+                            p1[1] + max_u * dy + min_v * dv,
+                            p1[1] + min_u * dy + min_v * dv,
+                        ]
+                    )
+
+            # convert x, y vertex coordinates to RA & DEC:
+            ra, dec = self.det_to_world(x, y)
+            ra[-1] = ra[0]
+            dec[-1] = dec[0]
+
+            p = SphericalPolygon.from_radec(ra, dec)
+
+            self._polygon = p
             self._bb_radec = (ra, dec)
-            self._polygon = SphericalPolygon.from_radec(ra, dec)
-            self._poly_area = np.fabs(self._polygon.area())
+            self._poly_area = np.fabs(p.area())
+
 
     def calc_bounding_polygon(self):
         """

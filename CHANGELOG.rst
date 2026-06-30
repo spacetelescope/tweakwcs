@@ -5,6 +5,13 @@ Release Notes
 =============
 
 
+0.9.1 (30-June-2026)
+====================
+
+- Improved handling of edge cases in bounding polygon calculations for
+  catalogs in the ``WCSImage`` class. [#254]
+
+
 0.9.0 (14-May-2026)
 ===================
 
