@@ -8,7 +8,7 @@ Release Notes
 0.9.1 (unreleased)
 ==================
 
-- Improved handling of edge cases in bounding poligon calculations for
+- Improved handling of edge cases in bounding polygon calculations for
   catalogs in the ``WCSImage`` class. [#254]
 
 
