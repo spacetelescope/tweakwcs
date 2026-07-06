@@ -620,8 +620,46 @@ class WCSImageCatalog:
                         ]
                     )
 
+            xmin = np.min(x)
+            xmax = np.max(x)
+            ymin = np.min(y)
+            ymax = np.max(y)
+            (xmin_b, xmax_b), (ymin_b, ymax_b) = self.corrector.bounding_box
+
+            if xmin < xmin_b or xmax > xmax_b or ymin < ymin_b or ymax > ymax_b:
+                # Ideally we could use Sutherland-Hodgman polygon clipping
+                # to clip the polygon to the image bounding box, but that is:
+                # 1) additional complication; and
+                # 2) not really critical because these polygons and their areas
+                #    are used only for figuring out the order of alignment of
+                #    images and catalogs, so a small error in the area is not
+                #    critical.
+                # 3) Clipping to the bounding box could produce polygons with
+                #    very close vertices which could cause problems for
+                #    the spherical_geometry package which is what we are trying
+                #    to avoid here.
+                #
+                # Therefore, we will just compute a rectangle of width and
+                # height >= 1 pixels with axes aligned to the image bounding
+                # box, clip it to the bounding box, and use that instead.
+                xmin = max(xmin - 0.5, xmin_b)
+                xmax = min(xmax + 0.5, xmax_b)
+                ymin = max(ymin - 0.5, ymin_b)
+                ymax = min(ymax + 0.5, ymax_b)
+                if xmax - xmin < 1:
+                    xc = 0.5 * (xmin + xmax)
+                    xmin = max(xc - 0.5, xmin_b)
+                    xmax = min(xc + 0.5, xmax_b)
+                if ymax - ymin < 1:
+                    yc = 0.5 * (ymin + ymax)
+                    ymin = max(yc - 0.5, ymin_b)
+                    ymax = min(yc + 0.5, ymax_b)
+                x = np.array([xmin, xmax, xmax, xmin, xmin])
+                y = np.array([ymin, ymin, ymax, ymax, ymin])
+
             # convert x, y vertex coordinates to RA & DEC:
             ra, dec = self.det_to_world(x, y)
+
             ra[-1] = ra[0]
             dec[-1] = dec[0]
 
@@ -630,7 +668,6 @@ class WCSImageCatalog:
             self._polygon = p
             self._bb_radec = (ra, dec)
             self._poly_area = np.fabs(p.area())
-
 
     def calc_bounding_polygon(self):
         """
