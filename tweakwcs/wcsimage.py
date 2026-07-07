@@ -507,13 +507,14 @@ class WCSImageCatalog:
 
             if len(x) > 3:
                 # convert x, y vertex coordinates to RA & DEC:
-                ra, dec = self.det_to_world(x, y)
+                ra, dec = self.det_to_world(xp, yp)
                 ra[-1] = ra[0]
                 dec[-1] = dec[0]
 
-                p = SphericalPolygon.from_radec(ra, dec)
 
-                if not p.degenerate:
+                p = SphericalPolygon.from_radec(ra, dec)  #, center=self.det_to_world(np.mean(x), np.mean(y)))
+
+                if not hasattr(p, "degenerate") or not p.degenerate:
                     # we have a valid polygon, so we can use it:
                     self._polygon = p
                     self._bb_radec = (ra, dec)
@@ -548,13 +549,24 @@ class WCSImageCatalog:
             p4 = c - d1 * u + v
             xp, yp = np.array([p1, p2, p3, p4, p1]).T
 
-        elif len(x) >= 3:
-            # find minimal area rectangle that contains all points.
-            x = x.tolist()
-            y = y.tolist()
+        elif len(x) >= 3 or len(xp) > 3:
+            # find minimal area rectangle that contains all points. We do not
+            # have to start from scratch because the convex hull algorithm
+            # already computed the convex hull. It is just that it results
+            # in a degenerate spherical polygon (vertices on one line) or a
+            # polygon with area 0. Therefore, we will compute the minimal
+            # area rectangle that contains all points.
             min_area = np.inf
 
-            for p1, p2 in zip(zip(x, y), zip(x[1:] + [x[0]], y[1:] + [y[0]])):
+            if len(xp) <= 3:
+                # convex hull failed, so we will use the original points:
+                xi = x.to_list() + [x[0]]
+                yi = y.to_list() + [y[0]]
+            else:
+                xi = xp
+                yi = yp
+
+            for p1, p2 in zip(zip(xi[:-1], yi[:-1]), zip(xi[1:], yi[1:])):
                 dx = p2[0] - p1[0]
                 dy = p2[1] - p1[1]
                 d = np.sqrt(dx * dx + dy * dy)
@@ -566,7 +578,7 @@ class WCSImageCatalog:
                 max_u = -np.inf
                 min_v = np.inf
                 max_v = -np.inf
-                for px, py in zip(x, y):
+                for px, py in zip(xi, yi):
                     u = (px - p1[0]) * dx + (py - p1[1]) * dy
                     v = (px - p1[0]) * du + (py - p1[1]) * dv
 
