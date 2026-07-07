@@ -14,6 +14,7 @@ import numbers
 import os
 import sys
 from copy import deepcopy
+from math import sqrt
 
 import numpy as np
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
@@ -490,8 +491,8 @@ class WCSImageCatalog:
         if self.corrector is None or self.catalog is None:
             return
 
-        x = self.catalog["x"]
-        y = self.catalog["y"]
+        x = self.catalog["x"].data
+        y = self.catalog["y"].data
 
         if len(x) == 0:
             # no points
@@ -500,7 +501,7 @@ class WCSImageCatalog:
             )
 
         elif len(x) > 2:
-            x, y = convex_hull(x, y, wcs=None, min_separation=0.0001)
+            xp, yp = convex_hull(x, y, wcs=None, min_separation=0.0001)
             # convex hull returns a closed polygon, so we do not need to close
             # it again.
 
@@ -521,64 +522,38 @@ class WCSImageCatalog:
 
         if len(x) == 1:
             # one point: create a small box centered on the point:
-            x = np.array([x[0] - 0.5, x[0] + 0.5, x[0] + 0.5, x[0] - 0.5, x[0] - 0.5])
-            y = np.array([y[0] - 0.5, y[0] - 0.5, y[0] + 0.5, y[0] + 0.5, y[0] - 0.5])
+            xp = np.array([x[0] - 0.5, x[0] + 0.5, x[0] + 0.5, x[0] - 0.5, x[0] - 0.5])
+            yp = np.array([y[0] - 0.5, y[0] - 0.5, y[0] + 0.5, y[0] + 0.5, y[0] - 0.5])
 
         elif len(x) == 2:
             # two points: create a small box that contains both points:
             dx = x[1] - x[0]
             dy = y[1] - y[0]
-            d = np.sqrt(dx * dx + dy * dy)
+            d = sqrt(dx * dx + dy * dy)
+            c = 0.5 * np.array([x[0] + x[1], y[0] + y[1]])
             if d < 0.0001:
                 # two points are the same, so we create a small box centered
                 # on the point:
-                x = np.array(
-                    [
-                        x[0] - 0.5,
-                        x[0] + 0.5,
-                        x[0] + 0.5,
-                        x[0] - 0.5,
-                        x[0] - 0.5
-                    ]
-                )
-                y = np.array(
-                    [
-                        y[0] - 0.5,
-                        y[0] - 0.5,
-                        y[0] + 0.5,
-                        y[0] + 0.5,
-                        y[0] - 0.5
-                    ]
-                )
+                u = np.array([0.5, 0.0])
+                v = np.array([0.0, 0.5])
             else:
-                dx /= d
-                dy /= d
-                du = -dy
-                dv = dx
-                # build a rectangle by shifting the line segment by 0.5 in the
-                # direction perpendicular to the line:
-                x = np.array(
-                    [
-                        x[0] + 0.5 * du,
-                        x[0] - 0.5 * du,
-                        x[1] - 0.5 * du,
-                        x[1] + 0.5 * du,
-                        x[0] + 0.5 * du
-                    ]
-                )
-                y = np.array(
-                    [
-                        y[0] + 0.5 * dv,
-                        y[0] - 0.5 * dv,
-                        y[1] - 0.5 * dv,
-                        y[1] + 0.5 * dv,
-                        y[0] + 0.5 * dv
-                    ]
-                )
+                u = np.array([dx, dy]) / (2.0 * d)
+                v = np.array([-dy, dx]) / (2.0 * d)
+
+            d1 = d + 1
+
+            p1 = c - d1 * u - v
+            p2 = c + d1 * u - v
+            p3 = c + d1 * u + v
+            p4 = c - d1 * u + v
+            xp, yp = np.array([p1, p2, p3, p4, p1]).T
 
         elif len(x) >= 3:
-            # find minimal area rectangle that contains all points:
+            # find minimal area rectangle that contains all points.
+            x = x.tolist()
+            y = y.tolist()
             min_area = np.inf
+
             for p1, p2 in zip(zip(x, y), zip(x[1:] + [x[0]], y[1:] + [y[0]])):
                 dx = p2[0] - p1[0]
                 dy = p2[1] - p1[1]
@@ -594,80 +569,87 @@ class WCSImageCatalog:
                 for px, py in zip(x, y):
                     u = (px - p1[0]) * dx + (py - p1[1]) * dy
                     v = (px - p1[0]) * du + (py - p1[1]) * dv
-                    min_u = min(min_u, u) - 0.5
-                    max_u = max(max_u, u) + 0.5
-                    min_v = min(min_v, v) - 0.5
-                    max_v = max(max_v, v) + 0.5
+
+                    min_u = min(min_u, u - 0.5)
+                    max_u = max(max_u, u + 0.5)
+                    min_v = min(min_v, v - 0.5)
+                    max_v = max(max_v, v + 0.5)
+
                 area = (max_u - min_u) * (max_v - min_v)
                 if area < min_area:
                     min_area = area
-                    x = np.array(
+                    xp = np.array(
                         [
                             p1[0] + min_u * dx + min_v * du,
-                            p1[0] + min_u * dx - max_v * du,
-                            p1[0] + max_u * dx - max_v * du,
                             p1[0] + max_u * dx + min_v * du,
+                            p1[0] + max_u * dx + max_v * du,
+                            p1[0] + min_u * dx + max_v * du,
                             p1[0] + min_u * dx + min_v * du,
                         ]
                     )
-                    y = np.array(
+                    yp = np.array(
                         [
                             p1[1] + min_u * dy + min_v * dv,
-                            p1[1] + min_u * dy - max_v * dv,
-                            p1[1] + max_u * dy - max_v * dv,
                             p1[1] + max_u * dy + min_v * dv,
+                            p1[1] + max_u * dy + max_v * dv,
+                            p1[1] + min_u * dy + max_v * dv,
                             p1[1] + min_u * dy + min_v * dv,
                         ]
                     )
 
-            xmin = np.min(x)
-            xmax = np.max(x)
-            ymin = np.min(y)
-            ymax = np.max(y)
-            (xmin_b, xmax_b), (ymin_b, ymax_b) = self.corrector.bounding_box
+        xmin = np.min(xp)
+        xmax = np.max(xp)
+        ymin = np.min(yp)
+        ymax = np.max(yp)
+        (xmin_b, xmax_b), (ymin_b, ymax_b) = self.corrector.bounding_box
 
-            if xmin < xmin_b or xmax > xmax_b or ymin < ymin_b or ymax > ymax_b:
-                # Ideally we could use Sutherland-Hodgman polygon clipping
-                # to clip the polygon to the image bounding box, but that is:
-                # 1) additional complication; and
-                # 2) not really critical because these polygons and their areas
-                #    are used only for figuring out the order of alignment of
-                #    images and catalogs, so a small error in the area is not
-                #    critical.
-                # 3) Clipping to the bounding box could produce polygons with
-                #    very close vertices which could cause problems for
-                #    the spherical_geometry package which is what we are trying
-                #    to avoid here.
-                #
-                # Therefore, we will just compute a rectangle of width and
-                # height >= 1 pixels with axes aligned to the image bounding
-                # box, clip it to the bounding box, and use that instead.
-                xmin = max(xmin - 0.5, xmin_b)
-                xmax = min(xmax + 0.5, xmax_b)
-                ymin = max(ymin - 0.5, ymin_b)
-                ymax = min(ymax + 0.5, ymax_b)
-                if xmax - xmin < 1:
-                    xc = 0.5 * (xmin + xmax)
-                    xmin = max(xc - 0.5, xmin_b)
-                    xmax = min(xc + 0.5, xmax_b)
-                if ymax - ymin < 1:
-                    yc = 0.5 * (ymin + ymax)
-                    ymin = max(yc - 0.5, ymin_b)
-                    ymax = min(yc + 0.5, ymax_b)
-                x = np.array([xmin, xmax, xmax, xmin, xmin])
-                y = np.array([ymin, ymin, ymax, ymax, ymin])
+        if xmin < xmin_b or xmax > xmax_b or ymin < ymin_b or ymax > ymax_b:
+            # Ideally we could use Sutherland-Hodgman polygon clipping
+            # to clip the polygon to the image bounding box, but that is:
+            # 1) additional complication; and
+            # 2) not really critical because these polygons and their areas
+            #    are used only for figuring out the order of alignment of
+            #    images and catalogs, so a small error in the area is not
+            #    critical.
+            # 3) Clipping to the bounding box could produce polygons with
+            #    very close vertices which could cause problems for
+            #    the spherical_geometry package which is what we are trying
+            #    to avoid here.
+            #
+            # Therefore, we will just compute a rectangle of width and
+            # height >= 1 pixels with axes aligned to the image bounding
+            # box, clip it to the bounding box, and use that instead.
+            xmin = max(min(x) - 0.5, xmin_b)
+            xmax = min(max(x) + 0.5, xmax_b)
+            ymin = max(min(y) - 0.5, ymin_b)
+            ymax = min(max(y) + 0.5, ymax_b)
 
-            # convert x, y vertex coordinates to RA & DEC:
-            ra, dec = self.det_to_world(x, y)
+            if xmax - xmin < 1:
+                if xmax == xmax_b:
+                    xmin = max(xmax - 1.0, xmin_b)
+                elif xmin == xmin_b:
+                    xmax = min(xmin + 1.0, xmax_b)
 
-            ra[-1] = ra[0]
-            dec[-1] = dec[0]
+            if ymax - ymin < 1:
+                if ymax == ymax_b:
+                    ymin = max(ymax - 1.0, ymin_b)
+                elif ymin == ymin_b:
+                    ymax = min(ymin + 1.0, ymax_b)
 
-            p = SphericalPolygon.from_radec(ra, dec)
+            xp = np.array([xmin, xmax, xmax, xmin, xmin])
+            yp = np.array([ymin, ymin, ymax, ymax, ymin])
 
-            self._polygon = p
-            self._bb_radec = (ra, dec)
-            self._poly_area = np.fabs(p.area())
+        # convert x, y vertex coordinates to RA & DEC:
+        ra, dec = self.det_to_world(xp, yp)
+
+        ra[-1] = ra[0]
+        dec[-1] = dec[0]
+
+        p = SphericalPolygon.from_radec(ra, dec)
+
+        self._polygon = p
+        self._bb_radec = (ra, dec)
+        self._poly_area = np.fabs(p.area())
 
     def calc_bounding_polygon(self):
         """
