@@ -5,7 +5,7 @@ Release Notes
 =============
 
 
-0.9.2 (06-July-2026)
+0.9.2 (07-July-2026)
 ====================
 
 - Improved handling of edge cases in bounding polygon calculations for
