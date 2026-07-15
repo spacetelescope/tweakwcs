@@ -277,6 +277,7 @@ def test_wcsgroupcat_empty_cat(mock_fits_wcs, rect_imcat):
     nmatches, *_ = g.match2ref(ref, match=XYXYMatch())
     assert nmatches == 0
 
+
 @pytest.mark.parametrize(
     "xy, expected_rect",
     [
@@ -290,39 +291,33 @@ def test_wcsgroupcat_empty_cat(mock_fits_wcs, rect_imcat):
         ),
         (
             1.0 + np.array([[0.0, 0.0], [0.2, 0.2]]),
-            1.0 + np.array(
+            1.0
+            + np.array(
                 [
                     [0.0, -_ONE_SQRT2],
                     [_ONE_SQRT2 + 0.2, 0.2],
                     [0.2, _ONE_SQRT2 + 0.2],
                     [-_ONE_SQRT2, 0.0],
-                    [0.0, -_ONE_SQRT2]
+                    [0.0, -_ONE_SQRT2],
                 ]
             ),
         ),
         (
             5.0 + np.array([[0.0, 0.0], [0.2, 0.2], [0.6, 0.7]]),
-            5.0 + np.array(
+            5.0
+            + np.array(
                 [
                     [0.54576739, 1.40502399],
                     [-0.70502399, -0.05423261],
                     [0.0707032, -0.71914163],
                     [1.32149458, 0.74011497],
-                    [0.54576739, 1.40502399]
+                    [0.54576739, 1.40502399],
                 ]
             ),
         ),
         (
             np.array([[0.0, 0.0], [0.2, 0.2], [0.6, 0.7]]),
-            np.array(
-                [
-                    [-0.5, -0.5],
-                    [1.1, -0.5],
-                    [1.1, 1.2],
-                    [-0.5, 1.2],
-                    [-0.5, -0.5]
-                ]
-            ),
+            np.array([[-0.5, -0.5], [1.1, -0.5], [1.1, 1.2], [-0.5, 1.2], [-0.5, -0.5]]),
         ),
         (
             np.array([[1.1, 1.2]]),
@@ -335,7 +330,9 @@ def test_wcsimage_tiny_cat(mock_fits_wcs, xy, expected_rect):
     corr = FITSWCSCorrector(mock_fits_wcs)
 
     w = WCSImageCatalog(imcat, corr)
-    ra_expected, dec_expected = mock_fits_wcs.all_pix2world(expected_rect[:, 0], expected_rect[:, 1], 0)
+    ra_expected, dec_expected = mock_fits_wcs.all_pix2world(
+        expected_rect[:, 0], expected_rect[:, 1], 0
+    )
     ra_expected = sorted(map(float, ra_expected))
     dec_expected = sorted(map(float, dec_expected))
 

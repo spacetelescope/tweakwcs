@@ -511,8 +511,9 @@ class WCSImageCatalog:
                 ra[-1] = ra[0]
                 dec[-1] = dec[0]
 
-
-                p = SphericalPolygon.from_radec(ra, dec)  #, center=self.det_to_world(np.mean(x), np.mean(y)))
+                p = SphericalPolygon.from_radec(
+                    ra, dec
+                )  # , center=self.det_to_world(np.mean(x), np.mean(y)))
 
                 if not hasattr(p, "degenerate") or not p.degenerate:
                     # we have a valid polygon, so we can use it:
@@ -897,7 +898,7 @@ class WCSGroupCatalog:
                     "MalformedPolygonError in spherical_geometry. Using "
                     "convex hull instead of multi_union. Alignment order "
                     "may be sub-optimal. Error: %s",
-                    str(e)
+                    str(e),
                 )
                 refcat = RefCatalog(self._catalog)
                 self._polygon = refcat.polygon
