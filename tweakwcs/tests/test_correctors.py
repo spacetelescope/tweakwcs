@@ -34,13 +34,14 @@ from .helper_correctors import (
 
 _ATOL = 100 * np.finfo(np.array([1.0]).dtype).eps
 _GWCS_GE_0P24 = Version(gwcs.__version__) >= Version("0.24")
+RNG = np.random.default_rng(42)
 
 
 def test_tpwcs():
     tpwcs = DummyWCSCorrector(None, meta={})
-    x, y, ra, dec = np.random.random(4)
-    matrix = np.random.random((2, 2))
-    shift = np.random.random(2)
+    x, y, ra, dec = RNG.random(4)
+    matrix = RNG.random((2, 2))
+    shift = RNG.random(2)
 
     assert tpwcs.world_to_det(ra, dec) == (ra, dec)
     assert tpwcs.world_to_tanp(ra, dec) == (ra, dec)
@@ -109,10 +110,10 @@ def test_v2v3todet_roundtrips(corr_cls):
     s2c = (Scale(1.0 / 3600.0) & Scale(1.0 / 3600.0)) | SphericalToCartesian(wrap_lon_at=180)
 
     s = 1.0e-5
-    crpix = np.random.random(2)
-    alpha = 0.25 * np.pi * np.random.random()
-    x, y = 1024 * np.random.random(2)
-    v2, v3 = 45 * np.random.random(2)
+    crpix = RNG.random(2)
+    alpha = 0.25 * np.pi * RNG.random()
+    x, y = 1024 * RNG.random(2)
+    v2, v3 = 45 * RNG.random(2)
     cd = [[s * np.cos(alpha), -s * np.sin(alpha)], [s * np.sin(alpha), s * np.cos(alpha)]]
 
     d2v = create_DetToV2V3(
