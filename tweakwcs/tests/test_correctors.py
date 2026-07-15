@@ -16,6 +16,7 @@ from packaging.version import Version
 from astropy import wcs as fitswcs
 from astropy.modeling import CompoundModel
 from astropy.modeling.models import Identity, Scale
+from astropy.table import MaskedColumn
 from tweakwcs.correctors import (
     FITSWCSCorrector,
     JWSTWCSCorrector,
@@ -238,23 +239,10 @@ def test_jwstgwcs_ref_angles_preserved(mock_st_wcs):
 # Test inputs with different shapes
 
 
-@pytest.mark.parametrize(
-    "inputs",
-    [
-        [500, 512, 12, 24],
-        [[500, 500], [512, 512], [12, 12], [24, 24]],
-        [
-            [[500, 500], [500, 500]],
-            [[512, 512], [512, 512]],
-            [[12, 12], [12, 12]],
-            [[24, 24], [24, 24]],
-        ],
-    ],
-)
-@pytest.mark.parametrize("corr_cls", [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector])
-def test_jwstgwcs_detector_to_world(inputs, corr_cls):
+@pytest.fixture(params=[ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector])
+def corrector(request):
     w = make_mock_st_wcs(
-        corr_cls=corr_cls,
+        corr_cls=request.param,
         v2ref=0.0,
         v3ref=0.0,
         roll=0.0,
@@ -262,37 +250,285 @@ def test_jwstgwcs_detector_to_world(inputs, corr_cls):
         cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]],
         crval=[12.0, 24.0],
     )
-    wc = corr_cls(w, {"v2_ref": 0.0, "v3_ref": 0.0, "roll_ref": 0.0})
+    wc = request.param(w, {"v2_ref": 0.0, "v3_ref": 0.0, "roll_ref": 0.0})
     wc.set_correction()
-    x, y, ra, dec = inputs
-    assert np.allclose(wc.det_to_world(x, y), (ra, dec), atol=_ATOL)
-    assert np.allclose(wc.world_to_det(ra, dec), (x, y), atol=_ATOL)
+
+    return wc
 
 
-@pytest.mark.parametrize(
-    "inputs",
-    [
-        [0, 0, 12, 24],
-        [[0, 0], [0, 0], [12, 12], [24, 24]],
-        [[[0, 0], [0, 0]], [[0, 0], [0, 0]], [[12, 12], [12, 12]], [[24, 24], [24, 24]]],
+@pytest.fixture(
+    params=[
+        pytest.param((500, 512, 12, 24), id="scalars"),
+        pytest.param(
+            (
+                [500, 500],
+                [512, 512],
+                [12, 12],
+                [24, 24],
+            ),
+            id="lists",
+        ),
+        pytest.param(
+            (
+                np.array([500, 500]),
+                np.array([512, 512]),
+                np.array([12, 12]),
+                np.array([24, 24]),
+            ),
+            id="1d_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([500, 500]),
+                np.ma.array([512, 512]),
+                np.ma.array([12, 12]),
+                np.ma.array([24, 24]),
+            ),
+            id="1d_trivial_masked_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([500, 500], mask=[False, True]),
+                np.ma.array([512, 512], mask=[False, True]),
+                np.ma.array([12, 12], mask=[False, True]),
+                np.ma.array([24, 24], mask=[False, True]),
+            ),
+            id="1d_masked_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([500, 500], mask=[False, True]),
+                np.array([512, 512]),
+                np.ma.array([12, 12], mask=[False, True]),
+                np.array([24, 24]),
+            ),
+            id="1d_mixed_masked_arrays",
+        ),
+        pytest.param(
+            (
+                MaskedColumn([500, 500]),
+                MaskedColumn([512, 512]),
+                MaskedColumn([12, 12]),
+                MaskedColumn([24, 24]),
+            ),
+            id="trivial_masked_columns",
+        ),
+        pytest.param(
+            (
+                MaskedColumn([500, 500], mask=[True, False]),
+                MaskedColumn([512, 512], mask=[True, False]),
+                MaskedColumn([12, 12], mask=[True, False]),
+                MaskedColumn([24, 24], mask=[True, False]),
+            ),
+            id="masked_columns",
+        ),
+        pytest.param(
+            (
+                [[500, 500], [500, 500]],
+                [[512, 512], [512, 512]],
+                [[12, 12], [12, 12]],
+                [[24, 24], [24, 24]],
+            ),
+            id="nested_lists",
+        ),
+        pytest.param(
+            (
+                np.array([[500, 500], [500, 500]]),
+                np.array([[512, 512], [512, 512]]),
+                np.array([[12, 12], [12, 12]]),
+                np.array([[24, 24], [24, 24]]),
+            ),
+            id="2d_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([[500, 500], [500, 500]], mask=[[True, False], [False, True]]),
+                np.ma.array([[512, 512], [512, 512]], mask=[[True, False], [False, True]]),
+                np.ma.array([[12, 12], [12, 12]], mask=[[True, False], [False, True]]),
+                np.ma.array([[24, 24], [24, 24]], mask=[[True, False], [False, True]]),
+            ),
+            id="2d_masked_arrays",
+        ),
     ],
 )
-@pytest.mark.parametrize("corr_cls", [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector])
-def test_jwstgwcs_tangent_to_world(inputs, corr_cls):
-    w = make_mock_st_wcs(
-        corr_cls=corr_cls,
-        v2ref=0.0,
-        v3ref=0.0,
-        roll=0.0,
-        crpix=[500.0, 512.0],
-        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]],
-        crval=[12.0, 24.0],
-    )
-    wc = corr_cls(w, {"v2_ref": 0.0, "v3_ref": 0.0, "roll_ref": 0.0})
-    wc.set_correction()
-    tanp_x, tanp_y, ra, dec = inputs
-    assert np.allclose(wc.world_to_tanp(ra, dec), (tanp_x, tanp_y), atol=1000 * _ATOL)
-    assert np.allclose(wc.tanp_to_world(tanp_x, tanp_y), (ra, dec), atol=_ATOL)
+def xy_radec(request):
+    """Fixture providing the (x, y, ra, dec) tuples for testing."""
+    return request.param
+
+
+def _check_masked(in_1, in_2, out_1, out_2):
+    """Check the masking state"""
+
+    def _check_mask(input):
+        """Check that the mask of the outputs matches the input mask."""
+        if isinstance(input, np.ma.MaskedArray):
+            for mask_1, mask_2, mask_in in zip(
+                out_1.mask.ravel(), out_2.mask.ravel(), input.mask.ravel()
+            ):
+                # If the mask_in is True, then all of the output masks must
+                #    be true
+                if mask_in:
+                    assert mask_1
+                    assert mask_2
+
+    if (isinstance(in_1, np.ma.MaskedArray) and np.any(in_1.mask)) or (
+        isinstance(in_2, np.ma.MaskedArray) and np.any(in_2.mask)
+    ):
+        # Test that if any input is masked then the output is masked
+        assert isinstance(out_1, np.ma.MaskedArray)
+        assert isinstance(out_2, np.ma.MaskedArray)
+
+        _check_mask(in_1)
+        _check_mask(in_2)
+
+    else:
+        # If no inputs are masked, then the output is not masked
+        assert not isinstance(out_1, np.ma.MaskedArray)
+        assert not isinstance(out_2, np.ma.MaskedArray)
+
+
+def test_gwcs_det_to_world(xy_radec, corrector):
+    """Test running detector to world transform for gwcs based corrector"""
+    x, y, ra, dec = xy_radec
+
+    ra_out, dec_out = corrector.det_to_world(x, y)
+    _check_masked(x, y, ra_out, dec_out)
+
+    assert np.allclose(ra_out, ra, atol=_ATOL)
+    assert np.allclose(dec_out, dec, atol=_ATOL)
+
+
+def test_gwcs_world_to_det(xy_radec, corrector):
+    """Test running world to detector transform for gwcs based corrector"""
+    x, y, ra, dec = xy_radec
+
+    x_out, y_out = corrector.world_to_det(ra, dec)
+    _check_masked(ra, dec, x_out, y_out)
+
+    assert np.allclose(x_out, x, atol=_ATOL)
+    assert np.allclose(y_out, y, atol=_ATOL)
+
+
+@pytest.fixture(
+    params=[
+        pytest.param((0, 0, 12, 24), id="scalars"),
+        pytest.param(
+            (
+                [0, 0],
+                [0, 0],
+                [12, 12],
+                [24, 24],
+            ),
+            id="lists",
+        ),
+        pytest.param(
+            (
+                np.array([0, 0]),
+                np.array([0, 0]),
+                np.array([12, 12]),
+                np.array([24, 24]),
+            ),
+            id="1d_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([0, 0]),
+                np.ma.array([0, 0]),
+                np.ma.array([12, 12]),
+                np.ma.array([24, 24]),
+            ),
+            id="1d_trivial_masked_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([0, 0], mask=[True, False]),
+                np.ma.array([0, 0], mask=[True, False]),
+                np.ma.array([12, 12], mask=[True, False]),
+                np.ma.array([24, 24], mask=[True, False]),
+            ),
+            id="1d_masked_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([0, 0], mask=[True, False]),
+                np.array([0, 0]),
+                np.ma.array([12, 12], mask=[True, False]),
+                np.array([24, 24]),
+            ),
+            id="1d_mixed_masked_arrays",
+        ),
+        pytest.param(
+            (
+                MaskedColumn([0, 0]),
+                MaskedColumn([0, 0]),
+                MaskedColumn([12, 12]),
+                MaskedColumn([24, 24]),
+            ),
+            id="trivial_masked_columns",
+        ),
+        pytest.param(
+            (
+                MaskedColumn([0, 0], mask=[True, False]),
+                MaskedColumn([0, 0], mask=[True, False]),
+                MaskedColumn([12, 12], mask=[True, False]),
+                MaskedColumn([24, 24], mask=[True, False]),
+            ),
+            id="masked_columns",
+        ),
+        pytest.param(
+            (
+                [[0, 0], [0, 0]],
+                [[0, 0], [0, 0]],
+                [[12, 12], [12, 12]],
+                [[24, 24], [24, 24]],
+            ),
+            id="nested_lists",
+        ),
+        pytest.param(
+            (
+                np.array([[0, 0], [0, 0]]),
+                np.array([[0, 0], [0, 0]]),
+                np.array([[12, 12], [12, 12]]),
+                np.array([[24, 24], [24, 24]]),
+            ),
+            id="2d_arrays",
+        ),
+        pytest.param(
+            (
+                np.ma.array([[0, 0], [0, 0]], mask=[[False, True], [True, False]]),
+                np.ma.array([[0, 0], [0, 0]], mask=[[False, True], [True, False]]),
+                np.ma.array([[12, 12], [12, 12]], mask=[[False, True], [True, False]]),
+                np.ma.array([[24, 24], [24, 24]], mask=[[False, True], [True, False]]),
+            ),
+            id="2d_masked_arrays",
+        ),
+    ],
+)
+def tanp_radec(request):
+    """Fixture providing the (tanp_x, tanp_y, ra, dec) tuples for testing."""
+    return request.param
+
+
+def test_gwcs_tanp_to_world(tanp_radec, corrector):
+    """Test running tangent plane to world transform for gwcs based corrector"""
+    tanp_x, tanp_y, ra, dec = tanp_radec
+
+    out_ra, out_dec = corrector.tanp_to_world(tanp_x, tanp_y)
+    _check_masked(tanp_x, tanp_y, out_ra, out_dec)
+
+    assert np.allclose(out_ra, ra, atol=1000 * _ATOL)
+    assert np.allclose(out_dec, dec, atol=1000 * _ATOL)
+
+
+def test_gwcs_world_to_tanp(tanp_radec, corrector):
+    """Test running world to tangent plane transform for gwcs based corrector"""
+    tanp_x, tanp_y, ra, dec = tanp_radec
+
+    out_tanp_x, out_tanp_y = corrector.world_to_tanp(ra, dec)
+    _check_masked(ra, dec, out_tanp_x, out_tanp_y)
+
+    assert np.allclose(out_tanp_x, tanp_x, atol=1000 * _ATOL)
+    assert np.allclose(out_tanp_y, tanp_y, atol=1000 * _ATOL)
 
 
 @pytest.mark.parametrize(
@@ -321,27 +557,14 @@ def test_jwstgwcs_detector_to_tanp(inputs, corr_cls):
     assert np.allclose(wc.tanp_to_det(tanp_x, tanp_y), (x, y), atol=_ATOL)
 
 
-@pytest.mark.parametrize("corr_cls", [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector])
-def test_jwstgwcs_bbox(corr_cls):
-    w = make_mock_st_wcs(
-        corr_cls=corr_cls,
-        v2ref=0.0,
-        v3ref=0.0,
-        roll=0.0,
-        crpix=[500.0, 512.0],
-        cd=[[1.0e-5, 0.0], [0.0, 1.0e-5]],
-        crval=[12.0, 24.0],
-    )
-    wc = corr_cls(w, {"v2_ref": 0.0, "v3_ref": 0.0, "roll_ref": 0.0})
-    wc.set_correction()
+def test_jwstgwcs_bbox(corrector):
+    assert np.allclose(corrector.bounding_box, ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5)), atol=_ATOL)
 
-    assert np.allclose(wc.bounding_box, ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5)), atol=_ATOL)
+    corrector._owcs.bounding_box = None
+    assert np.allclose(corrector.bounding_box, ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5)), atol=_ATOL)
 
-    wc._owcs.bounding_box = None
-    assert np.allclose(wc.bounding_box, ((-0.5, 1024 - 0.5), (-0.5, 2048 - 0.5)), atol=_ATOL)
-
-    wc._owcs.array_shape = None
-    assert wc.bounding_box is None
+    corrector._owcs.array_shape = None
+    assert corrector.bounding_box is None
 
 
 @pytest.mark.parametrize("corr_cls", [ST_V2V3_WCSCorrector, JWSTWCSCorrector, RomanWCSCorrector])

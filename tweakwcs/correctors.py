@@ -34,6 +34,7 @@ from astropy.utils.decorators import deprecated
 
 from . import __version__  # noqa: F401
 from .linalg import inv
+from .wcsutils import masked
 
 if TYPE_CHECKING:
     from typing import Any, Self, TypeAlias
@@ -475,6 +476,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
         # save linear transformation info to the meta attribute:
         super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
 
+    @masked
     def det_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert pixel coordinates to sky coordinates using full
@@ -484,6 +486,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
         ra, dec = self._wcs.all_pix2world(x, y, 0)
         return ra, dec
 
+    @masked
     def world_to_det(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert sky coordinates to image's pixel coordinates using full
@@ -493,6 +496,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
         x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
         return x, y
 
+    @masked
     def det_to_tanp(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
@@ -501,6 +505,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
         x, y = self._wcs.pix2foc(x, y, 0)
         return x, y
 
+    @masked
     def tanp_to_det(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
@@ -519,6 +524,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
             y = float(y[0])
         return x, y
 
+    @masked
     def world_to_tanp(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
@@ -527,6 +533,7 @@ class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
         x, y = self._wcs.wcs_world2pix(ra, dec, 0)
         return x, y
 
+    @masked
     def tanp_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """Convert tangent plane coordinates to world coordinates."""
         ra, dec = self._wcs.wcs_pix2world(x, y, 0)
@@ -992,6 +999,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
 
         return True, ""
 
+    @masked
     def det_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert pixel coordinates to sky coordinates using full
@@ -1001,6 +1009,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
         ra, dec = self._det_to_world(x, y)
         return ra, dec
 
+    @masked
     def world_to_det(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert sky coordinates to image's pixel coordinates using full
@@ -1012,6 +1021,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
         x, y = self._world_to_det(ra, dec)
         return x, y
 
+    @masked
     def det_to_tanp(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
@@ -1021,6 +1031,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
         x, y = self._partial_tpcorr(v2, v3)
         return _RAD2ARCSEC * x, _RAD2ARCSEC * y
 
+    @masked
     def tanp_to_det(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
@@ -1037,6 +1048,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
         x, y = self._v23_to_det(v2, v3)
         return x, y
 
+    @masked
     def world_to_tanp(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
@@ -1046,6 +1058,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
         x, y = self._partial_tpcorr(v2, v3)
         return _RAD2ARCSEC * x, _RAD2ARCSEC * y
 
+    @masked
     def tanp_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """Convert tangent plane coordinates to world coordinates."""
         v2, v3 = self._partial_tpcorr.inverse(
