@@ -27,7 +27,7 @@ from . import __version__  # noqa: F401
 from .correctors import WCSCorrector
 from .linalg import inv
 from .linearfit import SUPPORTED_FITGEOM_MODES, iter_linear_fit
-from .wcsutils import planar_rot_3d
+from .wcsutils import planar_rot_3d, unmask_args
 
 __author__ = "Mihai Cara"
 
@@ -491,8 +491,8 @@ class WCSImageCatalog:
         if self.corrector is None or self.catalog is None:
             return
 
-        x = self.catalog["x"].data
-        y = self.catalog["y"].data
+        unmasked = unmask_args(self.catalog["x"].data, self.catalog["y"].data)
+        x, y = unmasked.args
 
         if len(x) == 0:
             # no points
