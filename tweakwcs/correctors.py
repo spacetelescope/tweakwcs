@@ -9,14 +9,18 @@ of ``WCS``.
 
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from typing import TYPE_CHECKING, Generic, TypedDict, TypeVar
 
 import gwcs
 import numpy as np
 from gwcs.geometry import CartesianToSpherical, SphericalToCartesian
 
+from astropy import wcs as astropy_wcs
 from astropy.modeling import CompoundModel
 from astropy.modeling.models import (
     AffineTransformation2D,
@@ -30,6 +34,16 @@ from astropy.utils.decorators import deprecated
 
 from . import __version__  # noqa: F401
 from .linalg import inv
+from .wcsutils import masked
+
+if TYPE_CHECKING:
+    from typing import Any, Self, TypeAlias
+
+
+WCS = TypeVar("WCS", astropy_wcs.WCS, gwcs.WCS)
+Array: TypeAlias = (
+    float | int | np.ndarray[tuple[int, ...], np.float64] | np.ndarray[tuple[int, ...], np.int_]
+)
 
 __author__ = "Mihai Cara"
 
@@ -79,7 +93,7 @@ def _tp2tp(tpwcs1, tpwcs2, s=None):
     return matrix, shift
 
 
-class WCSCorrector(ABC):
+class WCSCorrector(ABC, Generic[WCS]):
     """A class that provides common interface for manipulating WCS information
     and for managing tangent-plane corrections.
 
@@ -87,7 +101,7 @@ class WCSCorrector(ABC):
 
     units = None
 
-    def __init__(self, wcs, meta=None):
+    def __init__(self, wcs: WCS, meta: dict[str, Any] | None = None) -> None:
         """
         Parameters
         ----------
@@ -103,23 +117,28 @@ class WCSCorrector(ABC):
         self._meta = {} if meta is None else dict(meta)
 
     @property
-    def wcs(self):
+    def wcs(self) -> WCS:
         """Get current WCS object."""
         return self._wcs
 
     @property
-    def original_wcs(self):
+    def original_wcs(self) -> WCS:
         """Get original WCS object."""
         return self._owcs
 
-    def copy(self):
+    def copy(self) -> Self:
         """Returns a deep copy of this object."""
         return deepcopy(self)
 
     @abstractmethod
     def set_correction(
-        self, matrix=[[1, 0], [0, 1]], shift=[0, 0], ref_tpwcs=None, meta=None, **kwargs
-    ):
+        self,
+        matrix: list[list[float]] | np.ndarray[tuple[int, int], np.float64] = [[1, 0], [0, 1]],
+        shift: list[int] | np.ndarray[tuple[int], np.int_] = [0, 0],
+        ref_tpwcs: WCSCorrector | None = None,
+        meta: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> None:
         """
         Sets a tangent-plane correction of the WCS object according to
         the provided liniar parameters. In addition, this function updates
@@ -158,7 +177,7 @@ class WCSCorrector(ABC):
             self._meta.update(meta)
 
     @abstractmethod
-    def det_to_world(self, x, y):
+    def det_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert pixel coordinates to sky coordinates using full
         (i.e., including distortions) transformations.
@@ -168,7 +187,7 @@ class WCSCorrector(ABC):
         return ra, dec
 
     @abstractmethod
-    def world_to_det(self, ra, dec):
+    def world_to_det(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert sky coordinates to image's pixel coordinates using full
         (i.e., including distortions) transformations.
@@ -178,7 +197,7 @@ class WCSCorrector(ABC):
         return x, y
 
     @abstractmethod
-    def det_to_tanp(self, x, y):
+    def det_to_tanp(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
@@ -186,7 +205,7 @@ class WCSCorrector(ABC):
         return x, y
 
     @abstractmethod
-    def tanp_to_det(self, x, y):
+    def tanp_to_det(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -194,7 +213,7 @@ class WCSCorrector(ABC):
         return x, y
 
     @abstractmethod
-    def world_to_tanp(self, ra, dec):
+    def world_to_tanp(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -203,7 +222,7 @@ class WCSCorrector(ABC):
         return x, y
 
     @abstractmethod
-    def tanp_to_world(self, x, y):
+    def tanp_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to world coordinates.
 
@@ -211,7 +230,7 @@ class WCSCorrector(ABC):
         ra, dec = x, y
         return ra, dec
 
-    def tanp_pixel_scale(self, x, y):
+    def tanp_pixel_scale(self, x: Array, y: Array) -> float:
         """
         Estimate pixel scale in the tangent plane near a location in the
         detector's coordinate system given by parameters ``x`` and ``y``.
@@ -251,7 +270,7 @@ class WCSCorrector(ABC):
         return pscale
 
     @property
-    def tanp_center_pixel_scale(self):
+    def tanp_center_pixel_scale(self) -> float:
         """
         Estimate pixel scale in the tangent plane near a location
         in the detector's coordinate system corresponding to the origin of the
@@ -268,17 +287,17 @@ class WCSCorrector(ABC):
         pscale = self._get_tanp_center_pixel_scale()
         return pscale
 
-    def _get_tanp_center_pixel_scale(self):
+    def _get_tanp_center_pixel_scale(self) -> float:
         x, y = self.tanp_to_det(0.0, 0.0)
         pscale = self.tanp_pixel_scale(x, y)
         return pscale
 
     @property
-    def meta(self):
+    def meta(self) -> dict[str, Any] | None:
         return self._meta
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> None:
         """
         Get the bounding box (if any) of the underlying image for which
         the original WCS is defined.
@@ -287,7 +306,7 @@ class WCSCorrector(ABC):
         return None
 
 
-class FITSWCSCorrector(WCSCorrector):
+class FITSWCSCorrector(WCSCorrector[astropy_wcs.WCS]):
     """
     A class for holding ``FITS`` ``WCS`` information and for managing
     tangent-plane corrections. The units of the tangent plane of this
@@ -302,7 +321,7 @@ class FITSWCSCorrector(WCSCorrector):
 
     units = "pixel"
 
-    def __init__(self, wcs, meta=None):
+    def __init__(self, wcs: astropy_wcs.WCS, meta: dict[str, Any] | None = None) -> None:
         """
         Parameters
         ----------
@@ -315,7 +334,7 @@ class FITSWCSCorrector(WCSCorrector):
             raise ValueError("Unsupported WCS structure: " + message)
 
         super().__init__(wcs=wcs, meta=meta)
-        wcslin = wcs.deepcopy()
+        wcslin: astropy_wcs.WCS = wcs.deepcopy()
 
         # strip all *known* distortions:
         wcslin.cpdis1 = None
@@ -327,7 +346,7 @@ class FITSWCSCorrector(WCSCorrector):
 
         self._wcslin = wcslin
 
-    def _check_wcs_structure(self, wcs):
+    def _check_wcs_structure(self, wcs: astropy_wcs.WCS) -> tuple[bool, str]:
         """
         Attempt detecting unknown distortion corrections. We basically
         want to make sure that we can turn off all distortions that are
@@ -342,7 +361,7 @@ class FITSWCSCorrector(WCSCorrector):
         if not wcs.is_celestial:
             return False, "WCS must be exclusively a celestial WCS."
 
-        wcs = wcs.deepcopy()
+        wcs: astropy_wcs.WCS = wcs.deepcopy()
         naxis1, naxis2 = wcs.pixel_shape
 
         # check mapping of corners and CRPIX:
@@ -371,13 +390,18 @@ class FITSWCSCorrector(WCSCorrector):
 
         return True, ""
 
-    def _get_tanp_center_pixel_scale(self):
+    def _get_tanp_center_pixel_scale(self) -> float:
         pscale = self.tanp_pixel_scale(*self._wcs.wcs.crpix)
         return pscale
 
     def set_correction(
-        self, matrix=[[1, 0], [0, 1]], shift=[0, 0], ref_tpwcs=None, meta=None, **kwargs
-    ):
+        self,
+        matrix: list[list[float]] | np.ndarray[tuple[int, int], np.float64] = [[1, 0], [0, 1]],
+        shift: list[int] | np.ndarray[tuple[int], np.int_] = [0, 0],
+        ref_tpwcs: WCSCorrector | None = None,
+        meta: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> None:
         """
         Computes a corrected (aligned) wcs based on the provided linear
         transformation. In addition, this function updates the ``meta``
@@ -452,7 +476,8 @@ class FITSWCSCorrector(WCSCorrector):
         # save linear transformation info to the meta attribute:
         super().set_correction(matrix=matrix, shift=shift, meta=meta, **kwargs)
 
-    def det_to_world(self, x, y):
+    @masked
+    def det_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert pixel coordinates to sky coordinates using full
         (i.e., including distortions) transformations.
@@ -461,7 +486,8 @@ class FITSWCSCorrector(WCSCorrector):
         ra, dec = self._wcs.all_pix2world(x, y, 0)
         return ra, dec
 
-    def world_to_det(self, ra, dec):
+    @masked
+    def world_to_det(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert sky coordinates to image's pixel coordinates using full
         (i.e., including distortions) transformations.
@@ -470,7 +496,8 @@ class FITSWCSCorrector(WCSCorrector):
         x, y = self._wcs.all_world2pix(ra, dec, 0, tolerance=1e-6, maxiter=50)
         return x, y
 
-    def det_to_tanp(self, x, y):
+    @masked
+    def det_to_tanp(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
@@ -478,7 +505,8 @@ class FITSWCSCorrector(WCSCorrector):
         x, y = self._wcs.pix2foc(x, y, 0)
         return x, y
 
-    def tanp_to_det(self, x, y):
+    @masked
+    def tanp_to_det(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -496,7 +524,8 @@ class FITSWCSCorrector(WCSCorrector):
             y = float(y[0])
         return x, y
 
-    def world_to_tanp(self, ra, dec):
+    @masked
+    def world_to_tanp(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -504,7 +533,8 @@ class FITSWCSCorrector(WCSCorrector):
         x, y = self._wcs.wcs_world2pix(ra, dec, 0)
         return x, y
 
-    def tanp_to_world(self, x, y):
+    @masked
+    def tanp_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """Convert tangent plane coordinates to world coordinates."""
         ra, dec = self._wcs.wcs_pix2world(x, y, 0)
         return ra, dec
@@ -575,7 +605,13 @@ def _get_submodel(model, name):
     return None
 
 
-class ST_V2V3_WCSCorrector(WCSCorrector):
+class WCSInfo(TypedDict):
+    v2_ref: float
+    v3_ref: float
+    roll_ref: float
+
+
+class ST_V2V3_WCSCorrector(WCSCorrector[gwcs.WCS]):
     """
     A class for holding ``GWCS`` information and for managing STScI
     ``JWST`` and ``Roman`` Space Telescopes V2-V3 tangent-plane corrections.
@@ -588,7 +624,7 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
     units = "arcsec"
     corrector_name = "STScI GWCS V2-V3 tangent-plane linear correction. v1"
 
-    def __init__(self, wcs, wcsinfo, meta=None):
+    def __init__(self, wcs: gwcs.WCS, wcsinfo: WCSInfo, meta: dict[str, Any] | None = None) -> None:
         """
         Parameters
         ----------
@@ -813,13 +849,18 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         return v2v3_to_tpcorr
 
     @property
-    def ref_angles(self):
+    def ref_angles(self) -> WCSInfo:
         """Return a ``wcsinfo``-like dictionary of main WCS parameters."""
         return dict(self._wcsinfo)
 
     def set_correction(
-        self, matrix=[[1, 0], [0, 1]], shift=[0, 0], ref_tpwcs=None, meta=None, **kwargs
-    ):
+        self,
+        matrix: list[list[float]] | np.ndarray[tuple[int, int], np.float64] = [[1, 0], [0, 1]],
+        shift: list[int] | np.ndarray[tuple[int], np.int_] = [0, 0],
+        ref_tpwcs: WCSCorrector | None = None,
+        meta: dict[str, Any] | None = None,
+        **kwargs,
+    ) -> None:
         """
         Sets a tangent-plane correction of the GWCS object according to
         the provided liniar parameters. In addition, this function updates
@@ -958,7 +999,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
 
         return True, ""
 
-    def det_to_world(self, x, y):
+    @masked
+    def det_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert pixel coordinates to sky coordinates using full
         (i.e., including distortions) transformations.
@@ -967,7 +1009,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         ra, dec = self._det_to_world(x, y)
         return ra, dec
 
-    def world_to_det(self, ra, dec):
+    @masked
+    def world_to_det(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert sky coordinates to image's pixel coordinates using full
         (i.e., including distortions) transformations.
@@ -978,7 +1021,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         x, y = self._world_to_det(ra, dec)
         return x, y
 
-    def det_to_tanp(self, x, y):
+    @masked
+    def det_to_tanp(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert detector (pixel) coordinates to tangent plane coordinates.
 
@@ -987,7 +1031,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         x, y = self._partial_tpcorr(v2, v3)
         return _RAD2ARCSEC * x, _RAD2ARCSEC * y
 
-    def tanp_to_det(self, x, y):
+    @masked
+    def tanp_to_det(self, x: Array, y: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -1003,7 +1048,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         x, y = self._v23_to_det(v2, v3)
         return x, y
 
-    def world_to_tanp(self, ra, dec):
+    @masked
+    def world_to_tanp(self, ra: Array, dec: Array) -> tuple[Array, Array]:
         """
         Convert tangent plane coordinates to detector (pixel) coordinates.
 
@@ -1012,7 +1058,8 @@ class ST_V2V3_WCSCorrector(WCSCorrector):
         x, y = self._partial_tpcorr(v2, v3)
         return _RAD2ARCSEC * x, _RAD2ARCSEC * y
 
-    def tanp_to_world(self, x, y):
+    @masked
+    def tanp_to_world(self, x: Array, y: Array) -> tuple[Array, Array]:
         """Convert tangent plane coordinates to world coordinates."""
         v2, v3 = self._partial_tpcorr.inverse(
             _ARCSEC2RAD * np.asanyarray(x), _ARCSEC2RAD * np.asanyarray(y)
