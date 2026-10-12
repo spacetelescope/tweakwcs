@@ -345,6 +345,7 @@ def test_compute_stat_invalid_weights(ideal_small_data):
     assert math.isnan(fit["rmse"])
     assert math.isnan(fit["mae"])
     assert math.isnan(fit["std"])
+    assert math.isnan(fit["mad"])
 
 
 @pytest.mark.parametrize(
@@ -427,6 +428,7 @@ def test_iter_linear_fit_clip_style(ideal_large_data, weight_data, clip_accum, n
     assert np.allclose(fit["rmse"], 0, rtol=0, atol=atol)
     assert np.allclose(fit["mae"], 0, rtol=0, atol=atol)
     assert np.allclose(fit["std"], 0, rtol=0, atol=atol)
+    assert np.allclose(fit["mad"], 0, rtol=0, atol=atol)
     assert fit["proper"] == proper
     if nclip:
         assert fit["eff_nclip"] > 0
@@ -454,3 +456,24 @@ def test_levmar2x2_multivariate():
     fitter = linearfit._LevMarLSQFitter2x2()
     finfo = fitter(model, inputs, outputs)
     assert np.allclose(finfo.parameters, np.array([4.3, -7.1, 45.0]), rtol=1e-5, atol=1e-5)
+
+
+def test_iter_linear_fit_mad_clipping():
+    # 35% mismatches within 6 px, as in crowded-field matching: 'rmse'
+    # clipping stalls, 'mad' clipping recovers the transform
+    from astropy.stats import mad_std
+
+    rng = np.random.default_rng(2)
+    n, nbad = 1000, 350
+    uv = rng.uniform(0, 4000, (n, 2))
+    xy = uv + [1.5, -0.7] + rng.normal(0, 0.05, (n, 2))
+    r = 6.0 * np.sqrt(rng.uniform(0, 1, nbad))
+    phi = rng.uniform(0, 2 * np.pi, nbad)
+    xy[:nbad] += np.c_[r * np.cos(phi), r * np.sin(phi)]
+
+    kw = dict(fitgeom="general", nclip=20, clip_accum=True)
+    fit = linearfit.iter_linear_fit(xy.copy(), uv.copy(), sigma=(3, "mad"), **kw)
+    fit_rmse = linearfit.iter_linear_fit(xy.copy(), uv.copy(), sigma=(3, "rmse"), **kw)
+    assert np.allclose(fit["shift"], [1.5, -0.7], atol=0.02)
+    assert np.linalg.norm(fit["shift"] - [1.5, -0.7]) < np.linalg.norm(fit_rmse["shift"] - [1.5, -0.7])
+    assert np.isclose(fit["mad"], np.hypot(*mad_std(fit["resids"], axis=0)))
