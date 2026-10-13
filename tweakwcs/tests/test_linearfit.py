@@ -461,8 +461,6 @@ def test_levmar2x2_multivariate():
 def test_iter_linear_fit_mad_clipping():
     # 35% mismatches within 6 px, as in crowded-field matching: 'rmse'
     # clipping stalls, 'mad' clipping recovers the transform
-    from astropy.stats import mad_std
-
     rng = np.random.default_rng(2)
     n, nbad = 1000, 350
     uv = rng.uniform(0, 4000, (n, 2))
@@ -476,4 +474,5 @@ def test_iter_linear_fit_mad_clipping():
     fit_rmse = linearfit.iter_linear_fit(xy.copy(), uv.copy(), sigma=(3, "rmse"), **kw)
     assert np.allclose(fit["shift"], [1.5, -0.7], atol=0.02)
     assert np.linalg.norm(fit["shift"] - [1.5, -0.7]) < np.linalg.norm(fit_rmse["shift"] - [1.5, -0.7])
-    assert np.isclose(fit["mad"], np.hypot(*mad_std(fit["resids"], axis=0)))
+    norm = np.linalg.norm(fit["resids"], axis=1)
+    assert np.isclose(fit["mad"], np.median(norm) / np.sqrt(np.log(2)))

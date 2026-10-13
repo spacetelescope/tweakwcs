@@ -234,9 +234,7 @@ def iter_linear_fit(
                        \mathbf{\overline{r}}\|^2}/(1-V_2)
 
     .. math::
-        \mathrm{MAD} = \sqrt{\Sigma_{a=x,y} \left(1.4826\,
-                       \mathrm{median}_w |r_{k,a} - \mathrm{median}_w
-                       r_{a}|\right)^2}
+        \mathrm{MAD} = \mathrm{median}_w \|\mathbf{r}_k\| / \sqrt{\ln 2}
 
     where :math:`\mathbf{r}_k=\mathbf{xy}_k-\mathbf{xy}'_k`,
     :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
@@ -372,9 +370,10 @@ def iter_linear_fit(
     return fit
 
 
-# MAD -> standard deviation for a normal distribution, as in
-# astropy.stats.mad_std
-_MAD_TO_STD = 1.482602218505602
+# Median residual norm -> RMSE for isotropic Gaussian residuals.  The norm
+# is then Rayleigh distributed, with median sigma * sqrt(2 ln 2), while the
+# RMSE is sigma * sqrt(2).
+_MAD_TO_RMSE = 1 / np.sqrt(np.log(2))
 
 
 def _weighted_median(values, weights=None):
@@ -388,12 +387,9 @@ def _weighted_median(values, weights=None):
 
 
 def _mad(residuals, weights=None):
-    """Per-axis mad_std of residuals, combined in quadrature."""
-    total = 0.0
-    for r in np.asarray(residuals, dtype=np.double).T:
-        mad = _weighted_median(np.abs(r - _weighted_median(r, weights)), weights)
-        total += (_MAD_TO_STD * mad) ** 2
-    return np.sqrt(total)
+    """Median residual norm, scaled to match the RMSE for Gaussian residuals."""
+    norm = np.linalg.norm(np.asarray(residuals, dtype=np.double), axis=1)
+    return _MAD_TO_RMSE * _weighted_median(norm, weights)
 
 
 def _compute_stat(fit, residuals, weights):
