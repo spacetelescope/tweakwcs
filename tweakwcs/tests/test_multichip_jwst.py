@@ -28,6 +28,8 @@ _ATOL = 1e3 * np.finfo(np.array([1.0]).dtype).eps
 _RAD2ARCSEC = 3600.0 * np.rad2deg(1.0)
 _ARCSEC2RAD = 1.0 / _RAD2ARCSEC
 
+RNG = np.random.default_rng(19)
+
 
 def _make_gwcs_wcs(fits_hdr):
     hdr = fits.Header.fromfile(get_pkg_data_filename(fits_hdr))
@@ -104,8 +106,8 @@ def _make_gwcs_wcs(fits_hdr):
 
     # sanity check:
     for _ in range(100):
-        x = np.random.randint(1, fw.pixel_shape[0])
-        y = np.random.randint(1, fw.pixel_shape[0])
+        x = RNG.integers(1, fw.pixel_shape[0])
+        y = RNG.integers(1, fw.pixel_shape[0])
         assert np.allclose(gw(x, y), fw.all_pix2world(x, y, 1), rtol=0, atol=1e-11)
 
     return gw
@@ -124,33 +126,67 @@ def _match(x, y, tp_pscale, tp_units, **kwargs):
 
 
 @pytest.mark.parametrize("corrector_cls", [tweakwcs.JWSTWCSCorrector, tweakwcs.RomanWCSCorrector])
-def test_multichip_jwst_alignment(corrector_cls):
+@pytest.mark.parametrize("masked", [False, True])
+def test_multichip_jwst_alignment(corrector_cls, masked):
+    """
+    Test multi-chip alignment
+        Note the masked case is simply a smoke test to make sure users can mask their
+        input data.
+    """
     w1 = _make_gwcs_wcs("data/wfc3_uvis1.hdr")
 
     imcat1 = corrector_cls(w1, {"v2_ref": 0, "v3_ref": 0, "roll_ref": 0})
-    imcat1.meta["catalog"] = table.Table.read(
-        get_pkg_data_filename("data/wfc3_uvis1.cat"),
-        format="ascii.csv",
-        delimiter=" ",
-        names=["x", "y"],
+    imcat1.meta["catalog"] = table.Table(
+        table.Table.read(
+            get_pkg_data_filename("data/wfc3_uvis1.cat"),
+            format="ascii.csv",
+            delimiter=" ",
+            names=["x", "y"],
+        ),
+        masked=masked,
     )
     imcat1.meta["catalog"]["x"] += 1
     imcat1.meta["catalog"]["y"] += 1
     imcat1.meta["group_id"] = 1
     imcat1.meta["name"] = "ext1"
 
+    if masked:
+        imcat1.meta["catalog"]["x"].mask = np.zeros(len(imcat1.meta["catalog"]["x"]), dtype=bool)
+        imcat1.meta["catalog"]["x"].mask[
+            RNG.choice(len(imcat1.meta["catalog"]["x"]), size=10, replace=False)
+        ] = True
+
+        imcat1.meta["catalog"]["y"].mask = np.zeros(len(imcat1.meta["catalog"]["y"]), dtype=bool)
+        imcat1.meta["catalog"]["y"].mask[
+            RNG.choice(len(imcat1.meta["catalog"]["y"]), size=10, replace=False)
+        ] = True
+
     w2 = _make_gwcs_wcs("data/wfc3_uvis2.hdr")
     imcat2 = corrector_cls(w2, {"v2_ref": 0, "v3_ref": 0, "roll_ref": 0})
-    imcat2.meta["catalog"] = table.Table.read(
-        get_pkg_data_filename("data/wfc3_uvis2.cat"),
-        format="ascii.csv",
-        delimiter=" ",
-        names=["x", "y"],
+    imcat2.meta["catalog"] = table.Table(
+        table.Table.read(
+            get_pkg_data_filename("data/wfc3_uvis2.cat"),
+            format="ascii.csv",
+            delimiter=" ",
+            names=["x", "y"],
+        ),
+        masked=True,
     )
     imcat2.meta["catalog"]["x"] += 1
     imcat2.meta["catalog"]["y"] += 1
     imcat2.meta["group_id"] = 1
     imcat2.meta["name"] = "ext4"
+
+    if masked:
+        imcat2.meta["catalog"]["x"].mask = np.zeros(len(imcat2.meta["catalog"]["x"]), dtype=bool)
+        imcat2.meta["catalog"]["x"].mask[
+            RNG.choice(len(imcat2.meta["catalog"]["x"]), size=10, replace=False)
+        ] = True
+
+        imcat2.meta["catalog"]["y"].mask = np.zeros(len(imcat2.meta["catalog"]["y"]), dtype=bool)
+        imcat2.meta["catalog"]["y"].mask[
+            RNG.choice(len(imcat2.meta["catalog"]["y"]), size=10, replace=False)
+        ] = True
 
     refcat = table.Table.read(
         get_pkg_data_filename("data/ref.cat"),
@@ -169,23 +205,28 @@ def test_multichip_jwst_alignment(corrector_cls):
     w1m = imcat1.wcs
     w2m = imcat2.wcs
 
-    assert np.allclose(w1m(*w1.crpix), (83.206917667519, -67.73275818507248), rtol=0)
-    assert np.allclose(w2m(*w2.crpix), (83.15167050722597, -67.74220306069903), rtol=0)
+    assert np.allclose(
+        w1m(*w1.crpix), (83.206917667519, -67.73275818507248), rtol=1e-4 if masked else 0
+    )
+    assert np.allclose(
+        w2m(*w2.crpix), (83.15167050722597, -67.74220306069903), rtol=1e-4 if masked else 0
+    )
 
-    assert np.allclose(fi1["<scale>"], 1.0025, rtol=0, atol=2e-8)
-    assert np.allclose(fi2["<scale>"], 1.0025, rtol=0, atol=2e-8)
+    assert np.allclose(fi1["<scale>"], 1.0025, rtol=1e-2 if masked else 0, atol=2e-8)
+    assert np.allclose(fi2["<scale>"], 1.0025, rtol=1e-2 if masked else 0, atol=2e-8)
 
-    assert fi1["rmse"] < 5e-5
-    assert fi2["rmse"] < 5e-5
+    if not masked:
+        assert fi1["rmse"] < 5e-5
+        assert fi2["rmse"] < 5e-5
 
-    ra1, dec1 = imcat1.wcs(imcat1.meta["catalog"]["x"], imcat1.meta["catalog"]["y"])
-    ra2, dec2 = imcat2.wcs(imcat2.meta["catalog"]["x"], imcat2.meta["catalog"]["y"])
-    ra = np.concatenate([ra1, ra2])
-    dec = np.concatenate([dec1, dec2])
-    rra = refcat["RA"]
-    rdec = refcat["DEC"]
-    rmse_ra = np.sqrt(np.mean((ra - rra) ** 2))
-    rmse_dec = np.sqrt(np.mean((dec - rdec) ** 2))
+        ra1, dec1 = imcat1.wcs(imcat1.meta["catalog"]["x"], imcat1.meta["catalog"]["y"])
+        ra2, dec2 = imcat2.wcs(imcat2.meta["catalog"]["x"], imcat2.meta["catalog"]["y"])
+        ra = np.concatenate([ra1, ra2])
+        dec = np.concatenate([dec1, dec2])
+        rra = refcat["RA"]
+        rdec = refcat["DEC"]
+        rmse_ra = np.sqrt(np.mean((ra - rra) ** 2))
+        rmse_dec = np.sqrt(np.mean((dec - rdec) ** 2))
 
-    assert rmse_ra < 3e-9
-    assert rmse_dec < 3e-10
+        assert rmse_ra < 3e-9
+        assert rmse_dec < 3e-10
