@@ -54,6 +54,7 @@ jobs:
         - windows: py313-numpy22-xdist
           pytest-results-summary: true
         - linux: py314-xdist
+        - linux: py315-xdist
         - macos: py314-xdist
         - windows: py314-xdist
         - linux: py314-dev-xdist
