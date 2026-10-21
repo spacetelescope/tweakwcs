@@ -11,9 +11,9 @@ source catalogs.
 
 import logging
 import numbers
-import os
 import sys
 from copy import deepcopy
+from itertools import takewhile
 from math import sqrt
 
 import numpy as np
@@ -44,6 +44,11 @@ def _is_int(n):
     return (isinstance(n, numbers.Integral) and not isinstance(n, bool)) or (
         isinstance(n, np.generic) and np.issubdtype(n, np.integer)
     )
+
+
+def _common_prefix(names):
+    # This replaces os.path.commonprefix, deprecated in python 3.15
+    return ''.join(ch[0] for ch in takewhile(lambda x: len(set(x)) == 1, zip(*names)))
 
 
 class WCSImageCatalog:
@@ -982,7 +987,7 @@ class WCSGroupCatalog:
             catalogs.append(cat)
             catno += 1
 
-        catname = os.path.commonprefix(cat_names) if cat_names else None
+        catname = _common_prefix(cat_names) if cat_names else None
 
         if catno:
             cat = table.vstack(catalogs, join_type="exact")

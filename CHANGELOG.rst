@@ -5,6 +5,14 @@ Release Notes
 =============
 
 
+0.9.3 (unreleased)
+==================
+
+- Added a ``'mad'`` (median absolute deviation) statistic for the clipping
+  threshold in ``iter_linear_fit``.  This is more robust to outliers
+  than statistics based on means.
+
+
 0.9.2 (07-July-2026)
 ====================
 
