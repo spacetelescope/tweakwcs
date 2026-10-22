@@ -38,7 +38,7 @@ log.setLevel(logging.DEBUG)
 
 _S2C = SphericalToCartesian(name="s2c", wrap_lon_at=180)
 _C2S = CartesianToSpherical(name="c2s", wrap_lon_at=180)
-
+_VALID = "_valid"
 
 def _is_int(n):
     return (isinstance(n, numbers.Integral) and not isinstance(n, bool)) or (
@@ -49,6 +49,73 @@ def _is_int(n):
 def _common_prefix(names):
     # This replaces os.path.commonprefix, deprecated in python 3.15
     return ''.join(ch[0] for ch in takewhile(lambda x: len(set(x)) == 1, zip(*names)))
+
+
+def _sanitize(catalog, coord_cols):
+    """
+    Return a regular (non-masked) copy of ``catalog`` with a boolean
+    ``_valid`` column. A row is valid when all ``coord_cols`` (and
+    ``'weight'``, if present) are unmasked and finite. Masked values are
+    filled (NaN for floats, 0 otherwise) so no masked data propagates.
+    An existing ``_valid`` column is honored (AND-ed).
+    """
+    check_cols = set(coord_cols) | ({"weight"} & set(catalog.colnames))
+    if _VALID in catalog.colnames:
+        # make a copy:
+        valid = np.ma.filled(catalog[_VALID], False).astype(bool, copy=True)
+    else:
+        valid = np.ones(len(catalog), dtype=bool)
+
+    cols = []
+    for name in catalog.colnames:
+        if name == _VALID:
+            continue
+        col = catalog[name]
+        mask = np.ma.getmaskarray(col)
+        if name in check_cols:
+            data = np.ma.filled(np.ma.asarray(col, dtype=np.double), np.nan)
+            valid &= ~mask & np.isfinite(data)
+        elif mask.any():
+            fill = np.nan if np.asarray(col).dtype.kind == "f" else 0
+            data = np.ma.filled(col, fill)
+        else:
+            data = np.asarray(col)
+        cols.append(table.Column(data, name=name))
+
+    cat = table.Table(cols, masked=False, meta=deepcopy(catalog.meta))
+    cat[_VALID] = valid
+    return cat
+
+
+def _valid_mask(catalog):
+    return np.asarray(catalog[_VALID], dtype=bool)
+
+
+def _apply_valid(func, a, b, valid):
+    a = np.asarray(a, dtype=np.double)
+    b = np.asarray(b, dtype=np.double)
+    if valid.all():
+        # all entries are valid: no need to copy
+        out1, out2 = (np.asarray(v, dtype=np.double) for v in func(a, b))
+    else:
+        out1 = np.full(valid.shape, np.nan)
+        out2 = np.full(valid.shape, np.nan)
+        if valid.any():
+            out1[valid], out2[valid] = func(a[valid], b[valid])
+    return out1, out2, valid & np.isfinite(out1) & np.isfinite(out2)
+
+
+def _masked_index_column(name, values):
+    """Integer column masked where ``values < 0`` (no match)."""
+    values = np.asarray(values, dtype=int)
+    return table.MaskedColumn(values, name=name, mask=values < 0)
+
+
+def _match_view(cat, sel, valid):
+    if valid.all():
+        return cat  # no copy, indices map 1:1
+    cols = [c for c in ("TPx", "TPy", "RA", "DEC", "id", "weight") if c in cat.colnames]
+    return table.Table([np.asarray(cat[c])[sel] for c in cols], names=cols, copy=False)
 
 
 class WCSImageCatalog:
@@ -241,6 +308,7 @@ class WCSImageCatalog:
             raise ValueError("An image catalog must contain 'x' and 'y' columns!")
 
         self._catalog = table.Table(catalog.copy(), masked=True)
+        self._catalog = _sanitize(catalog, coord_cols=("x", "y"))
         self._catalog.meta["name"] = self._name
 
         if "id" not in self._catalog.colnames:  # pragma: no branch
@@ -424,10 +492,13 @@ class WCSImageCatalog:
 
         if self.corrector.bounding_box is None:
             # just take max image coordinates from catalogs as bounds:
+            valid = _valid_mask(self._catalog)
+            x = np.asarray(self._catalog["x"])[valid]
+            y = np.asarray(self._catalog["y"])[valid]
             lx = -0.5
             ly = -0.5
-            hx = max(1, int(np.ceil(np.amax(self._catalog["x"])))) - 0.5
-            hy = max(1, int(np.ceil(np.amax(self._catalog["y"])))) - 0.5
+            hx = max(1, int(np.ceil(np.amax(x, initial=1)))) - 0.5
+            hy = max(1, int(np.ceil(np.amax(y, initial=1)))) - 0.5
 
         else:
             ((lx, hx), (ly, hy)) = self.corrector.bounding_box
@@ -496,11 +567,12 @@ class WCSImageCatalog:
         if self.corrector is None or self.catalog is None:
             return
 
-        x = self.catalog["x"].data
-        y = self.catalog["y"].data
+        valid = _valid_mask(self._catalog)
+        x = np.asarray(self._catalog["x"], dtype=np.double)[valid]
+        y = np.asarray(self._catalog["y"], dtype=np.double)[valid]
 
         if len(x) == 0:
-            # no points
+            # no points. this should never happen
             raise RuntimeError(  # pragma: no cover
                 "Unexpected error: Contact software developer"
             )
@@ -566,8 +638,8 @@ class WCSImageCatalog:
 
             if len(xp) <= 3:
                 # convex hull failed, so we will use the original points:
-                xi = x.to_list() + [x[0]]
-                yi = y.to_list() + [y[0]]
+                xi = x.tolist() + [x[0]]
+                yi = y.tolist() + [y[0]]
             else:
                 xi = xp
                 yi = yp
@@ -679,7 +751,7 @@ class WCSImageCatalog:
         self._calc_chip_bounding_polygon()
 
         # create smallest convex spherical polygon bounding all sources:
-        if self.catalog:
+        if self._catalog is not None and _valid_mask(self._catalog).any():
             self._calc_cat_convex_hull()
 
     @property
@@ -962,27 +1034,23 @@ class WCSGroupCatalog:
             else:
                 catname = image.name
 
-            col_catname = table.MaskedColumn(catlen * [catname], name="cat_name")
-            col_imcatidx = table.MaskedColumn(catlen * [catno], name="_imcat_idx")
-            col_id = table.MaskedColumn(image.catalog["id"])
-            col_x = table.MaskedColumn(image.catalog["x"], dtype=np.double)
-            col_y = table.MaskedColumn(image.catalog["y"], dtype=np.double)
-            ra, dec = image.det_to_world(image.catalog["x"], image.catalog["y"])
-            col_ra = table.MaskedColumn(ra, dtype=np.double, name="RA")
-            col_dec = table.MaskedColumn(dec, dtype=np.double, name="DEC")
-
+            imcat = image.catalog
+            ra, dec, valid = _apply_valid(
+                image.det_to_world, imcat["x"], imcat["y"], _valid_mask(imcat)
+            )
+            cols = [
+                table.Column(catlen * [catno], name="_imcat_idx"),
+                table.Column(catlen * [catname], name="cat_name"),
+                table.Column(imcat["id"], name="id"),
+                table.Column(imcat["x"], name="x", dtype=np.double),
+                table.Column(imcat["y"], name="y", dtype=np.double),
+                table.Column(ra, name="RA"),
+                table.Column(dec, name="DEC"),
+            ]
             if has_weights:
-                col_wght = table.MaskedColumn(image.catalog["weight"], dtype=np.double)
-
-                cat = table.Table(
-                    [col_imcatidx, col_catname, col_id, col_x, col_y, col_ra, col_dec, col_wght],
-                    masked=True,
-                )
-
-            else:
-                cat = table.Table(
-                    [col_imcatidx, col_catname, col_id, col_x, col_y, col_ra, col_dec], masked=True
-                )
+                cols.append(table.Column(imcat["weight"], name="weight", dtype=np.double))
+            cols.append(table.Column(valid, name=_VALID))
+            cat = table.Table(cols, masked=False)
 
             catalogs.append(cat)
             catno += 1
@@ -1001,17 +1069,18 @@ class WCSGroupCatalog:
             else:
                 catname = image.name
 
-            col_catname = table.MaskedColumn([catname], name="cat_name")
-            col_catname = col_catname[[False]]
-            col_imcatidx = table.MaskedColumn([], dtype=int, name="_imcat_idx")
-            col_id = table.MaskedColumn(image.catalog["id"])
-            col_x = table.MaskedColumn([], name="x", dtype=np.double)
-            col_y = table.MaskedColumn([], name="y", dtype=np.double)
-            col_ra = table.MaskedColumn([], name="RA", dtype=np.double)
-            col_dec = table.MaskedColumn([], name="DEC", dtype=np.double)
-
             cat = table.Table(
-                [col_imcatidx, col_catname, col_id, col_x, col_y, col_ra, col_dec], masked=True
+                [
+                    table.Column([], dtype=int, name="_imcat_idx"),
+                    table.Column(np.array([], dtype=f"U{max(1, len(catname))}"), name="cat_name"),
+                    table.Column([], dtype=int, name="id"),
+                    table.Column([], dtype=np.double, name="x"),
+                    table.Column([], dtype=np.double, name="y"),
+                    table.Column([], dtype=np.double, name="RA"),
+                    table.Column([], dtype=np.double, name="DEC"),
+                    table.Column([], dtype=bool, name=_VALID),
+                ],
+                masked=False,
             )
 
         if catname:
@@ -1040,13 +1109,21 @@ class WCSGroupCatalog:
     def recalc_catalog_radec(self):
         """Recalculate RA and DEC of the sources in the catalog."""
         for k, image in enumerate(self._images):
-            idx = self._catalog["_imcat_idx"] == k
-            if not np.any(idx):
+            idx = np.flatnonzero(np.asarray(self._catalog["_imcat_idx"]) == k)
+            if idx.size == 0:
                 continue
 
-            ra, dec = image.det_to_world(self._catalog["x"][idx], self._catalog["y"][idx])
+            # valid mask is re-derived from the image catalog.
+            # rows keep the same order as in the image catalog:
+            ra, dec, valid = _apply_valid(
+                image.det_to_world,
+                np.asarray(self._catalog["x"])[idx],
+                np.asarray(self._catalog["y"])[idx],
+                np.asarray(self._catalog[_VALID])[idx],
+            )
             self._catalog["RA"][idx] = ra
             self._catalog["DEC"][idx] = dec
+            self._catalog[_VALID][idx] = valid
 
     def calc_tanp_xy(self, tanplane_wcs):
         """
@@ -1068,9 +1145,15 @@ class WCSGroupCatalog:
             )
 
         # compute x & y in the reference WCS:
-        xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog["RA"], self.catalog["DEC"])
-        self._catalog["TPx"] = table.MaskedColumn(xtp, name="TPx", dtype=np.double, mask=False)
-        self._catalog["TPy"] = table.MaskedColumn(ytp, name="TPy", dtype=np.double, mask=False)
+        xtp, ytp, valid = _apply_valid(
+            tanplane_wcs.world_to_tanp,
+            self._catalog["RA"],
+            self._catalog["DEC"],
+            _valid_mask(self._catalog),
+        )
+        self._catalog["TPx"] = xtp
+        self._catalog["TPy"] = ytp
+        self._catalog[_VALID] = valid
 
     def match2ref(self, refcat, match=None):
         """Uses ``xyxymatch`` to cross-match sources between this catalog and
@@ -1104,6 +1187,8 @@ class WCSGroupCatalog:
         """
         colnames = self._catalog.colnames
         catlen = len(self._catalog)
+        img_valid = _valid_mask(self._catalog)
+        ref_valid = _valid_mask(refcat.catalog)
 
         if match is None:
             if catlen != len(refcat.catalog):
@@ -1119,15 +1204,18 @@ class WCSGroupCatalog:
                 refcat.name,
             )
             log.info("Catalogs are assumed matched with 1-to-1 correspondence.")
-            mref_idx = np.arange(catlen)
-            minput_idx = np.arange(catlen)
-            nmatches = catlen
+            # 1-to-1 correspondence: use only rows valid in *both* catalogs
+            minput_idx = mref_idx = np.flatnonzero(img_valid & ref_valid)
+            nmatches = len(minput_idx)
 
         else:
             if "TPx" not in colnames or "TPy" not in colnames:
                 raise RuntimeError("'calc_tanp_xy()' should have been run prior to match2ref()")
 
-            if catlen == 0:
+            img_sel = np.flatnonzero(img_valid)
+            ref_sel = np.flatnonzero(ref_valid)
+            if img_sel.size == 0 or ref_sel.size == 0:
+                self._mref_idx = self._minput_idx = np.array([], dtype=int)
                 return 0, np.array([], dtype=int), np.array([], dtype=int)
 
             try:
@@ -1137,30 +1225,24 @@ class WCSGroupCatalog:
             finally:
                 tp_units = self._images[0].corrector.units
 
-            mref_idx, minput_idx = match(
-                refcat.catalog, self._catalog, tp_pscale=tp_pscale, tp_units=tp_units
+            # pass only valid sources to the matcher:
+            mref_loc, minput_loc = match(
+                _match_view(refcat.catalog, ref_sel, ref_valid),
+                _match_view(self._catalog, img_sel, img_valid),
+                tp_pscale=tp_pscale, tp_units=tp_units,
             )
+            mref_idx = ref_sel[np.asarray(mref_loc, dtype=int)]
+            minput_idx = img_sel[np.asarray(minput_loc, dtype=int)]
             nmatches = len(mref_idx)
 
-        # matched_ref_id:
-        if "matched_ref_id" in colnames:
-            self._catalog["matched_ref_id"].mask[:] = True
-        else:
-            c = table.MaskedColumn(name="matched_ref_id", dtype=int, length=catlen, mask=True)
-            self._catalog.add_column(c)
-
-        self._catalog["matched_ref_id"].mask[minput_idx] = False
-        self._catalog["matched_ref_id"][minput_idx] = refcat.catalog["id"][mref_idx]
-
-        # this is needed to index reference catalog directly without using
-        # astropy table indexing which, at this moment, is experimental:
-        if "_raw_matched_ref_idx" in colnames:
-            self._catalog["_raw_matched_ref_idx"].mask = True
-        else:
-            c = table.MaskedColumn(name="_raw_matched_ref_idx", dtype=int, length=catlen, mask=True)
-            self._catalog.add_column(c)
-        self._catalog["_raw_matched_ref_idx"][minput_idx] = mref_idx
-        self._catalog["_raw_matched_ref_idx"].mask[minput_idx] = False
+        matched_ref_id = np.full(catlen, -1, dtype=int)
+        matched_ref_id[minput_idx] = np.asarray(refcat.catalog["id"])[mref_idx]
+        raw_idx = np.full(catlen, -1, dtype=int)
+        raw_idx[minput_idx] = mref_idx
+        self._catalog["matched_ref_id"] = _masked_index_column("matched_ref_id", matched_ref_id)
+        self._catalog["_raw_matched_ref_idx"] = _masked_index_column(
+            "_raw_matched_ref_idx", raw_idx
+        )
 
         log.info("Found %d matches for '%s'...", nmatches, self.name)
 
@@ -1668,9 +1750,11 @@ class RefCatalog:
         self._check_catalog(catalog)
 
         if not catalog:
-            raise ValueError("Reference catalog must contain at least one source.")
+            raise ValueError("Reference catalog must contain at least one valid source.")
 
-        self._catalog = catalog.copy()
+        self._catalog = _sanitize(catalog, coord_cols=("RA", "DEC"))
+        if not _valid_mask(self._catalog).any():
+            raise ValueError("Reference catalog must contain at least one valid source.")
 
         if "id" not in self._catalog.colnames:
             self._catalog["id"] = np.arange(1, len(self._catalog) + 1)
@@ -1811,7 +1895,11 @@ class RefCatalog:
         # Compute x, y coordinates in this tangent plane based on the
         # previously computed WCS and return the set of x, y coordinates and
         # "reference WCS".
-        x, y, z = _S2C(self.catalog["RA"], self.catalog["DEC"])
+        valid = _valid_mask(self._catalog)
+        x, y, z = _S2C(
+            np.asarray(self._catalog["RA"], dtype=np.double)[valid],
+            np.asarray(self._catalog["DEC"], dtype=np.double)[valid],
+        )
         ra_ref, dec_ref = _C2S(
             x.mean(dtype=np.double), y.mean(dtype=np.double), z.mean(dtype=np.double)
         )
@@ -1913,7 +2001,7 @@ class RefCatalog:
 
         """
         self._check_catalog(catalog)
-        cat = catalog.copy()
+        cat = _sanitize(catalog, coord_cols=("RA", "DEC"))
         if self._catalog is None:
             self._catalog = cat
             if "id" not in self._catalog.colnames:  # pragma: no branch
@@ -1921,8 +2009,12 @@ class RefCatalog:
         else:
             maxid = self.catalog["id"].max()
             oldlen = len(self.catalog)
-            self._catalog = table.vstack(
-                [self.catalog, cat], join_type="outer", metadata_conflicts="silent"
+            # an outer vstack can introduce masked columns -> sanitize again
+            self._catalog = _sanitize(
+                table.vstack(
+                    [self._catalog, cat], join_type="outer", metadata_conflicts="silent"
+                ),
+                coord_cols=("RA", "DEC"),
             )
 
             # assign ids to the newly added source positions in consecutive
@@ -1947,10 +2039,15 @@ class RefCatalog:
 
         """
         # compute x & y in the reference WCS:
-        xtp, ytp = tanplane_wcs.world_to_tanp(self.catalog["RA"], self.catalog["DEC"])
-        self._catalog["TPx"] = table.MaskedColumn(xtp, name="TPx", dtype=np.double, mask=False)
-        self._catalog["TPy"] = table.MaskedColumn(ytp, name="TPy", dtype=np.double, mask=False)
-
+        xtp, ytp, valid = _apply_valid(
+            tanplane_wcs.world_to_tanp,
+            self._catalog["RA"],
+            self._catalog["DEC"],
+            _valid_mask(self._catalog),
+        )
+        self._catalog["TPx"] = xtp
+        self._catalog["TPy"] = ytp
+        self._catalog[_VALID] = valid
 
 def convex_hull(x, y, wcs=None, min_separation=None):
     """Computes the convex hull of a set of 2D points.
