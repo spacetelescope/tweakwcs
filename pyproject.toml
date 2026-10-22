@@ -38,6 +38,7 @@ Documentation = "http://spacetelescope.github.io/tweakwcs/"
 
 [project.optional-dependencies]
 test = [
+    "coverage",
     "pytest>=9.0",
     "pytest-cov",
     "scipy",
