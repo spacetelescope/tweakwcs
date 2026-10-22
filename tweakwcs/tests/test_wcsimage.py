@@ -405,6 +405,7 @@ def test_wcsgroupcat_bb_policy(rect_imcat):
 def test_wcsgroupcat_recalc_catalog_radec(mock_fits_wcs, rect_imcat):
     ra, dec = mock_fits_wcs.all_pix2world(rect_imcat.catalog["x"], rect_imcat.catalog["y"], 0)
     refcat = Table([ra, dec], names=("RA", "DEC"))
+    refcat_orig = copy.deepcopy(refcat)  # to check for side effects later
     ref = RefCatalog(refcat)
 
     wim1 = copy.deepcopy(rect_imcat)
@@ -427,6 +428,12 @@ def test_wcsgroupcat_recalc_catalog_radec(mock_fits_wcs, rect_imcat):
     assert len(mcat) == 5
     assert np.allclose(mcat["RA"], ra)
     assert np.allclose(mcat["DEC"], dec)
+
+    # no side effects on the input reference catalog:
+    assert refcat.colnames == refcat_orig.colnames
+    for name in refcat_orig.colnames:
+        assert np.array_equal(refcat[name], refcat_orig[name])
+        assert not np.shares_memory(np.asarray(ref.catalog[name]), np.asarray(refcat[name]))
 
     del g.catalog["RA"]
     del g.catalog["DEC"]
@@ -631,13 +638,23 @@ def test_wcsimcat_masked_invalid_sources(mock_fits_wcs, rect_cat):
     # same sources + one masked and one NaN "garbage" source far away:
     x = MaskedColumn(list(rect_cat["x"]) + [900.0, 0.0], mask=5 * [False] + [True, False])
     y = MaskedColumn(list(rect_cat["y"]) + [900.0, np.nan])
-    w = WCSImageCatalog(Table([x, y], names=("x", "y"), masked=True), corr)
+    imcat = Table([x, y], names=("x", "y"), masked=True)
+    imcat_orig = copy.deepcopy(imcat)  # keep a copy to check for side effects later
+    w = WCSImageCatalog(imcat, corr)
+    WCSGroupCatalog(w)  # also exercise group catalog creation (det_to_world)
 
     assert not w.catalog.has_masked_columns
     assert w.catalog["_valid"].tolist() == 5 * [True] + [False, False]
     # invalid sources must not affect the footprint:
     assert _same_spherical_polygons(w.polygon, w_ref.polygon)
     assert np.isclose(w.poly_area, w_ref.poly_area, rtol=1e-12, atol=0)
+
+    # check there are no side effects on the input catalog (data, masks, columns):
+    assert imcat.colnames == imcat_orig.colnames
+    for name in imcat_orig.colnames:
+        assert np.array_equal(imcat[name].data, imcat_orig[name].data, equal_nan=True)
+        assert np.array_equal(imcat[name].mask, imcat_orig[name].mask)
+        assert not np.shares_memory(np.asarray(w.catalog[name]), np.asarray(imcat[name]))
 
 
 def test_wcsimcat_all_invalid_sources(mock_fits_wcs, rect_imcat):
