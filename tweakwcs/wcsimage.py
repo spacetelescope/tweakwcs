@@ -40,6 +40,7 @@ _S2C = SphericalToCartesian(name="s2c", wrap_lon_at=180)
 _C2S = CartesianToSpherical(name="c2s", wrap_lon_at=180)
 _VALID = "_valid"
 
+
 def _is_int(n):
     return (isinstance(n, numbers.Integral) and not isinstance(n, bool)) or (
         isinstance(n, np.generic) and np.issubdtype(n, np.integer)
@@ -163,6 +164,7 @@ class WCSImageCatalog:
 
         self._catalog = None
         self._bb_radec = None
+        self._poly_area = None
 
         self.img_bounding_ra = None
         self.img_bounding_dec = None
@@ -172,7 +174,6 @@ class WCSImageCatalog:
 
         self.corrector = corrector
         self.catalog = catalog
-        self._poly_area = None
 
     @property
     def poly_area(self):
@@ -307,7 +308,6 @@ class WCSImageCatalog:
         if "x" not in catalog.colnames or "y" not in catalog.colnames:
             raise ValueError("An image catalog must contain 'x' and 'y' columns!")
 
-        self._catalog = table.Table(catalog.copy(), masked=True)
         self._catalog = _sanitize(catalog, coord_cols=("x", "y"))
         self._catalog.meta["name"] = self._name
 
@@ -2010,12 +2010,14 @@ class RefCatalog:
             maxid = self.catalog["id"].max()
             oldlen = len(self.catalog)
             # an outer vstack can introduce masked columns -> sanitize again
-            self._catalog = _sanitize(
-                table.vstack(
-                    [self._catalog, cat], join_type="outer", metadata_conflicts="silent"
-                ),
-                coord_cols=("RA", "DEC"),
+            stacked = table.vstack(
+                [self._catalog, cat], join_type="outer", metadata_conflicts="silent"
             )
+            # 'weight' present in only one catalog is masked by the outer join
+            # for the other catalog's rows; these are not invalid sources:
+            if "weight" in stacked.colnames and hasattr(stacked["weight"], "filled"):
+                stacked["weight"] = stacked["weight"].filled(1.0)
+            self._catalog = _sanitize(stacked, coord_cols=("RA", "DEC"))
 
             # assign ids to the newly added source positions in consecutive
             # order above the largest id in the already existing catalog:
@@ -2048,6 +2050,7 @@ class RefCatalog:
         self._catalog["TPx"] = xtp
         self._catalog["TPy"] = ytp
         self._catalog[_VALID] = valid
+
 
 def convex_hull(x, y, wcs=None, min_separation=None):
     """Computes the convex hull of a set of 2D points.
