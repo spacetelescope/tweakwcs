@@ -145,7 +145,7 @@ def iter_linear_fit(
         indicates the number of "fit error estimates" to use for clipping.
         The second value (a string) indicates the statistic to be
         used for "fit error estimate". Currently the following values are
-        supported: ``'rmse'``, ``'mae'``, and ``'std'``
+        supported: ``'rmse'``, ``'mae'``, ``'std'``, and ``'mad'``
         - see ``Notes`` section for more details.
 
         When ``sigma`` is a single number, it must be a positive number and
@@ -196,6 +196,7 @@ def iter_linear_fit(
         - ``'rmse'``: Root-Mean-Square Error
         - ``'mae'``: Mean Absolute Error
         - ``'std'``: Standard Deviation of the residuals
+        - ``'mad'``: Median Absolute Deviation of the residuals
         - ``'resids'``: An array of residuals of the fit.
           **NOTE:** Only the residuals for the "valid" points are reported
           here. Therefore the length of this array may be smaller than the
@@ -231,6 +232,9 @@ def iter_linear_fit(
     .. math::
         \mathrm{STD} = \sqrt{\Sigma_k w_k \|\mathbf{r}_k - \
                        \mathbf{\overline{r}}\|^2}/(1-V_2)
+
+    .. math::
+        \mathrm{MAD} = \mathrm{median}_w \|\mathbf{r}_k\| / \sqrt{\ln 2}
 
     where :math:`\mathbf{r}_k=\mathbf{xy}_k-\mathbf{xy}'_k`,
     :math:`\Sigma_k w_k = 1`, and :math:`V_2=\Sigma_k w_k^2`.
@@ -298,7 +302,7 @@ def iter_linear_fit(
     elif sigma is not None:
         nsigma = float(sigma[0])
         sigstat = sigma[1]
-        if sigstat not in ["rmse", "mae", "std"]:
+        if sigstat not in ["rmse", "mae", "std", "mad"]:
             raise ValueError("Unsupported sigma statistics value.")
 
     if sigma is not None and nsigma <= 0.0:
@@ -366,11 +370,34 @@ def iter_linear_fit(
     return fit
 
 
+# Median residual norm -> RMSE for isotropic Gaussian residuals.  The norm
+# is then Rayleigh distributed, with median sigma * sqrt(2 ln 2), while the
+# RMSE is sigma * sqrt(2).
+_MAD_TO_RMSE = 1 / np.sqrt(np.log(2))
+
+
+def _weighted_median(values, weights=None):
+    # same as np.quantile(values, 0.5, weights=weights,
+    # method="inverted_cdf"), which needs numpy >= 2.0
+    if weights is None:
+        return np.median(values)
+    order = np.argsort(values)
+    cw = np.cumsum(weights[order])
+    return values[order][np.searchsorted(cw, 0.5 * cw[-1])]
+
+
+def _mad(residuals, weights=None):
+    """Median residual norm, scaled to match the RMSE for Gaussian residuals."""
+    norm = np.linalg.norm(np.asarray(residuals, dtype=np.double), axis=1)
+    return _MAD_TO_RMSE * _weighted_median(norm, weights)
+
+
 def _compute_stat(fit, residuals, weights):
     if weights is None:
         fit["rmse"] = float(np.sqrt(np.mean(2 * residuals**2)))
         fit["mae"] = float(np.mean(np.linalg.norm(residuals, axis=1)))
         fit["std"] = float(np.linalg.norm(residuals.std(axis=0)))
+        fit["mad"] = float(_mad(residuals))
     else:
         # assume all weights > 0 (this should be insured by the caller => no
         # need to repeat the check here)
@@ -380,11 +407,13 @@ def _compute_stat(fit, residuals, weights):
             fit["rmse"] = float("nan")
             fit["mae"] = float("nan")
             fit["std"] = float("nan")
+            fit["mad"] = float("nan")
             return
 
         w = weights / wt
         fit["rmse"] = float(np.sqrt(np.sum(np.dot(w, residuals**2))))
         fit["mae"] = float(np.dot(w, np.linalg.norm(residuals, axis=1)))
+        fit["mad"] = float(_mad(residuals, np.asarray(w, dtype=np.double)))
 
         if npts == 1:
             fit["std"] = 0.0

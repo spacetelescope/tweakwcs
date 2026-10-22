@@ -84,7 +84,7 @@ def test_fit_wcs_1_image_source_empty_ref(empty_refcat, mock_fits_wcs):
     imcat = Table([[1], [2]], names=("x", "y"))
     with pytest.raises(ValueError) as e:
         fit_wcs(empty_refcat, imcat, tpwcs)
-    assert e.value.args[0] == "Reference catalog must contain at least one source."
+    assert e.value.args[0] == "Reference catalog must contain at least one valid source."
 
 
 def test_fit_wcs_malformed_meta(mock_fits_wcs):

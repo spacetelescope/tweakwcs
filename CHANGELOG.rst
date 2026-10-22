@@ -5,6 +5,25 @@ Release Notes
 =============
 
 
+0.9.3 (22-October-2026)
+=======================
+
+- Added a ``'mad'`` (median absolute deviation) statistic for the clipping
+  threshold in ``iter_linear_fit``.  This is more robust to outliers
+  than statistics based on means. [#267]
+
+- Improved compatibility withPython 3.15. [#268]
+
+- Improved compatibility with ``astropy>8.0.0``. [#270]
+
+- Fixed a bug in ``WCSImageCatalog._calc_cat_convex_hull``:
+  ``x.to_list() -> x.tolist()``. [#270]
+
+- Now only valid sources are passed to the coordinate transformations,
+  matching, and linear fit functions, and are used for convex hull
+  computations. [#270]
+
+
 0.9.2 (07-July-2026)
 ====================
 
