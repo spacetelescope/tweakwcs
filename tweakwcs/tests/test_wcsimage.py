@@ -12,10 +12,11 @@ import pytest
 
 from astropy import wcs
 from astropy.io import fits
-from astropy.table import Column, Table
+from astropy.table import Column, MaskedColumn, Table
 from astropy.utils.data import get_pkg_data_filename
 from tweakwcs import FITSWCSCorrector, XYXYMatch
-from tweakwcs.wcsimage import RefCatalog, WCSGroupCatalog, WCSImageCatalog, _is_int, convex_hull
+from tweakwcs.wcsimage import RefCatalog, WCSGroupCatalog, WCSImageCatalog, _is_int, _sanitize, convex_hull
+
 
 _ATOL = 100 * np.finfo(np.array([1.0]).dtype).eps
 _ONE_SQRT2 = 1.0 / np.sqrt(2.0)
@@ -404,6 +405,7 @@ def test_wcsgroupcat_bb_policy(rect_imcat):
 def test_wcsgroupcat_recalc_catalog_radec(mock_fits_wcs, rect_imcat):
     ra, dec = mock_fits_wcs.all_pix2world(rect_imcat.catalog["x"], rect_imcat.catalog["y"], 0)
     refcat = Table([ra, dec], names=("RA", "DEC"))
+    refcat_orig = copy.deepcopy(refcat)  # to check for side effects later
     ref = RefCatalog(refcat)
 
     wim1 = copy.deepcopy(rect_imcat)
@@ -426,6 +428,12 @@ def test_wcsgroupcat_recalc_catalog_radec(mock_fits_wcs, rect_imcat):
     assert len(mcat) == 5
     assert np.allclose(mcat["RA"], ra)
     assert np.allclose(mcat["DEC"], dec)
+
+    # no side effects on the input reference catalog:
+    assert refcat.colnames == refcat_orig.colnames
+    for name in refcat_orig.colnames:
+        assert np.array_equal(refcat[name], refcat_orig[name])
+        assert not np.shares_memory(np.asarray(ref.catalog[name]), np.asarray(refcat[name]))
 
     del g.catalog["RA"]
     del g.catalog["DEC"]
@@ -584,3 +592,187 @@ def test_convex_hull_adjacent():
     x.pop(3)
     y.pop(3)
     assert np.allclose([x, y], [xc, yc], rtol=0, atol=1e-14)
+
+
+def test_sanitize_masked_catalog():
+    cat = Table(
+        [
+            MaskedColumn([1.0, 2.0, 3.0, 4.0, 5.0], mask=[False, True, False, False, False]),
+            [1.0, 2.0, np.nan, 4.0, 5.0],
+            MaskedColumn([1.0, 1.0, 1.0, 1.0, 1.0], mask=[False, False, False, True, False]),
+            MaskedColumn([1, 2, 3, 4, 5], mask=[False, False, False, False, True]),
+        ],
+        names=("x", "y", "weight", "id"),
+        masked=True,
+    )
+    s = _sanitize(cat, coord_cols=("x", "y"))
+
+    assert not s.has_masked_columns
+    # masked x, non-finite y, masked weight -> invalid; masked non-coord col -> filled
+    assert s["_valid"].tolist() == [True, False, False, False, True]
+    assert np.isnan(s["x"][1])
+    assert s["id"][4] == 0
+
+    # input table is not modified:
+    assert isinstance(cat["x"], MaskedColumn) and cat["x"].mask[1]
+
+
+def test_sanitize_existing_valid_column():
+    cat = Table(
+        [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], MaskedColumn([True, False, True], mask=[False, False, True])],
+        names=("x", "y", "_valid"),
+    )
+    s = _sanitize(cat, coord_cols=("x", "y"))
+    # existing flags are AND-ed; masked flags are treated as invalid:
+    assert s["_valid"].tolist() == [True, False, False]
+
+    # result does not alias input:
+    s["_valid"][0] = False
+    assert cat["_valid"][0]
+
+
+def test_wcsimcat_masked_invalid_sources(mock_fits_wcs, rect_cat):
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    w_ref = WCSImageCatalog(rect_cat, corr)
+
+    # same sources + one masked and one NaN "garbage" source far away:
+    x = MaskedColumn(list(rect_cat["x"]) + [900.0, 0.0], mask=5 * [False] + [True, False])
+    y = MaskedColumn(list(rect_cat["y"]) + [900.0, np.nan])
+    imcat = Table([x, y], names=("x", "y"), masked=True)
+    imcat_orig = copy.deepcopy(imcat)  # keep a copy to check for side effects later
+    w = WCSImageCatalog(imcat, corr)
+    WCSGroupCatalog(w)  # also exercise group catalog creation (det_to_world)
+
+    assert not w.catalog.has_masked_columns
+    assert w.catalog["_valid"].tolist() == 5 * [True] + [False, False]
+    # invalid sources must not affect the footprint:
+    assert _same_spherical_polygons(w.polygon, w_ref.polygon)
+    assert np.isclose(w.poly_area, w_ref.poly_area, rtol=1e-12, atol=0)
+
+    # check there are no side effects on the input catalog (data, masks, columns):
+    assert imcat.colnames == imcat_orig.colnames
+    for name in imcat_orig.colnames:
+        assert np.array_equal(imcat[name].data, imcat_orig[name].data, equal_nan=True)
+        assert np.array_equal(imcat[name].mask, imcat_orig[name].mask)
+        assert not np.shares_memory(np.asarray(w.catalog[name]), np.asarray(imcat[name]))
+
+
+def test_wcsimcat_all_invalid_sources(mock_fits_wcs, rect_imcat):
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    cat = Table([MaskedColumn([1.0, 2.0], mask=True), [3.0, 4.0]], names=("x", "y"))
+    w = WCSImageCatalog(cat, corr)
+
+    # falls back to the chip footprint:
+    chip = copy.deepcopy(w)
+    chip._calc_chip_bounding_polygon()
+    assert _same_spherical_polygons(w.polygon, chip.polygon)
+
+    # group catalog: no transforms of invalid sources, RA/DEC are NaN:
+    g = WCSGroupCatalog(w)
+    assert np.all(np.isnan(g.catalog["RA"]))
+    assert not np.any(g.catalog["_valid"])
+
+    # matching with no valid sources -> 0 matches, matcher is never called:
+    ra, dec = mock_fits_wcs.all_pix2world(rect_imcat.catalog["x"], rect_imcat.catalog["y"], 0)
+    ref = RefCatalog(Table([ra, dec], names=("RA", "DEC")))
+    ref.calc_tanp_xy(corr)
+    g.calc_tanp_xy(corr)
+
+    def fail_match(*args, **kwargs):
+        pytest.fail("matcher must not be called without valid sources")
+
+    nmatches, mref, minp = g.match2ref(ref, match=fail_match)
+    assert nmatches == 0 and mref.size == 0 and minp.size == 0
+
+
+@pytest.fixture
+def masked_group_and_ref(mock_fits_wcs):
+    corr = FITSWCSCorrector(mock_fits_wcs)
+    xd = np.array([0.0, 0.0, 10.0, 10.0, 5.0, 2.0]) - 5
+    yd = np.array([0.0, 10.0, 10.0, 0.0, 5.0, 7.0]) - 5
+    ra, dec = mock_fits_wcs.all_pix2world(xd, yd, 0)
+
+    # image: row 4 masked, row 5 NaN -> valid rows 0-3 (ids 1-4)
+    x = MaskedColumn(xd, mask=[False, False, False, False, True, False])
+    y = yd.copy()
+    y[5] = np.nan
+    imcat = Table([x, y], names=("x", "y"), masked=True)
+
+    # reference: row 0 masked -> valid rows 1-5 (ids 2-6)
+    refcat = Table(
+        [MaskedColumn(ra, mask=[True] + 5 * [False]), dec], names=("RA", "DEC"), masked=True
+    )
+
+    g = WCSGroupCatalog(WCSImageCatalog(imcat, corr))
+    ref = RefCatalog(refcat)
+    return g, ref, corr
+
+
+def test_wcsgroupcat_align_skips_invalid_sources(masked_group_and_ref):
+    g, ref, corr = masked_group_and_ref
+    seen = {}
+
+    def id_match(refcat, imcat, **kwargs):
+        # deterministic "matcher": match by source id; records its inputs
+        seen["ref"], seen["im"] = refcat, imcat
+        ref_ids = list(refcat["id"])
+        mi = [i for i, sid in enumerate(imcat["id"]) if sid in ref_ids]
+        mr = [ref_ids.index(imcat["id"][i]) for i in mi]
+        return np.array(mr, dtype=int), np.array(mi, dtype=int)
+
+    assert g.align_to_ref(ref, ref_tpwcs=corr, match=id_match, fitgeom="shift", nclip=0)
+
+    # matcher received only valid, finite sources:
+    assert len(seen["im"]) == 4 and len(seen["ref"]) == 5
+    for c in ("TPx", "TPy"):
+        assert np.all(np.isfinite(seen["im"][c]))
+        assert np.all(np.isfinite(seen["ref"][c]))
+
+    # local matcher indices are mapped back to full-catalog indices:
+    fi = g[0].fit_info
+    assert fi["matched_input_idx"].tolist() == [1, 2, 3]
+    assert fi["matched_ref_idx"].tolist() == [1, 2, 3]
+
+    # public matched_ref_id stays a MaskedColumn (masked == not matched):
+    mid = g.catalog["matched_ref_id"]
+    assert isinstance(mid, MaskedColumn)
+    assert mid.mask.tolist() == [True, False, False, False, True, True]
+    assert mid[1:4].tolist() == [2, 3, 4]
+    assert len(g.get_matched_cat()) == 3
+    assert len(g.get_unmatched_cat()) == 3
+
+    # invalid sources were not transformed after alignment:
+    assert np.all(np.isnan(g.catalog["RA"][4:]))
+
+
+def test_wcsgroupcat_match_none_skips_invalid_sources(masked_group_and_ref):
+    g, ref, corr = masked_group_and_ref
+    g.calc_tanp_xy(corr)
+    ref.calc_tanp_xy(corr)
+    nmatches, mref, minp = g.match2ref(ref, match=None)
+    # only rows valid in *both* catalogs:
+    assert nmatches == 3
+    assert minp.tolist() == mref.tolist() == [1, 2, 3]
+
+
+def test_wcsrefcat_all_invalid_sources():
+    refcat = Table([MaskedColumn([1.0, 2.0], mask=True), [3.0, 4.0]], names=("RA", "DEC"))
+    with pytest.raises(ValueError) as e:
+        RefCatalog(refcat)
+    assert e.value.args[0] == "Reference catalog must contain at least one valid source."
+
+
+def test_wcsrefcat_expand_catalog_masked():
+    ref = RefCatalog(Table([[1.0, 1.001], [3.0, 3.0]], names=("RA", "DEC")))
+    new = Table(
+        [MaskedColumn([1.0, 1.002], mask=[False, True]), [3.001, 3.002], [2.0, 2.0]],
+        names=("RA", "DEC", "weight"),
+    )
+    ref.expand_catalog(new)
+    cat = ref.catalog
+
+    assert not cat.has_masked_columns
+    # original sources must stay valid even though they had no 'weight':
+    assert cat["_valid"].tolist() == [True, True, True, False]
+    assert cat["id"].tolist() == [1, 2, 3, 4]
+    assert cat["weight"][:3].tolist() == [1.0, 1.0, 2.0]
