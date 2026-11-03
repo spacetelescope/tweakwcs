@@ -23,7 +23,14 @@ from . import __version__
 from .correctors import WCSCorrector
 from .linearfit import _SUPPORTED_FITGEOM_EN_STR, SUPPORTED_FITGEOM_MODES
 from .matchutils import XYXYMatch
-from .wcsimage import RefCatalog, WCSGroupCatalog, WCSImageCatalog
+from .wcsimage import (
+    RefCatalog,
+    WCSGroupCatalog,
+    WCSImageCatalog,
+    _apply_valid,
+    _sanitize,
+    _valid_mask,
+)
 
 __author__ = "Mihai Cara"
 
@@ -73,7 +80,7 @@ def fit_wcs(
         ``'DEC'`` columns which indicate reference source world
         coordinates (in degrees). An optional column in the catalog is
         the ``'weight'`` column, which when present, will be used in fitting.
-        See ``Notes`` section for further details.
+        Masked tables are supported. See ``Notes`` section for further details.
 
     imcat: astropy.table.Table
         Source catalog associated with an image whose WCS needs to be aligned
@@ -82,7 +89,8 @@ def fit_wcs(
         Must contain ``'x'`` and ``'y'`` columns which indicate source
         coordinates (in pixels) in the associated image. An optional column in
         the catalog is the ``'weight'`` column, which when present, will be
-        used in fitting. See ``Notes`` section for further details.
+        used in fitting. Masked tables are supported. See ``Notes`` section
+        for further details.
 
     corrector: WCSCorrector
         A ``WCS`` associated with the image from which the catalog was derived.
@@ -177,6 +185,19 @@ def fit_wcs(
         all weights is 1, then group's sources will be weighed unequally:
         ``[0.25,0.25,0.25,0.25,0.5,0.5]``.
 
+    **Masked tables:**
+
+    Image and reference catalogs may be `astropy.table.Table` objects with
+    masked columns. A source is ignored when any of its coordinates
+    (``'x'``, ``'y'`` for ``imcat``; ``'RA'``, ``'DEC'`` for ``refcat``) or
+    its ``'weight'`` is masked or not finite. Sources whose coordinates can't
+    be converted to the tangent plane are also invalid. Because catalogs
+    must be matched 1-to-1, a source is used in the fit only if it is valid in
+    *both* catalogs; catalog lengths and row order must still agree.
+    Input catalogs are not modified.
+
+    **fit_info:**
+
     Upon **successful** completion, this function will set the ``'fit_info'``
     key value of the ``meta`` attribute of the returned ``WCSCorrector``
     object. ``'fit_info'`` is a dictionary with the following items:
@@ -216,6 +237,10 @@ def fit_wcs(
           where used for fitting (`True`) and which were clipped out
           (`False`). **NOTE:** For weighted fits, positions with zero
           weights are automatically excluded from the fits.
+          **NOTE:** Sources that are not valid (see "Masked tables" above)
+          are excluded before fitting. Therefore, this array has one element
+          per source that is valid in *both* catalogs, not one element per
+          row of the input catalogs.
 
         * **'eff_nclip'**: Effective number of clipping iterations
 
@@ -371,7 +396,8 @@ def align_wcs(
         ``'Unknown'``. Group ID that may be used for identifying catalogs
         that need to be aligned together. ``group_id`` must be hashable.
         If ``'group_id'`` is `None` or not provided, each input WCS/catalog
-        will be aligned individually.
+        will be aligned individually. Masked tables are supported;
+        see Notes section for details.
 
         .. note::
             Upon completion this function will add ``'fit_info'``
@@ -383,12 +409,15 @@ def align_wcs(
             calling their
             :py:meth:`~tweakwcs.correctors.WCSCorrector.set_correction` method.
 
-    refcat: astropy.table.Table, optional
+    refcat: astropy.table.Table, WCSCorrector, optional
         A reference source catalog. The catalog must contain ``'RA'`` and
         ``'DEC'`` columns which indicate reference source world
         coordinates (in degrees). An optional column in the catalog is
         the ``'weight'`` column, which when present, will be used in fitting.
-        See ``Notes`` section for further details.
+        See ``Notes`` section for further details. If a `WCSCorrector` object
+        is provided instead of a table, its ``meta`` dictionary **must**
+        contain a ``'catalog'`` item with a valid table as described above.
+        Masked tables are supported; see Notes section for details.
 
     ref_tpwcs: WCSCorrector, None, optional
         A reference WCS of the type ``WCSCorrector`` that provides the tangent
@@ -410,8 +439,9 @@ def align_wcs(
     expand_refcat: bool, optional
         Specifies whether to add new sources from just matched images to
         the reference catalog to allow next image to be matched against an
-        expanded reference catalog. By delault, the reference catalog is not
-        being expanded.
+        expanded reference catalog. By default, the reference catalog is not
+        being expanded. Invalid (masked or non-finite) sources are never added
+        to the expanded catalog.
 
         If ``refcat`` is not `None` and contains an ``'id'`` column, then
         sources being added to the reference catalog will be assigned
@@ -477,12 +507,26 @@ def align_wcs(
     Returns
     -------
     eff_refcat: astropy.table.Table
-        Effective reference catalog used for aligning all images. Depending
-        on the values of the input parameters ``refcat``,
-        ``enforce_user_order``, and ``expand_refcat``, effective
-        reference catalog may be one of the input image catalogs, the original
-        ``refcat`` catalog, an expanded ``refcat`` with a combination of
-        source positions from all input images.
+        Effective reference catalog used for aligning all images. This is
+        always a regular (non-masked) table and is never the same object
+        as the input ``refcat``. Depending on the values of the input
+        parameters ``refcat``, ``enforce_user_order``, and ``expand_refcat``,
+        it is:
+
+        * a processed copy of the input ``refcat`` (or of the catalog of
+          the reference ``WCSCorrector``) when ``refcat`` is provided;
+        * the combined catalog of the image (or group of images) selected
+          as the reference when ``refcat`` is `None`; or
+        * either of the above expanded with the unmatched sources from the
+          aligned images when ``expand_refcat`` is `True`.
+
+        The table contains ``'RA'`` and ``'DEC'`` columns and an ``'id'``
+        column (created if it was not present in the input), plus a boolean
+        ``'_valid'`` column that flags usable sources. Sources that were
+        masked or not finite in the input are kept in the table but flagged
+        as invalid (``'_valid'`` is `False`), and they were not used for
+        matching or fitting. The table may also contain additional
+        columns used internally for alignment. See *Notes (3)* for details.
 
     Raises
     ------
@@ -550,6 +594,30 @@ def align_wcs(
         WCS plane while fit may be performed in a slightly different tangent
         plane.
 
+    **3. Masked tables:**
+
+    Catalogs (both the image catalogs in ``wcscat`` and a reference catalog
+    given as ``refcat``) may be `astropy.table.Table` objects with masked
+    columns. A source (row) is ignored, i.e., it is not used for matching,
+    fitting, or computing the catalog footprint, when any of its coordinate
+    values (``'x'`` and ``'y'`` for image catalogs, or for a reference
+    ``WCSCorrector``'s catalog when ``'RA'`` and ``'DEC'`` are not present;
+    ``'RA'`` and ``'DEC'`` for reference tables) or its ``'weight'`` is masked
+    or not finite. Masked values in other columns (such as ``'id'``) do not
+    exclude the source; they are filled with ``NaN`` (floating-point columns)
+    or ``0`` (other types) in the internal copy of the catalog. Input
+    catalogs are never modified.
+
+    Image catalogs (or groups of image catalogs) that contain no valid
+    sources are not aligned and have their ``'fit_info'`` status set to
+    ``'FAILED: no valid sources'``. Invalid sources are not added to the
+    reference catalog when ``expand_refcat`` is `True`.
+
+    The returned effective reference catalog is a regular (non-masked)
+    copy of the catalog actually used for alignment. It contains an
+    additional boolean ``'_valid'`` column flagging usable sources, and it is
+    not the same object as the input ``refcat``.
+
     """
     function_name = align_wcs.__name__
 
@@ -608,13 +676,21 @@ def align_wcs(
             if "catalog" not in refcat.meta:
                 raise ValueError("Reference 'WCSCorrector' must contain a catalog.")
 
-            rcat = refcat.meta["catalog"].copy()
+            cat = refcat.meta["catalog"]
+            has_radec = "RA" in cat.colnames and "DEC" in cat.colnames
 
-            if not ("RA" in rcat.colnames and "DEC" in rcat.colnames):  # pragma: no branch
-                # convert image x & y to world coordinates:
-                ra, dec = refcat.det_to_world(rcat["x"], rcat["y"])
+            # non-masked copy with a '_valid' column; masked/non-finite
+            # coordinates are flagged as invalid instead of propagating:
+            rcat = _sanitize(cat, coord_cols=("RA", "DEC") if has_radec else ("x", "y"))
+
+            if not has_radec:  # pragma: no branch
+                # convert image x & y to world coordinates (valid rows only):
+                ra, dec, valid = _apply_valid(
+                    refcat.det_to_world, rcat["x"], rcat["y"], _valid_mask(rcat)
+                )
                 rcat["RA"] = ra
                 rcat["DEC"] = dec
+                rcat["_valid"] = valid
 
             refcat_name = refcat.meta.get("name", rcat.meta.get("name", "Unnamed"))
 
@@ -661,6 +737,17 @@ def align_wcs(
                 continue
 
             wcs_gcat.append(gcat)
+
+    # drop groups that have no valid (unmasked, finite) sources:
+    usable_gcat = []
+    for gcat in wcs_gcat:
+        if _valid_mask(gcat.catalog).any():
+            usable_gcat.append(gcat)
+            continue
+        log.warning("Group '%s' will not be aligned: no valid sources", gcat.name)
+        for wcat in gcat:
+            wcat.corrector.meta["fit_info"] = {"status": "FAILED: no valid sources"}
+    wcs_gcat = usable_gcat
 
     # check that we have enough input images:
     if (refcat is None and len(wcs_gcat) < 2) or len(wcs_gcat) == 0:
@@ -711,12 +798,16 @@ def align_wcs(
         if expand_refcat:
             if wcat.corrector.meta["fit_info"]["status"] == "SUCCESS" or not area:
                 unmatched_src = current_wcat.get_unmatched_cat()
-                refcat.expand_catalog(unmatched_src)
-                log.info(
-                    "Added %d unmatched sources from '%s' to the reference catalog.",
-                    len(unmatched_src),
-                    current_wcat.name,
-                )
+                # do not add masked / non-finite (invalid) sources:
+                unmatched_src = unmatched_src[np.asarray(unmatched_src["_valid"], dtype=bool)]
+                if len(unmatched_src):
+                    refcat.expand_catalog(unmatched_src)
+                    log.info(
+                        "Added %d unmatched sources from '%s' to the reference catalog.",
+                        len(unmatched_src),
+                        current_wcat.name,
+                    )
+
             else:
                 log.warning(
                     "Failed to align catalog %s to the "

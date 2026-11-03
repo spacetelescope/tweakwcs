@@ -1701,7 +1701,9 @@ class RefCatalog:
         Parameters
         ----------
         catalog: astropy.table.Table
-            Reference catalog.
+            Reference catalog. Masked tables are supported; sources with masked
+            or non-finite ``'RA'``, ``'DEC'`` or ``'weight'`` values are
+            ignored.
 
             .. note::
                 Reference catalogs (:py:class:`~astropy.table.Table`)

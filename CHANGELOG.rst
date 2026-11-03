@@ -5,6 +5,21 @@ Release Notes
 =============
 
 
+0.9.4 (26-October-2026)
+=======================
+
+- Made the handling of masked reference catalogs consistent between
+  ``fit_wcs`` and ``align_wcs``, including when the reference catalog is given
+  as a ``WCSCorrector``: sources with masked or non-finite coordinates or
+  weights are ignored, and input catalogs are never modified. Masked-table
+  support is now documented. [#271]
+
+- ``align_wcs`` no longer adds masked or non-finite sources to the expanded
+  reference catalog when ``expand_refcat=True``, and no longer fails when an
+  image catalog selected as the reference contains no valid sources; such
+  catalogs are now skipped with status ``'FAILED: no valid sources'``. [#271]
+
+
 0.9.3 (22-October-2026)
 =======================
 
@@ -12,7 +27,7 @@ Release Notes
   threshold in ``iter_linear_fit``.  This is more robust to outliers
   than statistics based on means. [#267]
 
-- Improved compatibility withPython 3.15. [#268]
+- Improved compatibility with Python 3.15. [#268]
 
 - Improved compatibility with ``astropy>8.0.0``. [#270]
 
