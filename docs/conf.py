@@ -250,7 +250,7 @@ html_style = "css/custom-tweakwcs.css"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/stsci_pri_combo_mark_white.png"
+html_logo = "_static/stsci_pri_combo_mark_dark_bkgd.png"
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
